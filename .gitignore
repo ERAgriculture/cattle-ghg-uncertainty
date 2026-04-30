@@ -1,0 +1,26 @@
+# R session artefacts
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+
+# rsconnect deployment metadata (safe to commit the app info, not tokens)
+# rsconnect/
+
+# Office temporary files
+~$*.docx
+~$*.xlsx
+
+# VS Code workspace (personal IDE config)
+*.code-workspace
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Python cache (build_docs script)
+__pycache__/
+*.pyc

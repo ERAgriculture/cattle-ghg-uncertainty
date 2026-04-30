@@ -1,0 +1,479 @@
+# Master UI Function
+app_ui <- function() {
+  bslib::page_navbar(
+    title = "IPCC Tier 2 Livestock GHG Uncertainty Calculator",
+    theme = bslib::bs_theme(
+      version = 5,
+      primary = "#2D6A4F",
+      secondary = "#40916C",
+      success = "#2D6A4F",
+      bg = "#F7F5F0",
+      fg = "#1A1A1A",
+      base_font = bslib::font_google("DM Sans"),
+      code_font = bslib::font_google("JetBrains Mono")
+    ),
+    header = tags$head(tags$link(rel = "stylesheet", href = "custom.css")),
+    fillable = FALSE,
+
+    # ==================== HOME TAB ====================
+    bslib::nav_panel(
+      title = "Home",
+      icon = icon("home"),
+      div(
+        style = "max-width: 960px; margin: 0 auto; padding: 24px;",
+
+        # Hero section
+        div(
+          style = "background: linear-gradient(135deg, #1B4332 0%, #2D6A4F 50%, #40916C 100%);
+                   color: white; border-radius: 16px; padding: 48px 40px; margin-bottom: 32px;
+                   position: relative; overflow: hidden;",
+          h1("IPCC Tier 2 Livestock GHG Uncertainty Calculator",
+             style = "font-size: 2rem; font-weight: 700; margin-bottom: 12px;"),
+          p("Monte Carlo uncertainty analysis for national cattle methane and nitrous oxide inventories.",
+            style = "font-size: 1.1rem; opacity: 0.9; margin-bottom: 8px;"),
+          p("Developed by CIAT/CGIAR Alliance | Funded by Global Methane Hub",
+            style = "font-size: 0.9rem; opacity: 0.7;"),
+          div(
+            style = "display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;",
+            tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;", "IPCC 2006/2019"),
+            tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;", "Monte Carlo Approach 2"),
+            tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;", "Open Source"),
+            tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;", "Enteric + Manure CH4 + N2O")
+          )
+        ),
+
+        # What this tool does
+        bslib::card(
+          bslib::card_header(h4("What does this tool do?", style = "margin: 0;")),
+          bslib::card_body(
+            p("When a country reports cattle greenhouse gas emissions under the Paris Agreement, every input parameter
+              (animal populations, body weights, feed quality, emission factors) has some uncertainty. This tool:"),
+            tags$ol(
+              tags$li("Takes your country-specific Tier 2 input data with uncertainty ranges"),
+              tags$li("Runs thousands of Monte Carlo simulations, varying all parameters according to their probability distributions"),
+              tags$li("Produces the uncertainty range for your total emission estimate (95% confidence interval)"),
+              tags$li("Identifies which parameters contribute most to the uncertainty (sensitivity analysis)"),
+              tags$li("Formats results for IPCC inventory reporting (Table 3.3)")
+            ),
+            p(tags$strong("Emission sources covered:"),
+              " Enteric fermentation CH4, Manure management CH4, Manure management N2O (direct and indirect),
+              and N2O from dung/urine deposited on pasture.")
+          )
+        ),
+
+        # Workflow overview
+        bslib::card(
+          bslib::card_header(h4("How to use this tool -- Step by step", style = "margin: 0;")),
+          bslib::card_body(
+            p("Work through the tabs from left to right. Each tab has instructions at the top explaining what to do."),
+            tags$table(
+              style = "width: 100%; border-collapse: collapse; margin-top: 8px;",
+              tags$thead(
+                tags$tr(style = "background: #D8F3DC; text-align: left;",
+                  tags$th(style = "padding: 10px; border: 1px solid #E0DDD5;", "Step"),
+                  tags$th(style = "padding: 10px; border: 1px solid #E0DDD5;", "Tab"),
+                  tags$th(style = "padding: 10px; border: 1px solid #E0DDD5;", "What you do"),
+                  tags$th(style = "padding: 10px; border: 1px solid #E0DDD5;", "Time")
+                )
+              ),
+              tags$tbody(
+                tags$tr(
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "1"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5; font-weight: 600; color: #2D6A4F;", "Data Input"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "Load example data or upload your country data from the Excel template"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "5 min")
+                ),
+                tags$tr(style = "background: #FAFAF7;",
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "2"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5; font-weight: 600; color: #2D6A4F;", "QA/QC"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "Review automated quality checks -- fix any fails and document large deviations from IPCC defaults"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "5 min")
+                ),
+                tags$tr(
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "3"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5; font-weight: 600; color: #2D6A4F;", "Uncertainty"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "Review and adjust probability distributions and uncertainty ranges for each parameter"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "10 min")
+                ),
+                tags$tr(style = "background: #FAFAF7;",
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "4"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5; font-weight: 600; color: #2D6A4F;", "Correlations"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "(Optional) Upload population time series or manually define correlations between activity data"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "5 min")
+                ),
+                tags$tr(
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "5"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5; font-weight: 600; color: #2D6A4F;", "Simulate"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "Choose number of iterations, GWP version, and click Run"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "1-2 min")
+                ),
+                tags$tr(style = "background: #FAFAF7;",
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "6"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5; font-weight: 600; color: #2D6A4F;", "Results"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "View emission distributions, uncertainty ranges (95% CI), and decomposition"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "5 min")
+                ),
+                tags$tr(
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "7"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5; font-weight: 600; color: #2D6A4F;", "Sensitivity"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "Identify which parameters contribute most to uncertainty (tornado chart)"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "5 min")
+                ),
+                tags$tr(style = "background: #FAFAF7;",
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "8"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5; font-weight: 600; color: #2D6A4F;", "IPCC Report"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "Download results formatted as IPCC Table 3.3 for your inventory submission"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "2 min")
+                )
+              )
+            ),
+            br(),
+            div(class = "info-panel",
+                tags$strong("Quick start: "),
+                "To try the tool immediately, go to ",
+                tags$strong("1. Data Input"), ", select 'Uganda (Example)', then go to ",
+                tags$strong("5. Simulate"), " and click 'Run Monte Carlo Simulation'.")
+          )
+        )
+      )
+    ),
+
+    # ==================== TAB 1: DATA INPUT ====================
+    bslib::nav_panel(
+      title = "1. Data Input",
+      icon = icon("upload"),
+      div(class = "info-panel", style = "margin: 16px;",
+          tags$strong("What to do: "),
+          "Select an example country dataset from the dropdown, or upload your own data using the Excel template. ",
+          "Choose your IPCC guidelines version. The parameter table on the right shows the loaded data -- ",
+          "you can click on any cell to edit values directly. Check the validation panel at the bottom left to ",
+          "ensure your data is complete and valid before proceeding to the next tab."),
+      bslib::layout_sidebar(
+        sidebar = bslib::sidebar(
+          width = 320,
+          h5("Data Source"),
+          selectInput("country", "Country / Example Data",
+                      choices = c("Uganda (Example)" = "uganda",
+                                  "Zimbabwe (Example)" = "zimbabwe",
+                                  "Custom Upload" = "custom")),
+          hr(),
+          div(class = "info-panel",
+              style = "font-size: 0.82rem; padding: 8px 10px; margin-top: 4px;",
+              icon("info-circle"), " MCF values are entered in the Manure_Management sheet of the Excel template — see the Vocab sheet for IPCC Table 10.17 reference values by climate zone."),
+          hr(),
+          h5("Custom Data Upload"),
+          fileInput("data_upload", "Upload Excel Template (.xlsx)",
+                    accept = ".xlsx"),
+          downloadButton("download_template", "Download Blank Template",
+                         class = "btn-outline-success btn-sm"),
+          downloadButton("download_template_example", "Download Template with Example",
+                         class = "btn-outline-primary btn-sm mt-2"),
+          hr(),
+          h5("Validation"),
+          uiOutput("validation_status")
+        ),
+        bslib::card(
+          bslib::card_header("Parameter Data"),
+          bslib::card_body(DT::DTOutput("param_table"))
+        )
+      )
+    ),
+
+    # ==================== TAB 2: QA/QC ====================
+    bslib::nav_panel(
+      title = "2. QA/QC",
+      icon = icon("check-square"),
+      div(class = "info-panel", style = "margin: 16px;",
+          tags$strong("What to do: "),
+          "After loading data, review these automated quality checks. Each row flags a specific check for one parameter. ",
+          tags$strong("Fail"), " (red) = the value or bounds will likely cause an error in the simulation. ",
+          tags$strong("Warn"), " (amber) = the value is unusual compared with IPCC defaults or Penman/Monni uncertainty references -- investigate and document. ",
+          tags$strong("Pass"), " (green) = check satisfied. ",
+          "Fix any fails before running the simulation. Warnings are advisory -- document your justification for large deviations from IPCC defaults."),
+      bslib::layout_columns(
+        col_widths = c(3, 9),
+        bslib::card(
+          bslib::card_header("Summary"),
+          bslib::card_body(
+            uiOutput("qaqc_summary_ui"),
+            hr(),
+            p(style = "font-size:0.83rem; color:#555;",
+              "Checks run: bounds order, non-negative bounds, ",
+              "valid ranges (DE_pct, Ym_pct, fractions), ",
+              "distribution suitability (beta/lognormal/tnorm_0_1), ",
+              "benchmark deviation vs. IPCC defaults (>50% = warn, >200% = fail), ",
+              "and asymmetric-distribution warning for EF3/EF4/EF5/Frac_LEACH.")
+          )
+        ),
+        bslib::card(
+          bslib::card_header("QA/QC Results"),
+          bslib::card_body(DT::DTOutput("qaqc_table"))
+        )
+      )
+    ),
+
+    # ==================== TAB 3: UNCERTAINTY ====================
+    bslib::nav_panel(
+      title = "3. Uncertainty",
+      icon = icon("sliders-h"),
+      div(class = "info-panel", style = "margin: 16px;",
+          tags$strong("What to do: "),
+          "Review and adjust the probability distribution and uncertainty range for each parameter. ",
+          "Click on any cell to change the distribution type (normal, lognormal, beta, triangular, pert, uniform, constant) ",
+          "or to modify the uncertainty percentage and bounds. ",
+          tags$strong("Activity data"), " parameters (param_type = 'activity_data') support correlated sampling in Tab 4. ",
+          tags$strong("Emission factors"), " (param_type = 'emission_factor') are always sampled independently. ",
+          "Use the quick-set buttons at the bottom to apply common settings to all parameters of one type."),
+      bslib::card(
+        bslib::card_header("Distribution & Uncertainty Specification"),
+        bslib::card_body(
+          DT::DTOutput("uncertainty_table"),
+          hr(),
+          fluidRow(
+            column(4, actionButton("set_all_normal", "Set All AD to Normal +/-15%",
+                                   class = "btn-outline-success btn-sm")),
+            column(4, actionButton("set_all_pert", "Set All EF to PERT",
+                                   class = "btn-outline-primary btn-sm"))
+          )
+        )
+      )
+    ),
+
+    # ==================== TAB 4: CORRELATIONS ====================
+    bslib::nav_panel(
+      title = "4. Correlations",
+      icon = icon("th"),
+      div(class = "info-panel", style = "margin: 16px;",
+          tags$strong("What to do (optional): "),
+          "Define correlations for activity data and/or emission factors. ",
+          "Correlations produce more realistic uncertainty estimates when parameters tend to move together. ",
+          "If you have no information, leave both sections at 'No correlations' (the default)."),
+      bslib::layout_columns(
+        col_widths = c(6, 6),
+
+        # --- Activity data correlations ---
+        bslib::card(
+          bslib::card_header("Activity Data Correlations"),
+          bslib::card_body(
+            div(class = "info-panel",
+                "Activity data correlations are specified via the ",
+                tags$strong("Parameter_TimeSeries"), " sheet in your main input template. ",
+                "Fill in one row per year for the parameters you have historical data for, then ",
+                "upload the template in ", tags$strong("Tab 1. Data Input"), ". ",
+                "The correlation matrix is computed automatically on upload. ",
+                "You only need columns for parameters you have data for — absent parameters are treated as uncorrelated."),
+            radioButtons("corr_mode", "Mode",
+                         choices = c("No correlations"          = "none",
+                                     "From template (auto)"     = "timeseries",
+                                     "Manual entry"             = "manual")),
+            conditionalPanel(
+              condition = "input.corr_mode == 'timeseries'",
+              uiOutput("corr_ts_status")
+            ),
+            plotly::plotlyOutput("corr_heatmap", height = "350px")
+          )
+        ),
+
+        # --- Emission factor correlations ---
+        bslib::card(
+          bslib::card_header("Emission Factor Correlations"),
+          bslib::card_body(
+            div(class = "info-panel",
+                "Systematic biases in IPCC methodology (e.g., the Ym% equation) can cause all emission factors ",
+                "to be over- or under-estimated together. A ", tags$strong("uniform correlation"),
+                " (single rho) captures this assumption. ",
+                tags$em("Default is no EF correlation, which is the standard IPCC Approach 2 assumption.")),
+            radioButtons("ef_corr_mode", "Mode",
+                         choices = c("No EF correlations (default)" = "none",
+                                     "Uniform EF correlation"       = "uniform")),
+            conditionalPanel(
+              condition = "input.ef_corr_mode == 'uniform'",
+              sliderInput("ef_corr_rho", "Uniform correlation coefficient (rho)",
+                          min = 0.0, max = 0.9, value = 0.3, step = 0.05),
+              div(style = "font-size:0.82rem; color:#555; margin-top:4px;",
+                  "rho = 0 = independent (same as 'No EF correlations'). ",
+                  "rho = 0.3 is a moderate assumption; values above 0.5 are strong and should be justified.")
+            ),
+            plotly::plotlyOutput("ef_corr_heatmap", height = "350px")
+          )
+        )
+      )
+    ),
+
+    # ==================== TAB 5: SIMULATION ====================
+    bslib::nav_panel(
+      title = "5. Simulate",
+      icon = icon("play"),
+      div(class = "info-panel", style = "margin: 16px;",
+          tags$strong("What to do: "),
+          "Configure the simulation settings on the left, then click ",
+          tags$strong("'Run Monte Carlo Simulation'"), ". ",
+          "The tool will sample all parameters from their distributions and run the full IPCC equation chain ",
+          "thousands of times. Use 10,000 iterations for reliable results (1,000 for quick testing). ",
+          "A random seed ensures reproducibility -- the same seed always produces the same results. ",
+          "Check 'Run uncertainty decomposition' to separate activity data from emission factor uncertainty. ",
+          "When the simulation is complete, proceed to the Results and Sensitivity tabs."),
+      bslib::layout_columns(
+        col_widths = c(4, 8),
+        bslib::card(
+          bslib::card_header("Simulation Settings"),
+          bslib::card_body(
+            sliderInput("n_iter", "Number of Iterations",
+                        min = 1000, max = 50000, value = 10000, step = 1000),
+            numericInput("seed", "Random Seed (for reproducibility)", value = 42),
+            selectInput("gwp_version", "GWP Assessment Report",
+                        choices = c("AR4 (CH4=25)" = "AR4",
+                                    "AR5 (CH4=28, N2O=265)" = "AR5",
+                                    "AR6 (CH4=27.9, N2O=273)" = "AR6"),
+                        selected = "AR5"),
+            checkboxInput("run_decomposition", "Run uncertainty decomposition (AD/EF/Combined)",
+                          value = TRUE),
+            checkboxInput("run_comparison", "Compare with/without correlations", value = FALSE),
+            hr(),
+            actionButton("run_sim", "Run Monte Carlo Simulation",
+                         class = "run-btn w-100", icon = icon("play")),
+            hr(),
+            uiOutput("sim_status")
+          )
+        ),
+        bslib::card(
+          bslib::card_header("Simulation Log"),
+          bslib::card_body(
+            verbatimTextOutput("sim_log")
+          )
+        )
+      )
+    ),
+
+    # ==================== TAB 6: RESULTS ====================
+    bslib::nav_panel(
+      title = "6. Results",
+      icon = icon("chart-bar"),
+      div(class = "info-panel", style = "margin: 16px;",
+          tags$strong("What to do: "),
+          "Review the simulation results below. The ", tags$strong("summary cards"),
+          " at the top show total emissions and overall uncertainty (CV%). The ",
+          tags$strong("histogram"), " shows the full distribution of simulated CO2eq values with ",
+          "95% confidence interval lines (red dashes). The ",
+          tags$strong("decomposition chart"), " shows how much uncertainty comes from activity data vs. emission factors. ",
+          "The ", tags$strong("by-system table"), " breaks down results per production system. ",
+          "A CV below 25% indicates reasonably good data quality; above 50% suggests priority areas for data improvement."),
+      bslib::layout_columns(
+        col_widths = c(3, 3, 3, 3),
+        bslib::value_box(title = "Total CH4", value = textOutput("vb_ch4"),
+                          showcase = icon("fire"), theme = "success"),
+        bslib::value_box(title = "Total N2O", value = textOutput("vb_n2o"),
+                          showcase = icon("cloud"), theme = "primary"),
+        bslib::value_box(title = "Total CO2eq", value = textOutput("vb_co2e"),
+                          showcase = icon("globe"), theme = "warning"),
+        bslib::value_box(title = "CV (%)", value = textOutput("vb_cv"),
+                          showcase = icon("percent"), theme = "info")
+      ),
+      bslib::layout_columns(
+        col_widths = c(6, 6),
+        bslib::card(
+          bslib::card_header("Emission Distribution (Total CO2eq)"),
+          bslib::card_body(plotly::plotlyOutput("results_histogram"))
+        ),
+        bslib::card(
+          bslib::card_header("Uncertainty Decomposition"),
+          bslib::card_body(plotly::plotlyOutput("decomposition_plot"))
+        )
+      ),
+      bslib::card(
+        bslib::card_header("By-System Breakdown"),
+        bslib::card_body(DT::DTOutput("results_by_system"))
+      ),
+      uiOutput("comparison_card")
+    ),
+
+    # ==================== TAB 7: SENSITIVITY ====================
+    bslib::nav_panel(
+      title = "7. Sensitivity",
+      icon = icon("bullseye"),
+      div(class = "info-panel", style = "margin: 16px;",
+          tags$strong("What to do: "),
+          "This page shows which input parameters contribute most to the overall emission uncertainty. ",
+          "The ", tags$strong("tornado chart"), " on the left ranks parameters by their influence -- ",
+          "longer bars mean more influential parameters. Green bars indicate a positive relationship ",
+          "(higher value = higher emissions) and red bars indicate a negative relationship. ",
+          "Use the dropdown on the right to switch between SRC (linear influence) and PRCC (rank-based, more robust). ",
+          tags$strong("Action item: "), "Focus your data improvement efforts on the top 3-5 parameters ",
+          "to get the biggest reduction in overall inventory uncertainty."),
+      uiOutput("sens_view_toggle"),
+      bslib::layout_columns(
+        col_widths = c(6, 6),
+        bslib::card(
+          bslib::card_header("Tornado Chart - Top Parameters"),
+          bslib::card_body(plotly::plotlyOutput("tornado_chart"))
+        ),
+        bslib::card(
+          bslib::card_header("Sensitivity Rankings"),
+          bslib::card_body(
+            selectInput("sens_method", "Method",
+                        choices = c("Standardized Regression (SRC)" = "src",
+                                    "Partial Rank Correlation (PRCC)" = "prcc")),
+            DT::DTOutput("sensitivity_table")
+          )
+        )
+      )
+    ),
+
+    # ==================== TAB 8: IPCC REPORT ====================
+    bslib::nav_panel(
+      title = "8. IPCC Report",
+      icon = icon("file-alt"),
+      div(class = "info-panel", style = "margin: 16px;",
+          tags$strong("What to do: "),
+          "This page shows your uncertainty results formatted as IPCC Table 3.3, ready for your national ",
+          "inventory submission. The table shows uncertainty (CV%) decomposed by activity data, emission factors, ",
+          "and combined, for each emission source category. ",
+          "Click ", tags$strong("'Download Excel Report'"), " to get a complete workbook with all results, ",
+          "sensitivity rankings, and metadata. Click ", tags$strong("'Download CSV'"), " for a simpler file ",
+          "with uncertainty metrics only."),
+      bslib::card(
+        bslib::card_header("IPCC Table 3.3 - Uncertainty Report"),
+        bslib::card_body(
+          DT::DTOutput("ipcc_table"),
+          hr(),
+          fluidRow(
+            column(3, downloadButton("download_xlsx", "Download Excel Report",
+                                      class = "btn-success")),
+            column(3, downloadButton("download_csv", "Download CSV",
+                                      class = "btn-outline-success"))
+          )
+        )
+      )
+    ),
+
+    # ==================== TAB 9: TREND ====================
+    bslib::nav_panel(
+      title = "9. Trend",
+      icon = icon("chart-line"),
+      div(class = "info-panel", style = "margin: 16px;",
+          tags$strong("What to do: "),
+          "This feature will analyze how emission uncertainty changes over time. It will allow you to upload ",
+          "multi-year emission estimates, visualize uncertainty bands across inventory years, and quantify ",
+          "uncertainty in the emission trend itself. This is particularly important for countries tracking ",
+          "progress toward emission reduction targets under the Paris Agreement."),
+      bslib::card(
+        bslib::card_header("Trend Uncertainty Analysis (Optional)"),
+        bslib::card_body(
+          p("This feature is under development and will be available in a future release."),
+          p("Requirements: Multi-year population data uploaded in the Correlations tab (Sheet: Population_TimeSeries).")
+        )
+      )
+    ),
+
+    # Footer
+    bslib::nav_spacer(),
+    bslib::nav_item(
+      tags$span(style = "color: #6B6B6B; font-size: 0.85rem;",
+                "Developed by CIAT/CGIAR Alliance | Funded by Global Methane Hub")
+    )
+  )
+}

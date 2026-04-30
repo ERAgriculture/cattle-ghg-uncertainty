@@ -1,0 +1,60 @@
+# Uncertainty Metric Calculations
+
+calc_uncertainty_metrics <- function(x) {
+  data.frame(
+    mean = mean(x), median = median(x), sd = sd(x),
+    cv_pct = sd(x) / mean(x) * 100,
+    ci_lower = quantile(x, 0.025, names = FALSE),
+    ci_upper = quantile(x, 0.975, names = FALSE),
+    moe_pct = 1.96 * (sd(x) / sqrt(length(x))) / mean(x) * 100,
+    iqr = IQR(x), min = min(x), max = max(x)
+  )
+}
+
+calc_all_uncertainty <- function(results_df) {
+  metrics <- lapply(names(results_df), function(col) {
+    m <- calc_uncertainty_metrics(results_df[[col]])
+    m$variable <- col
+    m
+  })
+  do.call(rbind, metrics)
+}
+
+# Uncertainty decomposition: AD-only, EF-only, Combined
+decompose_uncertainty <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
+                                   mms_fractions = NULL, mcf_values = NULL, ef3_values = NULL,
+                                   gwp = "AR5", seed = NULL, ef_corr_matrix = NULL) {
+  # Combined
+  combined <- run_mc_simulation(param_specs, corr_matrix, n_iter,
+                                 mms_fractions, mcf_values, ef3_values, gwp, seed,
+                                 ef_corr_matrix = ef_corr_matrix)
+
+  # AD only: fix emission factors at means
+  ad_specs <- param_specs
+  ef_rows <- ad_specs$param_type == "emission_factor"
+  ad_specs$distribution[ef_rows] <- "constant"
+  ad_specs$lower[ef_rows] <- ad_specs$mean[ef_rows]
+  ad_specs$upper[ef_rows] <- ad_specs$mean[ef_rows]
+  ad_only <- run_mc_simulation(ad_specs, corr_matrix, n_iter,
+                                mms_fractions, mcf_values, ef3_values, gwp, seed,
+                                ef_corr_matrix = NULL)
+
+  # EF only: fix activity data at means
+  ef_specs <- param_specs
+  ad_rows <- ef_specs$param_type == "activity_data"
+  ef_specs$distribution[ad_rows] <- "constant"
+  ef_specs$lower[ad_rows] <- ef_specs$mean[ad_rows]
+  ef_specs$upper[ad_rows] <- ef_specs$mean[ad_rows]
+  ef_only <- run_mc_simulation(ef_specs, NULL, n_iter,
+                                mms_fractions, mcf_values, ef3_values, gwp, seed,
+                                ef_corr_matrix = ef_corr_matrix)
+
+  list(
+    combined = calc_all_uncertainty(combined$results),
+    ad_only = calc_all_uncertainty(ad_only$results),
+    ef_only = calc_all_uncertainty(ef_only$results),
+    combined_raw = combined,
+    ad_raw = ad_only,
+    ef_raw = ef_only
+  )
+}

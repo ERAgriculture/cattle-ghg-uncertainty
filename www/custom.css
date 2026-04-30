@@ -1,0 +1,81 @@
+/* IPCC Tier 2 Uncertainty Calculator - Custom Styles */
+:root {
+  --primary: #2D6A4F;
+  --primary-light: #40916C;
+  --bg: #F7F5F0;
+  --bg-card: #FFFFFF;
+  --accent-bg: #D8F3DC;
+  --accent-bg2: #B7E4C7;
+  --text: #1A1A1A;
+  --text-muted: #6B6B6B;
+  --border: #E0DDD5;
+  --danger: #C1121F;
+  --warning: #E09F3E;
+}
+
+body { background: var(--bg); color: var(--text); }
+
+.navbar { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.value-box {
+  border-radius: 12px;
+  transition: transform 0.2s;
+}
+.value-box:hover { transform: translateY(-2px); }
+
+.btn-success {
+  background: var(--primary) !important;
+  border-color: var(--primary) !important;
+}
+.btn-success:hover {
+  background: var(--primary-light) !important;
+  border-color: var(--primary-light) !important;
+}
+
+.run-btn {
+  font-size: 1.1rem;
+  padding: 12px 32px;
+  background: var(--primary);
+  border: none;
+  color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(45,106,79,0.3);
+  transition: all 0.2s;
+}
+.run-btn:hover {
+  background: var(--primary-light);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(45,106,79,0.4);
+}
+
+.info-panel {
+  background: var(--accent-bg);
+  border-left: 4px solid var(--primary);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.validation-ok { color: #2D6A4F; font-weight: 600; }
+.validation-error { color: var(--danger); font-weight: 600; }
+
+.sidebar { background: var(--bg-card); border-right: 1px solid var(--border); }
+
+.footer-text {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+}
+
+.results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+
+h4.card-title { color: var(--primary); font-weight: 600; }
