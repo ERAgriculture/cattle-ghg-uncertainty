@@ -12,5 +12,5 @@
 rsconnect::deployApp(
   appDir  = ".",
   appName = "cattle-ghg-uncertainty",
-  account = "YOUR-SHINYAPPS-USERNAME"
+  account = "mlolita26"
 )
