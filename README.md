@@ -18,7 +18,7 @@ There are two ways to run the app in your browser without installing R or writin
 
 ### Option A — shinyapps.io (recommended)
 
-> Fast, persistent, no waiting time.
+> Fast, persistent, no waiting time. The app is live and ready.
 
 Click the green **Launch App** badge above, or go to:  
 **https://mlolita26.shinyapps.io/cattle-ghg-uncertainty/**
