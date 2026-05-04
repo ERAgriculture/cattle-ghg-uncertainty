@@ -299,6 +299,61 @@ app_server <- function(input, output, session) {
 
   # --- CORRELATIONS ---
 
+  # T4.1: IPCC-guidance preset — sparse matrix with documented structural pairs only
+  observeEvent(input$corr_mode, {
+    if (input$corr_mode == "preset") {
+      ad_names <- if (!is.null(rv$param_specs))
+        rv$param_specs$parameter[rv$param_specs$param_type == "activity_data"]
+      else
+        PARAM_CATALOGUE$parameter[PARAM_CATALOGUE$param_type == "activity_data"]
+      if (length(ad_names) < 2) return()
+      m <- diag(length(ad_names))
+      rownames(m) <- colnames(m) <- ad_names
+      pairs <- list(
+        c("live_weight",   "mature_weight",  0.85),
+        c("live_weight",   "weight_gain",    0.40),
+        c("milk_yield",    "milk_fat",      -0.30),
+        c("milk_yield",    "pct_lactating",  0.20),
+        c("DE_pct",        "CP_pct",         0.50),
+        c("DE_pct",        "Ym_pct",        -0.40)
+      )
+      for (p in pairs) {
+        if (p[1] %in% ad_names && p[2] %in% ad_names) {
+          m[p[1], p[2]] <- as.numeric(p[3])
+          m[p[2], p[1]] <- as.numeric(p[3])
+        }
+      }
+      m <- as.matrix(Matrix::nearPD(m, corr = TRUE)$mat)
+      rownames(m) <- colnames(m) <- ad_names
+      rv$corr_matrix <- m
+      showNotification("Loaded IPCC-guidance preset correlation matrix.",
+                       type = "message", duration = 4)
+    } else if (input$corr_mode == "none") {
+      # Don't wipe an uploaded matrix — just don't apply it (sim observer reads input$corr_mode)
+    }
+  }, ignoreInit = TRUE)
+
+  # T4.1: manual matrix upload (CSV)
+  observeEvent(input$corr_matrix_upload, {
+    req(input$corr_matrix_upload)
+    tryCatch({
+      df <- read.csv(input$corr_matrix_upload$datapath, row.names = 1,
+                     check.names = FALSE)
+      m  <- as.matrix(df)
+      if (nrow(m) != ncol(m) || any(is.na(m)))
+        stop("Matrix must be square with no missing values.")
+      if (any(diag(m) != 1))
+        stop("Diagonal entries must be 1.")
+      m <- as.matrix(Matrix::nearPD(m, corr = TRUE)$mat)
+      rv$corr_matrix <- m
+      showNotification(sprintf("Loaded manual correlation matrix (%d parameters).",
+                               nrow(m)), type = "message", duration = 5)
+    }, error = function(e) {
+      showNotification(paste("Matrix upload failed:", e$message),
+                       type = "error", duration = 8)
+    })
+  })
+
   output$corr_heatmap <- plotly::renderPlotly({
     if (is.null(rv$corr_matrix)) {
       plotly::plot_ly() %>%
@@ -466,6 +521,35 @@ app_server <- function(input, output, session) {
             systems_data, n_iter = input$n_iter,
             gwp = input$gwp_version, seed = input$seed
           )
+
+          # T1.12: zero out per-source contributions the user has unchecked.
+          # The per-source columns are kept (for sensitivity / per-system tables);
+          # only the headline totals (total_ch4, total_n2o, total_co2e) are
+          # recomputed to reflect the selection.
+          srcs <- input$emission_sources %||% character()
+          gwp_vals <- GWP_VALUES[[input$gwp_version]]
+          .apply_source_selection <- function(df) {
+            ch4 <- (if ("enteric_ch4" %in% srcs) df$enteric_ch4_total else 0) +
+                   (if ("manure_ch4"  %in% srcs) df$manure_ch4_total  else 0)
+            n2o <- (if ("manure_n2o_direct"   %in% srcs) df$direct_n2o_mm_total   else 0) +
+                   (if ("manure_n2o_indirect" %in% srcs) df$indirect_n2o_mm_total else 0) +
+                   (if ("pasture_n2o" %in% srcs) df$direct_n2o_prp_total   + df$indirect_n2o_prp_total else 0)
+            df$total_ch4  <- ch4
+            df$total_n2o  <- n2o
+            df$co2e_ch4   <- ch4 * gwp_vals$CH4
+            df$co2e_n2o   <- n2o * gwp_vals$N2O
+            df$total_co2e <- df$co2e_ch4 + df$co2e_n2o
+            df
+          }
+          if (length(srcs) > 0 && length(srcs) < 5) {
+            sim_result$inventory <- .apply_source_selection(sim_result$inventory)
+            for (sn in names(sim_result$by_system)) {
+              sim_result$by_system[[sn]]$results <- .apply_source_selection(
+                sim_result$by_system[[sn]]$results)
+            }
+            rv$sim_log <- paste0(rv$sim_log, "Source selection: ",
+                                 paste(srcs, collapse = ", "), "\n")
+          }
           rv$mc_results <- sim_result
 
           # ---- Stage 3: uncertainty metrics ----
@@ -672,6 +756,48 @@ app_server <- function(input, output, session) {
                   options = list(pageLength = 20))
   })
 
+  # T6.2: per-reporting-category breakdown (system x source) using GWP-aligned t CO2eq
+  output$results_by_category <- DT::renderDT({
+    req(rv$mc_results)
+    gwp_vals <- GWP_VALUES[[input$gwp_version]]
+    g_ch4 <- gwp_vals$CH4
+    g_n2o <- gwp_vals$N2O
+
+    # source_label, ch4 column, n2o column (column-name lookup so we get t CO2eq)
+    sources <- list(
+      list(label = "Enteric fermentation CH4",       ch4 = "enteric_ch4_total",   n2o = NULL),
+      list(label = "Manure management CH4",          ch4 = "manure_ch4_total",    n2o = NULL),
+      list(label = "Manure management N2O direct",   ch4 = NULL,                  n2o = "direct_n2o_mm_total"),
+      list(label = "Manure management N2O indirect", ch4 = NULL,                  n2o = "indirect_n2o_mm_total"),
+      list(label = "Pasture deposition N2O direct",  ch4 = NULL,                  n2o = "direct_n2o_prp_total"),
+      list(label = "Pasture deposition N2O indirect",ch4 = NULL,                  n2o = "indirect_n2o_prp_total")
+    )
+
+    rows <- list()
+    for (sn in names(rv$mc_results$by_system)) {
+      res <- rv$mc_results$by_system[[sn]]$results
+      for (s in sources) {
+        co2e <- if (!is.null(s$ch4)) res[[s$ch4]] * g_ch4 else res[[s$n2o]] * g_n2o
+        if (is.null(co2e) || all(co2e == 0)) next
+        m  <- mean(co2e)
+        lo <- quantile(co2e, 0.025, names = FALSE)
+        hi <- quantile(co2e, 0.975, names = FALSE)
+        rows[[length(rows) + 1]] <- data.frame(
+          System = sn,
+          Source = s$label,
+          Mean_t_CO2eq = round(m, 2),
+          MoE_95_pct   = if (m > 0) round(((hi - lo) / 2) / m * 100, 1) else NA_real_,
+          CV_pct       = if (m > 0) round(sd(co2e) / m * 100, 1) else NA_real_,
+          CI_Lower_t   = round(lo, 2),
+          CI_Upper_t   = round(hi, 2)
+        )
+      }
+    }
+    if (length(rows) == 0) return(DT::datatable(data.frame()))
+    DT::datatable(do.call(rbind, rows), rownames = FALSE,
+                  options = list(pageLength = 30, scrollX = TRUE))
+  })
+
   # Comparison card in Results tab — only rendered when comparison data exists
   output$comparison_card <- renderUI({
     if (is.null(rv$comparison_result)) return(NULL)
@@ -726,14 +852,30 @@ app_server <- function(input, output, session) {
     )
   })
 
-  # Helper: pick the right sensitivity dataset
+  # Helper: pick the right sensitivity dataset.
+  # T7.2: now also recomputes per-source sensitivity on demand (against the
+  # selected output column) using the cached samples.
   active_sensitivity <- reactive({
     view <- if (!is.null(input$sens_view)) input$sens_view else "with"
-    if (view == "without" && !is.null(rv$comparison_sensitivity)) {
-      rv$comparison_sensitivity
+    src  <- if (!is.null(input$sens_source)) input$sens_source else "total_co2e"
+
+    base <- if (view == "without" && !is.null(rv$comparison_result)) {
+      rv$comparison_result
     } else {
-      rv$sensitivity
+      rv$mc_results
     }
+    if (is.null(base) || length(base$by_system) == 0) return(NULL)
+    first_sys <- base$by_system[[1]]
+
+    if (src == "total_co2e") {
+      if (view == "without" && !is.null(rv$comparison_sensitivity))
+        return(rv$comparison_sensitivity)
+      return(rv$sensitivity)
+    }
+    if (!src %in% names(first_sys$results)) return(rv$sensitivity)
+    sensitivity_analysis(first_sys$samples,
+                         first_sys$results[[src]],
+                         method = "both")
   })
 
   output$tornado_chart <- plotly::renderPlotly({
@@ -791,6 +933,82 @@ app_server <- function(input, output, session) {
     req(rv$ipcc_table)
     DT::datatable(rv$ipcc_table, rownames = FALSE,
                   options = list(pageLength = 10, dom = 't'))
+  })
+
+  # T1.4: parameter glossary surfacing PARAM_CATALOGUE
+  output$definitions_table <- DT::renderDT({
+    cat <- PARAM_CATALOGUE
+    # IPCC framing label — reflects Divergence #2 mapping while keeping
+    # internal param_type unchanged for now (full rename in Phase 2)
+    cat$ipcc_framing <- ifelse(cat$parameter == "cattle_pop",
+                               "Activity data (population)",
+                               "Coefficient (combines into EF)")
+    DT::datatable(
+      cat[, c("parameter", "definition", "unit", "ipcc_default",
+              "suggested_distribution", "param_tier", "ipcc_framing", "ipcc_ref")],
+      rownames = FALSE,
+      options = list(pageLength = 25, scrollX = TRUE),
+      class = "compact stripe"
+    )
+  })
+
+  # T8.4: per-source histograms embedded in IPCC Report
+  output$report_source_histograms <- plotly::renderPlotly({
+    req(rv$mc_results)
+    inv <- rv$mc_results$inventory
+    sources <- list(
+      "Enteric CH4 (t)"        = inv$enteric_ch4_total,
+      "Manure CH4 (t)"         = inv$manure_ch4_total,
+      "Manure N2O direct (t)"  = inv$direct_n2o_mm_total,
+      "Manure N2O indirect (t)"= inv$indirect_n2o_mm_total,
+      "Pasture N2O (t)"        = inv$direct_n2o_prp_total + inv$indirect_n2o_prp_total
+    )
+    plots <- lapply(seq_along(sources), function(i) {
+      plotly::plot_ly(x = sources[[i]], type = "histogram", nbinsx = 40,
+                      marker = list(color = "#2D6A4F"),
+                      name = names(sources)[i], showlegend = FALSE) |>
+        plotly::layout(xaxis = list(title = names(sources)[i]),
+                       yaxis = list(title = ""))
+    })
+    plotly::subplot(plots, nrows = 2, margin = 0.06,
+                    titleX = TRUE, titleY = FALSE)
+  })
+
+  # T8.4: tornado chart embedded in IPCC Report (always vs total_co2e)
+  output$report_tornado <- plotly::renderPlotly({
+    req(rv$sensitivity)
+    sens <- rv$sensitivity$src %||% rv$sensitivity$prcc
+    if (is.null(sens) || nrow(sens) == 0) return(plotly::plot_ly())
+    val_col <- if ("src" %in% names(sens)) "src" else "prcc"
+    top10 <- head(sens, 10)
+    top10 <- top10[order(top10[[val_col]]), ]
+    plotly::plot_ly(y = factor(top10$parameter, levels = top10$parameter),
+                    x = top10[[val_col]], type = "bar", orientation = "h",
+                    marker = list(color = ifelse(top10[[val_col]] > 0,
+                                                 "#2D6A4F", "#C1121F"))) |>
+      plotly::layout(title = paste0("Top 10 — ", toupper(val_col)),
+                     xaxis = list(title = val_col),
+                     yaxis = list(title = ""))
+  })
+
+  # Tx.1: input distribution density plots for QA review
+  output$report_input_densities <- plotly::renderPlotly({
+    req(rv$mc_results)
+    if (length(rv$mc_results$by_system) == 0) return(plotly::plot_ly())
+    samples <- rv$mc_results$by_system[[1]]$samples
+    if (is.null(samples) || ncol(samples) == 0) return(plotly::plot_ly())
+
+    # Take up to 12 parameters to keep the panel readable
+    keep <- head(colnames(samples), 12)
+    plots <- lapply(keep, function(p) {
+      x <- samples[[p]]
+      plotly::plot_ly(x = x, type = "histogram", histnorm = "probability density",
+                      nbinsx = 30, marker = list(color = "#40916C"),
+                      name = p, showlegend = FALSE) |>
+        plotly::layout(xaxis = list(title = p), yaxis = list(title = ""))
+    })
+    plotly::subplot(plots, nrows = 4, margin = 0.04,
+                    titleX = TRUE, titleY = FALSE)
   })
 
   # T8.3: input documentation table for IPCC inventory submission / QA

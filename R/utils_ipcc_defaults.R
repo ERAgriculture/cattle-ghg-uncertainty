@@ -16,15 +16,28 @@ IPCC_DEFAULTS <- list(
   EF3_PRP = 0.02, Frac_GASM = 0.20, EF4 = 0.010, EF5 = 0.0075, Frac_LEACH = 0.02
 )
 
+## TT.3: MMS list expanded to cover IPCC 2006 (8 systems) and 2019 Refinement
+## (adds anaerobic_digester, aerobic_treatment, burned_for_fuel, solid_storage_covered).
+## `versions` lists which IPCC editions recognise each system.
 MMS_DEFAULTS <- data.frame(
-  id = c("pasture", "daily_spread", "solid_storage", "dry_lot", "deep_bedding", "liquid_slurry", "composting", "lagoon"),
-  label = c("Pasture/Paddock/Range", "Daily Spread", "Solid Storage", "Dry Lot",
-            "Deep Bedding (>1 month)", "Liquid/Slurry", "Composting", "Anaerobic Lagoon"),
-  mcf_tropical = c(1.5, 1.0, 5.0, 5.0, 30.0, 80.0, 1.5, 80.0),
-  mcf_tropical_dry = c(1.5, 1.0, 5.0, 5.0, 30.0, 80.0, 1.5, 80.0),
-  mcf_temperate = c(1.0, 0.5, 4.0, 1.5, 17.0, 35.0, 1.0, 66.0),
-  mcf_boreal = c(1.0, 0.1, 3.0, 1.0, 3.0, 10.0, 0.5, 66.0),
-  ef3 = c(0.02, 0.0, 0.005, 0.02, 0.01, 0.005, 0.006, 0.0),
+  id = c("pasture", "daily_spread", "solid_storage", "solid_storage_covered",
+         "dry_lot", "deep_bedding", "liquid_slurry", "composting", "lagoon",
+         "anaerobic_digester", "aerobic_treatment", "burned_for_fuel"),
+  label = c("Pasture/Paddock/Range", "Daily Spread", "Solid Storage",
+            "Solid Storage – Covered/Compacted (2019)",
+            "Dry Lot", "Deep Bedding (>1 month)", "Liquid/Slurry",
+            "Composting", "Anaerobic Lagoon",
+            "Anaerobic Digester / Biogas (2019)",
+            "Aerobic Treatment (2019)",
+            "Burned for Fuel (2019)"),
+  versions = c("2006,2019", "2006,2019", "2006,2019", "2019",
+               "2006,2019", "2006,2019", "2006,2019", "2006,2019", "2006,2019",
+               "2019", "2019", "2019"),
+  mcf_tropical     = c(1.5, 1.0, 5.0, 4.0, 5.0, 30.0, 80.0, 1.5, 80.0,  3.5, 0.0,  10.0),
+  mcf_tropical_dry = c(1.5, 1.0, 5.0, 4.0, 5.0, 30.0, 80.0, 1.5, 80.0,  3.5, 0.0,  10.0),
+  mcf_temperate    = c(1.0, 0.5, 4.0, 2.0, 1.5, 17.0, 35.0, 1.0, 66.0,  1.0, 0.0,  10.0),
+  mcf_boreal       = c(1.0, 0.1, 3.0, 1.0, 1.0,  3.0, 10.0, 0.5, 66.0,  1.0, 0.0,  10.0),
+  ef3 = c(0.02, 0.0, 0.005, 0.005, 0.02, 0.01, 0.005, 0.006, 0.0, 0.0006, 0.005, 0.0),
   stringsAsFactors = FALSE
 )
 

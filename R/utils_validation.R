@@ -78,8 +78,11 @@ validate_manure_sheet <- function(manure_df) {
   if (is.null(manure_df) || nrow(manure_df) == 0)
     return(list(valid = TRUE, errors = errors, warnings = warnings))
 
-  valid_mms <- c("pasture", "daily_spread", "solid_storage", "dry_lot",
-                 "deep_bedding", "liquid_slurry", "composting", "lagoon")
+  # TT.3: MMS list expanded to cover IPCC 2006 + 2019 Refinement
+  valid_mms <- if (exists("MMS_DEFAULTS")) MMS_DEFAULTS$id else
+    c("pasture", "daily_spread", "solid_storage", "solid_storage_covered",
+      "dry_lot", "deep_bedding", "liquid_slurry", "composting", "lagoon",
+      "anaerobic_digester", "aerobic_treatment", "burned_for_fuel")
   if ("mms_type" %in% names(manure_df)) {
     bad <- !(manure_df$mms_type %in% valid_mms)
     if (any(bad))

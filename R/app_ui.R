@@ -166,6 +166,21 @@ app_ui <- function() {
       )
     ),
 
+    # ==================== DEFINITIONS TAB (T1.4) ====================
+    bslib::nav_panel(
+      title = "Definitions",
+      icon = icon("book"),
+      div(class = "info-panel", style = "margin: 16px;",
+          tags$strong("Parameter glossary. "),
+          "All 23 parameters used in the IPCC Tier 2 calculations, with their plain-language definition, ",
+          "unit, IPCC default, IPCC reference table/equation, and which IPCC framing they belong to ",
+          "(activity data = population; coefficient = everything else that combines into the emission factor)."),
+      bslib::card(
+        bslib::card_header("Parameter definitions"),
+        bslib::card_body(DT::DTOutput("definitions_table"))
+      )
+    ),
+
     # ==================== USEFUL RESOURCES TAB (T0.2) ====================
     bslib::nav_panel(
       title = "Resources",
@@ -298,7 +313,15 @@ app_ui <- function() {
       div(class = "info-panel", style = "margin: 16px;",
           tags$strong("What to do: "),
           "Review and adjust the probability distribution and uncertainty range for each parameter. ",
-          "Click on any cell to change the distribution type (normal, lognormal, beta, triangular, pert, uniform, constant) ",
+          "Click on any cell to change the distribution type (normal, lognormal, beta, triangular, pert, uniform, constant). ",
+          tags$br(), tags$br(),
+          # T1.7: triangular distribution conversion guidance
+          tags$strong("Note on triangular distributions: "),
+          tags$em("triangular is most often used when only the minimum, most-likely (mode), and maximum are known. ",
+                  "The tool treats lower/upper as ", tags$strong("absolute min/max"),
+                  ", not 95% CI bounds — for triangular, those are usually the same. ",
+                  "If you have a 95% CI but want a triangular shape, use PERT instead (PERT uses the 95% bounds and a most-likely value)."),
+          tags$br(), tags$br(),
           "or to modify the uncertainty percentage and bounds. ",
           tags$strong("Activity data"), " parameters (param_type = 'activity_data') support correlated sampling in Tab 4. ",
           tags$strong("Emission factors"), " (param_type = 'emission_factor') are always sampled independently. ",
@@ -357,13 +380,42 @@ app_ui <- function() {
                 "upload the template in ", tags$strong("Tab 1. Data Input"), ". ",
                 "The correlation matrix is computed automatically on upload. ",
                 "You only need columns for parameters you have data for — absent parameters are treated as uncorrelated."),
+            # T4.1 / Tx.2: simplified default UI; manual entry hidden under Advanced
             radioButtons("corr_mode", "Mode",
-                         choices = c("No correlations"          = "none",
-                                     "From template (auto)"     = "timeseries",
-                                     "Manual entry"             = "manual")),
+                         choices = c("No correlations"        = "none",
+                                     "From template (auto)"   = "timeseries",
+                                     "IPCC-guidance preset"   = "preset",
+                                     "Advanced — manual entry"= "manual"),
+                         selected = "none"),
+            # Group selector for time-series mode (Andreas: "correlate within all AD / population only / intake only")
             conditionalPanel(
               condition = "input.corr_mode == 'timeseries'",
+              radioButtons("corr_group_scope", "Apply correlations within:",
+                           choices = c(
+                             "All AD parameters"                     = "all",
+                             "Population-related only (cattle_pop, live_weight, mature_weight, weight_gain)" = "population",
+                             "Intake / feed-quality only (DE_pct, CP_pct, Cfi, Ca, etc.)"      = "intake"
+                           ),
+                           selected = "all"),
               uiOutput("corr_ts_status")
+            ),
+            conditionalPanel(
+              condition = "input.corr_mode == 'preset'",
+              div(class = "info-panel",
+                  tags$strong("IPCC-guidance preset: "),
+                  "applies a sparse correlation matrix with only well-documented structural pairs ",
+                  "(e.g. live_weight ↔ mature_weight, milk_yield ↔ milk_fat). ",
+                  "All other pairs are zero. Use this when you have no time series but want some realism beyond independence.")
+            ),
+            conditionalPanel(
+              condition = "input.corr_mode == 'manual'",
+              div(class = "info-panel",
+                  tags$strong("Advanced — manual matrix entry. "),
+                  "Upload a CSV with parameter names as both column headers and the first column. ",
+                  "Values must be in [-1, 1] with the diagonal = 1. ",
+                  "Recommended only for experienced users — most cases are covered by the time-series or preset options."),
+              fileInput("corr_matrix_upload", "Upload correlation matrix (.csv)",
+                        accept = ".csv")
             ),
             plotly::plotlyOutput("corr_heatmap", height = "350px")
           )
@@ -421,6 +473,21 @@ app_ui <- function() {
                                     "AR5 (CH4=28, N2O=265)" = "AR5",
                                     "AR6 (CH4=27.9, N2O=273)" = "AR6"),
                         selected = "AR5"),
+            # T1.12: emission source selector
+            checkboxGroupInput("emission_sources", "Emission sources to include",
+                               choices = c(
+                                 "Enteric fermentation CH4"      = "enteric_ch4",
+                                 "Manure management CH4"         = "manure_ch4",
+                                 "Manure management N2O direct"  = "manure_n2o_direct",
+                                 "Manure management N2O indirect"= "manure_n2o_indirect",
+                                 "Pasture deposition N2O"        = "pasture_n2o"
+                               ),
+                               selected = c("enteric_ch4", "manure_ch4",
+                                            "manure_n2o_direct", "manure_n2o_indirect",
+                                            "pasture_n2o")),
+            div(style = "font-size:0.78rem; color:#666; margin-top:-8px; margin-bottom:8px;",
+                tags$em("All sources are included by default. Uncheck a source to exclude it from the totals (the calculation still runs but its contribution is zeroed in CH4 / N2O / CO2eq sums).")),
+            hr(),
             checkboxInput("run_decomposition", "Run uncertainty decomposition (AD/EF/Combined)",
                           value = TRUE),
             checkboxInput("run_comparison", "Compare with/without correlations", value = FALSE),
@@ -480,12 +547,33 @@ app_ui <- function() {
         ),
         bslib::card(
           bslib::card_header("Uncertainty Decomposition"),
-          bslib::card_body(plotly::plotlyOutput("decomposition_plot"))
+          bslib::card_body(
+            # T6.4 / T1.5 / T8.2 (partial): IPCC framing callout
+            div(style = "font-size:0.82rem; color:#444; background:#FFF8E1; border-left:3px solid #F59E0B; padding:8px 10px; margin-bottom:10px; border-radius:4px;",
+                tags$strong("Note on AD vs EF terminology: "),
+                "this chart currently uses the tool's internal classification — ",
+                tags$em("Activity Data"), " = the 14 production parameters (cattle_pop, weights, milk yield, intake), ",
+                tags$em("Emission Factor"), " = the 9 IPCC equation parameters. ",
+                "In the IPCC convention, only ", tags$strong("cattle_pop"),
+                " is true Activity Data, and the rest combine to form a per-head ",
+                tags$em("emission factor"),
+                ". A full re-classification is planned for v2.3 (Phase 2)."),
+            plotly::plotlyOutput("decomposition_plot")
+          )
         )
       ),
       bslib::card(
         bslib::card_header("By-System Breakdown"),
         bslib::card_body(DT::DTOutput("results_by_system"))
+      ),
+      # T6.2: per-IPCC-reporting-category breakdown
+      bslib::card(
+        bslib::card_header("By Reporting Category (IPCC Table 3.3 layout)"),
+        bslib::card_body(
+          p("Each row is one IPCC inventory reporting line (system × source). ",
+            "Rows match the granularity used in IPCC Volume 1 Chapter 3 uncertainty reporting."),
+          DT::DTOutput("results_by_category")
+        )
       ),
       uiOutput("comparison_card")
     ),
@@ -511,6 +599,19 @@ app_ui <- function() {
           tags$strong("Action item: "), "Focus your data improvement efforts on the top 3-5 parameters ",
           "to get the biggest reduction in overall inventory uncertainty."),
       uiOutput("sens_view_toggle"),
+      # T7.2: per-emission-source sensitivity selector
+      div(style = "margin: 0 16px 12px 16px;",
+          selectInput("sens_source", "Output variable",
+                      choices = c(
+                        "Total CO2eq (all sources)"             = "total_co2e",
+                        "Enteric fermentation CH4"              = "enteric_ch4_total",
+                        "Manure management CH4"                 = "manure_ch4_total",
+                        "Manure management N2O direct"          = "direct_n2o_mm_total",
+                        "Manure management N2O indirect"        = "indirect_n2o_mm_total",
+                        "Pasture deposition N2O direct"         = "direct_n2o_prp_total",
+                        "Pasture deposition N2O indirect"       = "indirect_n2o_prp_total"
+                      ),
+                      selected = "total_co2e", width = "360px")),
       bslib::layout_columns(
         col_widths = c(6, 6),
         bslib::card(
@@ -541,6 +642,13 @@ app_ui <- function() {
           "Click ", tags$strong("'Download Excel Report'"), " to get a complete workbook with all results, ",
           "sensitivity rankings, and metadata. Click ", tags$strong("'Download CSV'"), " for a simpler file ",
           "with uncertainty metrics only."),
+      # T8.2 partial: IPCC AD/EF framing callout
+      div(style = "margin: 0 16px 12px; font-size:0.82rem; color:#444; background:#FFF8E1; border-left:3px solid #F59E0B; padding:10px 12px; border-radius:4px;",
+          tags$strong("Note on Activity Data vs Emission Factor columns: "),
+          "the AD_Uncertainty_pct and EF_Uncertainty_pct columns below currently use the tool's internal classification ",
+          "(AD = 14 production parameters; EF = 9 IPCC equation parameters). The IPCC convention is AD = population only, ",
+          "EF = emissions per head per year. A full re-classification of the decomposition is planned for v2.3 — until then, ",
+          "interpret these labels with the caveat above when comparing to other IPCC inventory submissions."),
       bslib::card(
         bslib::card_header("IPCC Table 3.3 - Uncertainty Report"),
         bslib::card_body(
@@ -552,6 +660,32 @@ app_ui <- function() {
             column(3, downloadButton("download_csv", "Download CSV",
                                       class = "btn-outline-success"))
           )
+        )
+      ),
+      # T8.4: per-source uncertainty distribution histograms
+      bslib::card(
+        bslib::card_header("Uncertainty distributions per emission source"),
+        bslib::card_body(
+          p("Histograms of the Monte Carlo output for each emission source. ",
+            "Useful for third-party QA review of which sources contribute the most variance."),
+          plotly::plotlyOutput("report_source_histograms", height = "420px")
+        )
+      ),
+      # T8.4: per-source tornado embedded
+      bslib::card(
+        bslib::card_header("Top sensitivity drivers (Total CO₂eq)"),
+        bslib::card_body(
+          p("Standardised regression coefficients for the top 10 input parameters driving total uncertainty."),
+          plotly::plotlyOutput("report_tornado", height = "380px")
+        )
+      ),
+      # Tx.1: distribution-shape viz for QA verification
+      bslib::card(
+        bslib::card_header("Input distributions used"),
+        bslib::card_body(
+          p("Density plots of each input parameter's fitted distribution — confirms each ",
+            "parameter was sampled with the marginal distribution specified in the input table."),
+          plotly::plotlyOutput("report_input_densities", height = "520px")
         )
       ),
       # T8.3: full input documentation for the run

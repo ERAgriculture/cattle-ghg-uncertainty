@@ -217,8 +217,8 @@ generate_template_openxlsx <- function(filepath, include_example) {
   V_PTYPE     <- c("activity_data","emission_factor")
   V_QUALITY   <- c("measured","country_specific","regional_default",
                    "ipcc_default","expert_judgement")
-  V_MMS       <- c("pasture","daily_spread","solid_storage","dry_lot",
-                   "deep_bedding","liquid_slurry","composting","lagoon")
+  # TT.3: MMS list now sourced from MMS_DEFAULTS (covers IPCC 2006 + 2019)
+  V_MMS       <- MMS_DEFAULTS$id
 
   # Kept for Vocab reference tables (informational, no longer used as dropdowns)
   V_SUBSYS    <- c("dairy_cows","other_cows","bulls","oxen",
@@ -440,43 +440,44 @@ generate_template_openxlsx <- function(filepath, include_example) {
   # P  data_source      (optional, free text)
   # Q  data_quality     (dropdown, optional)
 
+  # TT.2: data_quality column removed in v2.3 (was documentation-only, never used in calculations)
   P_COLS <- c("cattle_type","aggregation_level","sub_category",
               "parameter","definition","unit",
               "value","uncertainty_pct","lower_bound","upper_bound",
               "distribution","lower","upper",
-              "param_type","ipcc_ref","data_source","data_quality")
-  P_WIDTHS <- c(14, 20, 16, 15, 46, 16, 10, 14, 12, 12, 12, 10, 10, 14, 12, 22, 18)
+              "param_type","ipcc_ref","data_source")
+  P_WIDTHS <- c(14, 20, 16, 15, 46, 16, 10, 14, 12, 12, 12, 10, 10, 14, 12, 22)
   P_COL_IDX <- setNames(seq_along(P_COLS), P_COLS)
 
   openxlsx::setColWidths(wb, "Parameters", cols = seq_along(P_COLS), widths = P_WIDTHS)
 
   # Row 1: instruction banner
   openxlsx::writeData(wb, "Parameters",
-    "HOW TO USE: YELLOW = core activity data — enter your own values. ORANGE = technical IPCC coefficient — pre-filled with defaults from Penman et al. (2000); uncertainty ranges from Penman (2000) / Monni et al. (2007); edit if you have country-specific values. GREEN = dropdown. BLUE = pre-filled info. GREY = auto-computed. PERCENTAGE FIELDS (DE_pct, milk_fat, CP_pct, Ym_pct, uncertainty_pct, etc.): enter the bare number, e.g. '45' for 45% — do NOT include the '%' symbol. uncertainty_pct is the ±% half-width of the 95% CI. For symmetric distributions: fill value (G) + uncertainty_pct (H). For asymmetric distributions (PERT/lognormal): fill lower_bound (I) and upper_bound (J) instead — these override the pct formula. Copy rows 4 onwards to add more sub-categories. Note: data_quality (col Q) is documentation-only and will be removed in v2.3.",
+    "HOW TO USE: YELLOW = core activity data — enter your own values. ORANGE = technical IPCC coefficient — pre-filled with defaults from Penman et al. (2000); uncertainty ranges from Penman (2000) / Monni et al. (2007); edit if you have country-specific values. GREEN = dropdown. BLUE = pre-filled info. GREY = auto-computed. PERCENTAGE FIELDS (DE_pct, milk_fat, CP_pct, Ym_pct, uncertainty_pct, etc.): enter the bare number, e.g. '45' for 45% — do NOT include the '%' symbol. uncertainty_pct is the ±% half-width of the 95% CI. For symmetric distributions: fill value (G) + uncertainty_pct (H). For asymmetric distributions (PERT/lognormal): fill lower_bound (I) and upper_bound (J) instead — these override the pct formula. Copy rows 4 onwards to add more sub-categories.",
     startRow=1, startCol=1, colNames=FALSE)
-  openxlsx::mergeCells(wb, "Parameters", cols=1:17, rows=1)
+  openxlsx::mergeCells(wb, "Parameters", cols=1:16, rows=1)
   apply_style("Parameters",
     mk(fontColour="white", fgFill=C_SECTION, fontSize=9, textDecoration="italic",
        halign="left", valign="center", wrapText=TRUE),
-    rows=1, cols=1:17)
+    rows=1, cols=1:16)
   openxlsx::setRowHeights(wb, "Parameters", rows=1, heights=44)
 
   # Row 2: colour legend (mini legend)
   legend_labels <- c(
     "REQUIRED","REQUIRED","OPTIONAL","INFO","INFO","INFO",
     "REQUIRED","REQUIRED","OPT.OVERRIDE","OPT.OVERRIDE","DROPDOWN","AUTO","AUTO",
-    "INFO","INFO","OPTIONAL","DROPDOWN")
+    "INFO","INFO","OPTIONAL")
   openxlsx::writeData(wb, "Parameters",
     as.data.frame(t(legend_labels)), startRow=2, startCol=1, colNames=FALSE)
   apply_style("Parameters",
     mk(fontSize=7, textDecoration="italic", halign="center",
-       fontColour=C_GREY_TXT, fgFill="#FAFAFA"), rows=2, cols=1:17)
+       fontColour=C_GREY_TXT, fgFill="#FAFAFA"), rows=2, cols=1:16)
   openxlsx::setRowHeights(wb, "Parameters", rows=2, heights=14)
 
   # Row 3: column headers
   openxlsx::writeData(wb, "Parameters",
     as.data.frame(t(P_COLS)), startRow=3, startCol=1, colNames=FALSE)
-  apply_style("Parameters", s_hdr, rows=3, cols=1:17)
+  apply_style("Parameters", s_hdr, rows=3, cols=1:16)
   openxlsx::setRowHeights(wb, "Parameters", rows=3, heights=28)
 
   # Freeze rows 1-3 and column A
@@ -531,10 +532,7 @@ generate_template_openxlsx <- function(filepath, include_example) {
       upper             = NA,  # formula below
       param_type        = PARAM_CATALOGUE$param_type[i],
       ipcc_ref          = PARAM_CATALOGUE$ipcc_ref[i],
-      data_source       = if (include_example) "IPCC default / Uganda survey" else "",
-      data_quality      = if (include_example) {
-                            if (is_ef) "ipcc_default" else "country_specific"
-                          } else ""
+      data_source       = if (include_example) "IPCC default / Uganda survey" else ""
     )
 
     # Write each column
@@ -586,7 +584,6 @@ generate_template_openxlsx <- function(filepath, include_example) {
   apply_style("Parameters", s_pre,  rows=data_rows, cols=P_COL_IDX["param_type"])
   apply_style("Parameters", s_pre,  rows=data_rows, cols=P_COL_IDX["ipcc_ref"])
   apply_style("Parameters", s_opt,  rows=data_rows, cols=P_COL_IDX["data_source"])
-  apply_style("Parameters", s_drop, rows=data_rows, cols=P_COL_IDX["data_quality"])
   openxlsx::setRowHeights(wb, "Parameters", rows=data_rows, heights=18)
 
   # ── Extend styles + dropdowns to extra blank rows (rows after the block) ──
@@ -601,7 +598,6 @@ generate_template_openxlsx <- function(filepath, include_example) {
   apply_style("Parameters", s_drop, rows=extra_rows, cols=P_COL_IDX["distribution"])
   apply_style("Parameters", s_auto, rows=extra_rows, cols=P_COL_IDX["lower"])
   apply_style("Parameters", s_auto, rows=extra_rows, cols=P_COL_IDX["upper"])
-  apply_style("Parameters", s_drop, rows=extra_rows, cols=P_COL_IDX["data_quality"])
 
   # Formulas for extra rows
   for (r in extra_rows) {
@@ -622,18 +618,17 @@ generate_template_openxlsx <- function(filepath, include_example) {
   # ── Dropdown validations for Parameters (rows 4 to DATA_START+N_DATA_ROWS) ─
   all_data_rows <- DATA_START:(DATA_START + N_DATA_ROWS)
   add_validation("Parameters", P_COL_IDX["distribution"], all_data_rows, "dist")
-  add_validation("Parameters", P_COL_IDX["data_quality"], all_data_rows, "quality")
 
   # ── Separator row between the pre-populated block and empty rows ──────────
   sep_row <- DATA_START + n_params
   openxlsx::writeData(wb, "Parameters",
     "--- Add more sub-categories below: copy rows 4 onward, paste here, change cattle_type/aggregation_level/sub_category ---",
     startRow=sep_row, startCol=1, colNames=FALSE)
-  openxlsx::mergeCells(wb, "Parameters", cols=1:17, rows=sep_row)
+  openxlsx::mergeCells(wb, "Parameters", cols=1:16, rows=sep_row)
   apply_style("Parameters",
     mk(fgFill="#E8EAF6", fontColour="#3949AB", fontSize=8,
        textDecoration="italic", halign="center"),
-    rows=sep_row, cols=1:17)
+    rows=sep_row, cols=1:16)
 
   # =========================================================================
   # SHEET: Manure_Management
@@ -994,17 +989,7 @@ generate_template_openxlsx <- function(filepath, include_example) {
                     "lower_bound+upper_bound (min/max)","none","uncertainty_pct only"),
            stringsAsFactors=FALSE)),
 
-    list(title="data_quality (optional metadata for each parameter)",
-         cols=c("term","description"),
-         data=data.frame(
-           term=V_QUALITY,
-           description=c(
-             "Value from local measurement or controlled experiment",
-             "Value from national survey, census, or country-specific study",
-             "Value from continental or biome-level average",
-             "Value taken directly from an IPCC default table",
-             "Value estimated by domain expert without formal data"),
-           stringsAsFactors=FALSE)),
+    # data_quality vocab section removed in v2.3 (TT.2 - column was unused)
 
     list(title="animal sub-category reference — IPCC defaults (for reference only; sub_category is free text in the template)",
          cols=c("ipcc_term","label","sex","age_class","default_Cfi",
@@ -1103,8 +1088,6 @@ generate_template_basic <- function(filepath, include_example) {
       param_type=PARAM_CATALOGUE$param_type,
       ipcc_ref=PARAM_CATALOGUE$ipcc_ref,
       data_source="IPCC default / Uganda survey",
-      data_quality=ifelse(PARAM_CATALOGUE$param_type=="emission_factor",
-                          "ipcc_default","country_specific"),
       stringsAsFactors=FALSE)
   } else {
     is_ef <- PARAM_CATALOGUE$param_type == "emission_factor"
@@ -1123,7 +1106,7 @@ generate_template_basic <- function(filepath, include_example) {
       lower=NA_real_, upper=NA_real_,
       param_type=PARAM_CATALOGUE$param_type,
       ipcc_ref=PARAM_CATALOGUE$ipcc_ref,
-      data_source="", data_quality="",
+      data_source="",
       stringsAsFactors=FALSE)
   }
   writexl::write_xlsx(list(Parameters=params, Vocab=PARAM_CATALOGUE),
