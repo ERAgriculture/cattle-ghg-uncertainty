@@ -935,18 +935,26 @@ app_server <- function(input, output, session) {
                   options = list(pageLength = 10, dom = 't'))
   })
 
-  # T1.4: parameter glossary surfacing PARAM_CATALOGUE
+  # T1.4 + T1.3: parameter glossary with IPCC software terminology mapping
   output$definitions_table <- DT::renderDT({
     cat <- PARAM_CATALOGUE
-    # IPCC framing label — reflects Divergence #2 mapping while keeping
-    # internal param_type unchanged for now (full rename in Phase 2)
     cat$ipcc_framing <- ifelse(cat$parameter == "cattle_pop",
                                "Activity data (population)",
                                "Coefficient (combines into EF)")
     DT::datatable(
-      cat[, c("parameter", "definition", "unit", "ipcc_default",
-              "suggested_distribution", "param_tier", "ipcc_framing", "ipcc_ref")],
+      cat[, c("parameter", "ipcc_software_name", "definition", "unit",
+              "ipcc_default", "suggested_distribution",
+              "param_tier", "ipcc_framing", "ipcc_ref")],
       rownames = FALSE,
+      colnames = c("Our column" = "parameter",
+                   "IPCC Inventory Software" = "ipcc_software_name",
+                   "Definition" = "definition",
+                   "Unit" = "unit",
+                   "IPCC default" = "ipcc_default",
+                   "Suggested distribution" = "suggested_distribution",
+                   "Tier" = "param_tier",
+                   "IPCC framing" = "ipcc_framing",
+                   "IPCC reference" = "ipcc_ref"),
       options = list(pageLength = 25, scrollX = TRUE),
       class = "compact stripe"
     )

@@ -166,17 +166,56 @@ app_ui <- function() {
       )
     ),
 
-    # ==================== DEFINITIONS TAB (T1.4) ====================
+    # ==================== DEFINITIONS TAB (T1.4 + T1.3) ====================
     bslib::nav_panel(
       title = "Definitions",
       icon = icon("book"),
       div(class = "info-panel", style = "margin: 16px;",
           tags$strong("Parameter glossary. "),
-          "All 23 parameters used in the IPCC Tier 2 calculations, with their plain-language definition, ",
-          "unit, IPCC default, IPCC reference table/equation, and which IPCC framing they belong to ",
-          "(activity data = population; coefficient = everything else that combines into the emission factor)."),
+          "All 24 parameters used in the IPCC Tier 2 calculations, with their plain-language definition, ",
+          "unit, IPCC default, IPCC reference table/equation, IPCC framing, and the matching variable name ",
+          "in the official ", tags$strong("IPCC Inventory Software"),
+          " (so values can be transposed between tools without ambiguity).",
+          tags$br(), tags$br(),
+          # T1.3: classification-level mapping from screenshots
+          tags$strong("Inventory category / classification levels — IPCC Software vs this app:"),
+          tags$table(
+            style = "width: 100%; max-width: 880px; margin-top: 8px; border-collapse: collapse;",
+            tags$thead(tags$tr(style = "background:#D8F3DC;",
+              tags$th(style = "padding:6px; border:1px solid #E0DDD5; text-align:left;", "IPCC Software"),
+              tags$th(style = "padding:6px; border:1px solid #E0DDD5; text-align:left;", "Symbol"),
+              tags$th(style = "padding:6px; border:1px solid #E0DDD5; text-align:left;", "This app"),
+              tags$th(style = "padding:6px; border:1px solid #E0DDD5; text-align:left;", "Example value"))),
+            tags$tbody(
+              tags$tr(
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "Sector"),
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "—"),
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "(fixed: AFOLU)"),
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "3 — Agriculture, Forestry and Other Land Use")),
+              tags$tr(
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "Category"),
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "—"),
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "(fixed: Livestock)"),
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "3.A — Livestock")),
+              tags$tr(
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "Subcategory"),
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "—"),
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", tags$code("cattle_type")),
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "3.A.1.a.i — Dairy Cows / 3.A.2.a.i — Dairy cows")),
+              tags$tr(
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "Geographical zone"),
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", tags$code("Z")),
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", tags$code("aggregation_level")),
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "National (Malawi); region; AEZ")),
+              tags$tr(
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "Livestock Subcategory / Subdivision"),
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", tags$code("T / Tsd")),
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", tags$code("sub_category")),
+                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "Mature Dairy Cow; Heifers; Calves")))),
+          tags$br(),
+          tags$em("Source: IPCC Inventory Software v2.95, screenshots provided by Andreas Wilkes, May 2026.")),
       bslib::card(
-        bslib::card_header("Parameter definitions"),
+        bslib::card_header("Parameter definitions (with IPCC Software equivalent)"),
         bslib::card_body(DT::DTOutput("definitions_table"))
       )
     ),

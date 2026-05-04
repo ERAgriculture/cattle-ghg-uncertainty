@@ -19,10 +19,18 @@ validate_param_specs <- function(param_specs) {
   if (any(param_specs$mean[de_rows] > 100 | param_specs$mean[de_rows] < 0, na.rm = TRUE))
     errors <- c(errors, "Digestible energy must be between 0 and 100%")
 
-  bad_bounds <- param_specs$lower >= param_specs$upper &
-    !param_specs$distribution %in% c("constant", "const")
+  # Hours bug fix: allow lower == upper when the parameter is effectively zero
+  # (e.g. hours = 0 for non-draft animals; weight_gain = 0 for adult non-growing;
+  # Cp = 0 for non-pregnant; C_growth = 0 for some sex codes). These are degenerate
+  # constants that the sampler handles without issue. Only flag a strict inversion.
+  is_constant_dist <- param_specs$distribution %in% c("constant", "const")
+  is_zero_mean    <- !is.na(param_specs$mean) & param_specs$mean == 0 &
+                     !is.na(param_specs$lower) & param_specs$lower == 0 &
+                     !is.na(param_specs$upper) & param_specs$upper == 0
+  bad_bounds <- param_specs$lower > param_specs$upper &
+    !is_constant_dist & !is_zero_mean
   if (any(bad_bounds, na.rm = TRUE))
-    errors <- c(errors, paste("Lower >= upper for:",
+    errors <- c(errors, paste("Lower > upper for:",
                                paste(param_specs$parameter[which(bad_bounds)], collapse = ", ")))
 
   valid_dists <- c("normal", "posnorm", "lognormal", "beta", "triangular", "pert",

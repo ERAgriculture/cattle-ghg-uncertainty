@@ -117,6 +117,35 @@ PARAM_CATALOGUE <- data.frame(
     "Table 10.12","Table 10.16","Eq 10.24","Eq 10.24",
     "Table 11.1","Table 10.22","Table 11.3","Table 11.3","Table 11.3",
     "Table 10A.2"),
+  # T1.3: IPCC Inventory Software variable names (from screenshots provided by Andreas, May 2026).
+  # Surfacing these here means inventory teams can match our column to the IPCC
+  # software's terminology one-to-one when transposing data between tools.
+  # Format: "<symbol> — <full name in IPCC software>"
+  ipcc_software_name = c(
+    "N(T) — Annual Average Population (head)",
+    "W — Live weight (kg) [also TAM = Typical Animal Mass]",
+    "(MW) — Mature body weight, used in NEg equation",
+    "WG — Daily weight gain (Average Daily Feed Intake tab)",
+    "Milk — Average daily milk production (kg/day)",
+    "Fat — Fat content of milk (% by weight)",
+    "(% lactating) — derived from herd-structure data",
+    "DE% — Feed digestibility (%)",
+    "Cfi — Coefficient for calculating Net Energy for Maintenance",
+    "Ca — Activity coefficient",
+    "(C) — Growth coefficient (sex-dependent: female 0.8 / castrate 1.0 / bull 1.2)",
+    "Cpregnancy — Coefficient for calculating Net Energy for Pregnancy",
+    "(hours) — Daily working hours (draft animals)",
+    "CP% — Percent crude protein in diet",
+    "Ym — Methane conversion factor (% of GE → CH4)",
+    "Bo — Maximum methane producing capacity",
+    "ASH — Ash content of manure (fraction of dry matter)",
+    "UE — Urinary Energy fraction of GE",
+    "EF3(PRP) — Direct N2O EF, manure on pasture/range/paddock",
+    "Frac_GASMS — Fraction of N volatilised from MMS",
+    "EF4 — N2O EF for atmospheric N deposition (Vol 4 Ch 11)",
+    "EF5 — N2O EF for N leaching/runoff (Vol 4 Ch 11)",
+    "Frac_LEACH(H) — Fraction of managed N lost through leaching",
+    "Milk PR% — Milk protein content (1.9 + 0.4*Fat)"),
   stringsAsFactors = FALSE
 )
 

@@ -42,16 +42,22 @@ run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE) {
     # Check 1: bounds order — lower < mean < upper
     # ------------------------------------------------------------------
     is_constant <- !is.na(d) && d %in% c("constant", "const")
-    if (!is_constant && !is.na(lo) && !is.na(hi) && !is.na(mu)) {
-      if (lo >= mu) {
+    # Zero-mean parameters (hours=0 for non-draft, weight_gain=0 for adults, etc.)
+    # are degenerate constants — pass silently rather than flagging as failure.
+    is_zero_mean <- !is.na(mu) && mu == 0 && !is.na(lo) && lo == 0 &&
+                    !is.na(hi) && hi == 0
+    if (!is_constant && !is_zero_mean && !is.na(lo) && !is.na(hi) && !is.na(mu)) {
+      if (lo > mu) {
         add(grp, p, "bounds_order", "fail",
-            sprintf("Lower (%.4g) >= mean (%.4g). Bounds must bracket the mean.", lo, mu))
-      } else if (mu >= hi) {
+            sprintf("Lower (%.4g) > mean (%.4g). Bounds must bracket the mean.", lo, mu))
+      } else if (mu > hi) {
         add(grp, p, "bounds_order", "fail",
-            sprintf("Mean (%.4g) >= upper (%.4g). Bounds must bracket the mean.", mu, hi))
+            sprintf("Mean (%.4g) > upper (%.4g). Bounds must bracket the mean.", mu, hi))
       } else {
-        add(grp, p, "bounds_order", "pass", "Lower < mean < upper")
+        add(grp, p, "bounds_order", "pass", "Lower <= mean <= upper")
       }
+    } else if (is_zero_mean) {
+      add(grp, p, "bounds_order", "pass", "Zero-mean parameter (degenerate constant)")
     }
 
     # ------------------------------------------------------------------

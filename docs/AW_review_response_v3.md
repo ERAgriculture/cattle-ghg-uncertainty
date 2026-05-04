@@ -12,7 +12,7 @@
 | Opening page: add a statement of what is needed before using the tool, and what the tool cannot do | New "Before you start" card on the Home page lists prerequisites (Tier 2 dataset, uncertainty estimates, optional time series) and a "What this tool does NOT do" section (does not collect data, does not produce Tier 1, does not validate IPCC categorisation, no cross-block correlations yet). File: `R/app_ui.R`. | ✅ Done |
 | **Tab 1 #1: Possible bug — custom upload seems not to be working. It kept showing the Uganda default values.** | **Two combined causes.** (1) The upload error path wrote to `rv$sim_log` (Tab 5) — invisible to a user on Tab 1. (2) The generated template has multi-row headers (banner row 1, legend row 2, headers row 3); `readxl::read_excel` defaulted to skip=0 so the long banner text became the column "name". Fixes: (a) all upload errors and successes now use `showNotification()` and a banner in the validation panel; (b) new `read_sheet_smart()` tries skip=0,1,2,3 and picks the row offset where expected column names appear. Country-dropdown observer also asks for confirmation before overwriting custom data. Files: `R/app_server.R` (upload observer rewritten), `R/utils_template.R` (parser hardened). | ✅ Done |
 | Tab 1 #2: If there is a custom upload but one of the parameters is missing, what happens? Is there an automatic check for completeness (i.e., for each sub-category defined, all required parameters have values and distributions)? | New `validate_completeness()` checks every `(cattle_type × aggregation_level × sub_category)` group has all `core` parameters from `PARAM_CATALOGUE`. Run button is gated on this — a `showNotification` lists any missing rows. File: `R/utils_validation.R` (function added), `R/app_server.R` (gating added at the start of `run_sim` observer). | ✅ Done |
-| Tab 1 #3: Parameter names and abbreviations — check consistency with IPCC software | Need IPCC software screenshots from Andreas before alignment can be specific. Once provided, parameter names will be renamed in `PARAM_CATALOGUE` and propagated to template + validation. | ⏳ Blocked — awaiting screenshots |
+| Tab 1 #3: Parameter names and abbreviations — check consistency with IPCC software | Andreas provided screenshots of the IPCC Inventory Software v2.95 (May 2026). New `ipcc_software_name` column added to `PARAM_CATALOGUE` covering all 24 parameters with the IPCC software's exact symbol + full name (e.g. our `cattle_pop` → IPCC `N(T) — Annual Average Population`; our `live_weight` → `W` / `TAM`; our `Cfi` → `Cfi`; our `pct_lactating` → derived from herd-structure). The Definitions tab now renders this side-by-side with our column. A classification-level mapping table is also shown on the Definitions tab header (Sector / Category / Subcategory / Geographical zone (Z) / Livestock Subdivision (T)). Underlying internal column names left unchanged for v2 — full rename would touch every calc file and breaks every existing user template. Files: `R/utils_template.R` (PARAM_CATALOGUE), `R/app_ui.R` (Definitions tab header), `R/app_server.R` (definitions_table renderer). | ✅ Done (mapping surfaced) |
 | Tab 1 #4: Parameter abbreviations need a link somewhere to a list of definitions, perhaps in a 'definitions' tab | New **Definitions** nav panel renders the 23-row `PARAM_CATALOGUE` as a sortable DT with columns: parameter, definition, unit, IPCC default, suggested distribution, tier, IPCC framing, IPCC reference. File: `R/app_ui.R`, server: `output$definitions_table` in `R/app_server.R`. | ✅ Done |
 | Tab 1 #5: Parameter type — "emission factor" should be changed to something else like "coefficient" because AD and these coefficients are used together to calculate EFs | **Strategic — adopted.** Full rename of `param_type` from `emission_factor` to `coefficient` is XL effort and planned for Phase 2. As an intermediate measure, the Definitions tab (T1.4) shows IPCC framing labels ("Activity data (population)" / "Coefficient (combines into EF)"), and the Results / IPCC Report tabs carry an explanatory callout box noting the IPCC convention vs. internal labelling. | ⚠️ Partial (callout shown; full rename Phase 2) |
 | Tab 1 #6: Guidance — clarify that lower/upper refer to (pre-calculated) 95% CI bounds, and that uncertainty_pct needs a clear definition / guidance | New explainer paragraph at the top of Tab 1 defines: `mean` = central estimate; `uncertainty_pct` = symmetric ±% half-width of 95% CI; `lower`/`upper` = absolute 95% CI bounds in same units. Also notes that edits to any of these auto-update the others. File: `R/app_ui.R` (Tab 1 info-panel). | ✅ Done |
@@ -54,6 +54,7 @@
 | Tab 8 #4: For really basic users, is it possible to automatically generate the charts for the uncertainty of each emission source, and the tornado charts? | Three new cards on Tab 8: (a) per-source histograms (5-panel `subplot` of Enteric CH4 / Manure CH4 / Manure N2O direct / Manure N2O indirect / Pasture N2O); (b) embedded tornado chart for Total CO2eq; (c) input distribution density plots (up to 12 params in a 4×3 panel) for third-party QA verification — also covers transcript point Tx.1. Files: `R/app_ui.R`, server outputs `report_source_histograms`, `report_tornado`, `report_input_densities` in `R/app_server.R`. | ✅ Done |
 | Transcript: Andreas — show the fitted distribution in a final report output, useful for third-party QA review | Implemented as part of T8.4 — the "Input distributions used" card on Tab 8 shows density plots of each input parameter's MC samples, confirming each parameter was sampled with the marginal distribution specified in the input table. | ✅ Done |
 | Transcript: Lolita wants to delete manual correlation entry; Andreas wants to keep some flexibility (e.g. correlate population only) | **Divergence #1 / #3 — adopted hybrid.** Manual matrix entry kept but moved under "Advanced — manual entry" mode. Time-series mode gained a group-scope selector: "all AD / population only (cattle_pop, live_weight, mature_weight, weight_gain) / intake only (DE_pct, CP_pct, Cfi, Ca, ...)". Plus a new "IPCC-guidance preset" mode that fills a sparse matrix of structurally documented pairs. Files: `R/app_ui.R`, `R/app_server.R`. | ✅ Done |
+| Beta-tester report (Lolita, May 2026): "Errors: Lower >= upper for: hours" when the hours parameter is 0 (typical for non-draft cattle) | The validator rejected `lower >= upper` strictly. For zero-mean parameters (`hours = 0` for non-draft, `weight_gain = 0` for adult non-growing, `Cp = 0` for non-pregnant, `C_growth = 0` for some sex codes) the bounds collapse to 0 = 0, which is degenerate but mathematically valid (the sampler treats it as a delta function). Validator now allows `lower == upper` when `mean = 0`; the QA/QC bounds-order check passes such rows with the message "Zero-mean parameter (degenerate constant)". Files: `R/utils_validation.R` (validate_param_specs), `R/utils_qaqc.R` (Check 1). | ✅ Done |
 
 ---
 
@@ -61,11 +62,46 @@
 
 | | Count |
 |---|---|
-| ✅ Done | 30 |
+| ✅ Done | 32 |
 | ⚠️ Partial (callout / interim) | 6 |
 | ⏳ Deferred to v3.0 | 6 |
-| ⏳ Blocked (awaiting input from Andreas) | 1 |
 | ⬜ Cosmetic, deferred | 1 |
-| **Total** | **44** |
+| **Total** | **45** |
 
-All four strategic divergences have been adopted with the recommended approach. Phase 1 + Phase 2 partial work has been deployed to https://mlolita26.shinyapps.io/cattle-ghg-uncertainty/ . Genuine deferrals (cross-block correlation, MMS Dirichlet, Trend tab, region-aware benchmarks, per-MMS Frac_GASM/Frac_LEACH variants, Excel-level QC, full param_type rename) require multi-day refactors and are scheduled for v3.0 once Phase 2 partial items are validated against beta-tester feedback.
+All four strategic divergences have been adopted with the recommended approach. Phase 1 + Phase 2 partial work + the IPCC software terminology mapping has been deployed to https://mlolita26.shinyapps.io/cattle-ghg-uncertainty/ .
+
+---
+
+## What's left to finalise v2 (small, fast)
+
+Items that should land before declaring v2 stable, beyond beta-tester signoff:
+
+1. **Documentation polish** (T0.1) — phrasing pass on Home tab and tab info-panels for tone consistency
+2. **End-to-end smoke test** with the example template — verify the upload bug fix, completeness check, source selector, MoE metric, and per-source sensitivity all work together on a single Run
+3. **Confirm L-ADG link** in Resources tab points to the correct FAO document (Andreas's "L-ADG" reference)
+
+## What's deferred to v3.0 (multi-day refactors)
+
+Each of these requires careful work on its own; bundling them risks regressions.
+
+| ID | Item | Why genuinely deferred |
+|---|---|---|
+| **T1.5 / T6.4 / T8.2 / TT.9** | Full `param_type` rename `emission_factor` → `coefficient`; restructure decomposition runs so AD-only varies population only; relabel UI / template / IPCC export consistently | XL refactor — touches `PARAM_CATALOGUE`, every `calc_*.R` file that reads `param_type`, `decompose_uncertainty()`, `mc_sampling.R`, all UI labels, the Excel template column structure, the IPCC export. Currently the IPCC framing is surfaced via callouts so users aren't misled. |
+| **T2.1** | Region-aware benchmark deviations (IPCC Africa / Asia / Europe defaults; 2006 vs 2019 split) | Needs a region × version IPCC defaults database that doesn't currently exist in the codebase |
+| **T4.3** | Cross-block AD ↔ EF correlation (e.g. Cfi from herd structure → correlated with cattle_pop) | Divergence #4 — explicitly v3.0 by decision. Requires unified copula across all 24 parameters |
+| **T4.21** | MMS sum-to-100% Dirichlet sampling (IPCC 2019 Box 3.1A) | Significant new statistical modelling — fractions become random variables under a sum-to-1 constraint |
+| **T4.22 + TT.6** | Trend-year correlation; single-year vs trend toggle on the opening page | Folds into the Trend tab build-out which is mostly empty (Tab 9 is a placeholder) |
+| **TT.4** | Per-MMS `Frac_GASM_S` (storage) / `Frac_LEACH_H` (housing) variants | Requires splitting `calc_indirect_n2o_mm` into per-MMS Frac applications + new columns in the Manure_Management sheet |
+| **TT.8** | Excel-level conditional formatting QC (highlight cells the parser will reject before upload) | Template-builder refactor — openxlsx conditional formatting rules across ~17 columns × ~50 rows |
+| **TT.3 (full)** | MMS dropdown conditionally filtered by IPCC 2006 vs 2019 | Workflow break — user would need to choose IPCC version before downloading template. Current expanded-list approach with `versions` column is a reasonable middle ground. |
+
+## Items that emerged from the IPCC software screenshots (potential v3.0 additions)
+
+Things visible in the IPCC software that we don't yet model:
+
+- **Tw — Mean daily temperature during winter season (°C)** — used for cold climate Cfi adjustment: `Cfi(in_cold) = Cfi + 0.0048 × (20 − Tw)`. We currently use the temperate Cfi only.
+- **DA — Number of days alive** and **NAPA — Number of animals produced annually** — alternative population calculation: `N(T) = DA × (NAPA / 365)`. We only support directly-specified `cattle_pop`.
+- **% of females that give birth in a year** — used to compute Cp pro-rata. We currently take `Cp` as a flat-rate input.
+- **Tier 2 Detailed feed intake worksheet** — IPCC software has separate "Detailed" and "Simplified" feed-intake methods. We implement the simplified path only.
+
+If any of these are essential for the inventories Andreas's network actually submits, they can be added to v3.0; otherwise they remain optional refinements.
