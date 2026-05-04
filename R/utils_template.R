@@ -1140,8 +1140,27 @@ parse_uploaded_template <- function(path) {
   sheet_names <- tryCatch(readxl::excel_sheets(path),
                           error = function(e) character())
 
-  read_sheet <- function(name) {
+  # T1.1 (followup): The generated template has multi-row headers — Parameters
+  # has banner+legend+header (skip=2), Manure_Management has banner+header
+  # (skip=1), Inventory_Metadata starts with headers (skip=0). Try several
+  # skip values and pick the one where expected columns appear.
+  read_sheet_smart <- function(name, expected_cols, max_skip = 3) {
     if (!(name %in% sheet_names)) return(NULL)
+    best <- NULL
+    for (sk in 0:max_skip) {
+      df <- tryCatch(
+        suppressMessages(as.data.frame(
+          readxl::read_excel(path, sheet = name, skip = sk,
+                             .name_repair = "unique"))),
+        error = function(e) NULL)
+      if (is.null(df)) next
+      hits <- sum(expected_cols %in% names(df))
+      if (hits == length(expected_cols)) return(df)            # perfect
+      if (hits > 0 && is.null(best)) best <- df                # partial fallback
+    }
+    # If nothing matched, return the default skip=0 read so callers can produce
+    # a meaningful "missing column" error pointing to what was actually found.
+    if (!is.null(best)) return(best)
     tryCatch(
       as.data.frame(readxl::read_excel(path, sheet = name,
                                        .name_repair = "unique")),
@@ -1152,9 +1171,12 @@ parse_uploaded_template <- function(path) {
       })
   }
 
-  metadata   <- read_sheet("Inventory_Metadata")
-  params     <- read_sheet("Parameters")
-  manure     <- read_sheet("Manure_Management")
+  metadata <- read_sheet_smart("Inventory_Metadata",
+                               c("Field", "Value"))
+  params   <- read_sheet_smart("Parameters",
+                               c("parameter", "cattle_type"))
+  manure   <- read_sheet_smart("Manure_Management",
+                               c("mms_type", "fraction_pct"))
 
   # Parameter_TimeSeries: row 1 = param names, rows 2-3 = desc/units (skip), rows 4+ = data.
   # Also accept old "Population_TimeSeries" name for backwards compatibility.
@@ -1227,13 +1249,13 @@ parse_uploaded_template <- function(path) {
     drop = FALSE]
 
   if (nrow(params) == 0) {
-    # Surface what we did find so the user can fix names
-    found <- unique(stats::na.omit(as.character(
-      readxl::read_excel(path, sheet = "Parameters")$parameter)))
+    # Surface what we did find so the user can fix names. params still has its
+    # original column structure here even though all rows were filtered out.
+    found_raw <- unique(stats::na.omit(as.character(params$parameter)))
     stop("No recognised parameters found in the Parameters sheet ",
          "(", raw_n, " rows read, 0 matched the catalogue). ",
-         if (length(found))
-           paste0("Names found: ", paste(head(found, 10), collapse = ", "),
+         if (length(found_raw))
+           paste0("Names found: ", paste(head(found_raw, 10), collapse = ", "),
                   ". ") else "",
          "Expected names: ",
          paste(head(PARAM_CATALOGUE$parameter, 6), collapse = ", "), ", ...")
