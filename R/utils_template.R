@@ -452,7 +452,7 @@ generate_template_openxlsx <- function(filepath, include_example) {
 
   # Row 1: instruction banner
   openxlsx::writeData(wb, "Parameters",
-    "HOW TO USE: YELLOW = core activity data — enter your own values. ORANGE = technical IPCC coefficient — pre-filled with defaults from Penman et al. (2000); uncertainty ranges from Penman (2000) / Monni et al. (2007); edit if you have country-specific values. GREEN = dropdown. BLUE = pre-filled info. GREY = auto-computed. For symmetric distributions: fill value (G) + uncertainty_pct (H). For asymmetric distributions (PERT/lognormal): fill lower_bound (I) and upper_bound (J) instead — these override the pct formula. Copy rows 4 onwards to add more sub-categories.",
+    "HOW TO USE: YELLOW = core activity data — enter your own values. ORANGE = technical IPCC coefficient — pre-filled with defaults from Penman et al. (2000); uncertainty ranges from Penman (2000) / Monni et al. (2007); edit if you have country-specific values. GREEN = dropdown. BLUE = pre-filled info. GREY = auto-computed. PERCENTAGE FIELDS (DE_pct, milk_fat, CP_pct, Ym_pct, uncertainty_pct, etc.): enter the bare number, e.g. '45' for 45% — do NOT include the '%' symbol. uncertainty_pct is the ±% half-width of the 95% CI. For symmetric distributions: fill value (G) + uncertainty_pct (H). For asymmetric distributions (PERT/lognormal): fill lower_bound (I) and upper_bound (J) instead — these override the pct formula. Copy rows 4 onwards to add more sub-categories. Note: data_quality (col Q) is documentation-only and will be removed in v2.3.",
     startRow=1, startCol=1, colNames=FALSE)
   openxlsx::mergeCells(wb, "Parameters", cols=1:17, rows=1)
   apply_style("Parameters",
@@ -653,7 +653,7 @@ generate_template_openxlsx <- function(filepath, include_example) {
 
   # Instruction banner
   openxlsx::writeData(wb, "Manure_Management",
-    "Enter one row per manure management system (MMS) per sub-category. fraction_pct values for the same cattle_type+aggregation_level+sub_category MUST sum to 100. Enter MCF values from IPCC Table 10.17 for your climate zone (see Vocab sheet). EF3 from IPCC Table 10.21. For asymmetric distributions, fill lower_mcf/upper_mcf or lower_ef3/upper_ef3 with min/max values.",
+    "Enter one row per manure management system (MMS) per sub-category. fraction_pct values for the same cattle_type+aggregation_level+sub_category MUST sum to 100. SUB-CATEGORY HANDLING: if all sub-categories of the same cattle_type+aggregation_level use the same MMS allocation, you may leave sub_category blank — the values will apply to every sub-category in that group. If sub-categories differ (e.g. cows vs calves), provide a separate set of rows per sub-category. Enter MCF values from IPCC Table 10.17 for your climate zone (see Vocab sheet). EF3 from IPCC Table 10.21. For asymmetric distributions, fill lower_mcf/upper_mcf or lower_ef3/upper_ef3 with min/max values.",
     startRow=1, startCol=1, colNames=FALSE)
   openxlsx::mergeCells(wb, "Manure_Management", cols=1:14, rows=1)
   apply_style("Manure_Management",
@@ -1210,15 +1210,33 @@ parse_uploaded_template <- function(path) {
   }
 
   if (is.null(params) || nrow(params) == 0)
-    stop("Parameters sheet is empty or missing.")
+    stop("Parameters sheet is empty or missing. ",
+         "Make sure the workbook contains a sheet named 'Parameters' ",
+         "with at least one row of data.")
+
+  if (!"parameter" %in% names(params))
+    stop("Parameters sheet is missing the required 'parameter' column. ",
+         "Found columns: ", paste(names(params), collapse = ", "))
 
   # Remove instruction/separator rows (rows where parameter is not in catalogue)
-  if ("parameter" %in% names(params)) {
-    params <- params[
-      !is.na(params$parameter) &
-      nzchar(as.character(params$parameter)) &
-      params$parameter %in% PARAM_CATALOGUE$parameter, ,
-      drop = FALSE]
+  raw_n <- nrow(params)
+  params <- params[
+    !is.na(params$parameter) &
+    nzchar(as.character(params$parameter)) &
+    params$parameter %in% PARAM_CATALOGUE$parameter, ,
+    drop = FALSE]
+
+  if (nrow(params) == 0) {
+    # Surface what we did find so the user can fix names
+    found <- unique(stats::na.omit(as.character(
+      readxl::read_excel(path, sheet = "Parameters")$parameter)))
+    stop("No recognised parameters found in the Parameters sheet ",
+         "(", raw_n, " rows read, 0 matched the catalogue). ",
+         if (length(found))
+           paste0("Names found: ", paste(head(found, 10), collapse = ", "),
+                  ". ") else "",
+         "Expected names: ",
+         paste(head(PARAM_CATALOGUE$parameter, 6), collapse = ", "), ", ...")
   }
 
   # Rename 'value' -> 'mean' for mc_sampling compatibility

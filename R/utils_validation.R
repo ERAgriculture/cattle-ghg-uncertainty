@@ -135,3 +135,56 @@ validate_manure_fractions <- function(fractions) {
                 errors = paste("Manure fractions sum to", round(total * 100, 1), "% (must be ~100%)")))
   list(valid = TRUE, errors = character())
 }
+
+# T1.2 / T2.2: completeness check — every defined sub-category must have all
+# `core` parameters from the catalogue. Returns a list with $valid, $missing
+# (data frame of group × parameter), and $message (human-readable summary).
+validate_completeness <- function(param_specs, catalogue = PARAM_CATALOGUE) {
+  if (is.null(param_specs) || nrow(param_specs) == 0)
+    return(list(valid = FALSE, missing = NULL,
+                message = "No parameters loaded."))
+
+  required <- catalogue$parameter[catalogue$param_tier == "core"]
+
+  group_cols <- intersect(c("cattle_type", "aggregation_level", "sub_category"),
+                          names(param_specs))
+  if (length(group_cols) == 0) {
+    # Single-group fallback
+    found  <- unique(param_specs$parameter)
+    miss   <- setdiff(required, found)
+    if (length(miss) == 0) return(list(valid = TRUE, missing = NULL, message = "Complete."))
+    return(list(valid = FALSE,
+                missing = data.frame(group = "(all)",
+                                     parameter = miss,
+                                     stringsAsFactors = FALSE),
+                message = paste("Missing core parameter(s):",
+                                paste(miss, collapse = ", "))))
+  }
+
+  groups <- unique(param_specs[, group_cols, drop = FALSE])
+  miss_rows <- list()
+  for (i in seq_len(nrow(groups))) {
+    g     <- groups[i, , drop = FALSE]
+    sel   <- Reduce(`&`, lapply(group_cols, function(c) param_specs[[c]] == g[[c]]))
+    found <- unique(param_specs$parameter[sel])
+    miss  <- setdiff(required, found)
+    if (length(miss) > 0) {
+      label <- paste(unlist(g), collapse = " / ")
+      miss_rows[[length(miss_rows) + 1]] <- data.frame(
+        group = label, parameter = miss, stringsAsFactors = FALSE)
+    }
+  }
+
+  if (length(miss_rows) == 0)
+    return(list(valid = TRUE, missing = NULL,
+                message = "All sub-categories have the required core parameters."))
+
+  miss_df <- do.call(rbind, miss_rows)
+  msg <- paste0("Missing ", nrow(miss_df), " parameter-rows across ",
+                length(unique(miss_df$group)), " sub-categor",
+                if (length(unique(miss_df$group)) == 1) "y" else "ies",
+                ". First few: ",
+                paste(head(paste0(miss_df$group, " — ", miss_df$parameter), 3),
+                      collapse = "; "), ".")
+  list(valid = FALSE, missing = miss_df, message = msg)
+}

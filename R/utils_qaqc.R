@@ -150,6 +150,23 @@ run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE) {
     }
 
     # ------------------------------------------------------------------
+    # Check 5b (T2.3): fractional parameter with unbounded distribution
+    # If a fractional parameter (must lie in [0,1]) uses an unbounded
+    # continuous distribution (normal, lognormal), MC samples can fall outside
+    # the legal range. Recommend tnorm_0_1 or beta instead.
+    # ------------------------------------------------------------------
+    UNBOUNDED_DISTS <- c("normal", "lognormal", "posnorm")
+    if (p %in% FRACTION_PARAMS && !is.na(d) && tolower(d) %in% UNBOUNDED_DISTS) {
+      add(grp, p, "fraction_distribution", "warn",
+          sprintf(
+            "%s must lie in [0,1] but uses '%s' which can produce out-of-range samples. Use 'tnorm_0_1' or 'beta' instead.",
+            p, d))
+    } else if (p %in% FRACTION_PARAMS && !is.na(d)) {
+      add(grp, p, "fraction_distribution", "pass",
+          sprintf("%s: bounded distribution '%s' used", p, d))
+    }
+
+    # ------------------------------------------------------------------
     # Check 6: asymmetric bound warning for EF3/EF4/EF5/Frac_LEACH
     # These parameters have strongly right-skewed uncertainty per Penman et al.
     # (2000) and Monni et al. (2007); symmetric bounds underestimate upper tail.

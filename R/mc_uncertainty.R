@@ -1,12 +1,19 @@
 # Uncertainty Metric Calculations
 
 calc_uncertainty_metrics <- function(x) {
+  m  <- mean(x)
+  q025 <- quantile(x, 0.025, names = FALSE)
+  q975 <- quantile(x, 0.975, names = FALSE)
   data.frame(
-    mean = mean(x), median = median(x), sd = sd(x),
-    cv_pct = sd(x) / mean(x) * 100,
-    ci_lower = quantile(x, 0.025, names = FALSE),
-    ci_upper = quantile(x, 0.975, names = FALSE),
-    moe_pct = 1.96 * (sd(x) / sqrt(length(x))) / mean(x) * 100,
+    mean = m, median = median(x), sd = sd(x),
+    cv_pct = sd(x) / m * 100,
+    ci_lower = q025,
+    ci_upper = q975,
+    # T6.1 / T8.1: IPCC 95% margin of error — half-width of the 95% CI as a
+    # percent of the mean. Quantile-based so it handles asymmetric distributions.
+    # (Previous formula was 1.96*sd/sqrt(n)/mean — that is the standard error
+    # of the *estimator*, not the uncertainty of the emission value.)
+    moe_pct = ((q975 - q025) / 2) / m * 100,
     iqr = IQR(x), min = min(x), max = max(x)
   )
 }

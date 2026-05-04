@@ -18,44 +18,98 @@ app_server <- function(input, output, session) {
     sim_running = FALSE,
     sim_error = NULL,
     comparison_result = NULL,
-    comparison_sensitivity = NULL
+    comparison_sensitivity = NULL,
+    upload_status = NULL,   # NULL | list(type = "success"|"error", message = "...")
+    has_custom_upload = FALSE
   )
 
   # --- DATA INPUT ---
 
-  # Load example or uploaded data
+  # T1.1 fix: when the user has a custom upload loaded and re-touches the country
+  # dropdown, ask before overwriting. Otherwise load the example silently.
   observeEvent(input$country, {
-    if (input$country == "uganda") {
-      rv$param_specs <- fill_bounds(generate_uganda_example())
-      rv$sim_log <- "Uganda example data loaded.\n"
-    } else if (input$country == "zimbabwe") {
-      rv$param_specs <- fill_bounds(generate_uganda_example())  # placeholder
-      rv$sim_log <- "Zimbabwe example loaded (using Uganda defaults as placeholder).\n"
+    if (!input$country %in% c("uganda", "zimbabwe")) return()  # "custom" is a no-op
+    if (isTRUE(rv$has_custom_upload)) {
+      showModal(modalDialog(
+        title = "Discard custom upload?",
+        paste0("Loading the ", tools::toTitleCase(input$country),
+               " example will overwrite your uploaded data. Proceed?"),
+        footer = tagList(
+          modalButton("Keep my upload"),
+          actionButton("confirm_load_example", "Load example",
+                       class = "btn-warning")
+        ),
+        easyClose = TRUE
+      ))
+      return()
     }
+    .load_example(input$country)
   })
 
+  # Helper: load an example dataset
+  .load_example <- function(name) {
+    # T0.3: anonymised example labels — underlying data unchanged
+    if (name == "uganda") {
+      rv$param_specs <- fill_bounds(generate_uganda_example())
+      rv$sim_log <- "Country X (hypothetical dairy) example data loaded.\n"
+    } else if (name == "zimbabwe") {
+      rv$param_specs <- fill_bounds(generate_uganda_example())  # placeholder
+      rv$sim_log <- "Country Y (hypothetical pastoral) example loaded (using Country X defaults as placeholder).\n"
+    }
+    rv$has_custom_upload <- FALSE
+    rv$upload_status     <- NULL
+  }
+
+  observeEvent(input$confirm_load_example, {
+    removeModal()
+    .load_example(input$country)
+  })
+
+  # T1.1 fix: surface upload errors and successes visibly on Tab 1.
+  # Previously errors only landed in rv$sim_log (Tab 5) — invisible to a user on Tab 1,
+  # who would see the Uganda data still there and assume the upload silently failed.
   observeEvent(input$data_upload, {
     req(input$data_upload)
+    fname <- input$data_upload$name
     tryCatch({
       parsed <- parse_uploaded_template(input$data_upload$datapath)
-      rv$param_specs  <- parsed$param_specs
-      rv$inv_metadata <- parsed$metadata
-      rv$manure_data  <- parsed$manure
-      rv$population   <- parsed$population
-      if (!is.null(parsed$corr_matrix)) {
-        rv$corr_matrix <- parsed$corr_matrix
-      }
-      msg <- sprintf("Custom data uploaded: %d parameters", nrow(parsed$param_specs))
+
+      if (is.null(parsed$param_specs) || nrow(parsed$param_specs) == 0)
+        stop("No recognised parameters found in the Parameters sheet. ",
+             "Check that parameter names match the expected list ",
+             "(see the Vocab sheet of the template).")
+
+      rv$param_specs    <- parsed$param_specs
+      rv$inv_metadata   <- parsed$metadata
+      rv$manure_data    <- parsed$manure
+      rv$population     <- parsed$population
+      if (!is.null(parsed$corr_matrix)) rv$corr_matrix <- parsed$corr_matrix
+      rv$has_custom_upload <- TRUE
+
+      msg <- sprintf("%d parameters loaded from %s", nrow(parsed$param_specs), fname)
       if (!is.null(parsed$metadata) && nzchar(parsed$metadata$country %||% ""))
-        msg <- paste0(msg, " | country=", parsed$metadata$country)
+        msg <- paste0(msg, " (country: ", parsed$metadata$country, ")")
       if (!is.null(parsed$corr_matrix))
-        msg <- paste0(msg, " | Correlation matrix loaded from Parameter_TimeSeries (",
+        msg <- paste0(msg, " — correlation matrix loaded from Parameter_TimeSeries (",
                       nrow(parsed$corr_matrix), " parameters)")
-      if (length(parsed$warnings) > 0)
-        msg <- paste0(msg, "\nWarnings: ", paste(parsed$warnings, collapse = "; "))
-      rv$sim_log <- paste0(rv$sim_log, msg, "\n")
+
+      rv$upload_status <- list(type = "success", message = msg)
+      rv$sim_log <- paste0(rv$sim_log, "Custom data uploaded: ", msg, "\n")
+
+      showNotification(msg, type = "message", duration = 6)
+
+      if (length(parsed$warnings) > 0) {
+        showNotification(paste("Upload warnings:",
+                               paste(parsed$warnings, collapse = "; ")),
+                         type = "warning", duration = 8)
+      }
     }, error = function(e) {
+      rv$upload_status <- list(type = "error",
+                               message = paste0("Upload failed (", fname, "): ",
+                                                e$message))
       rv$sim_log <- paste0(rv$sim_log, "Upload error: ", e$message, "\n")
+      showNotification(paste0("Upload failed: ", e$message),
+                       type = "error", duration = 10)
     })
   })
 
@@ -66,24 +120,111 @@ app_server <- function(input, output, session) {
                   editable = TRUE, rownames = FALSE)
   })
 
-  # Edit parameter table in place
+  # T3.2: quick-set buttons to apply common distribution settings
+  observeEvent(input$set_all_normal, {
+    req(rv$param_specs)
+    ad <- rv$param_specs$param_type == "activity_data"
+    rv$param_specs$distribution[ad]    <- "normal"
+    rv$param_specs$uncertainty_pct[ad] <- 15
+    rv$param_specs <- fill_bounds(.recompute_bounds(rv$param_specs, which(ad)))
+    showNotification("Set all activity-data parameters to Normal ±15%",
+                     type = "message", duration = 4)
+  })
+  observeEvent(input$set_all_pert, {
+    req(rv$param_specs)
+    ef <- rv$param_specs$param_type == "emission_factor"
+    rv$param_specs$distribution[ef] <- "pert"
+    showNotification("Set all emission-factor parameters to PERT",
+                     type = "message", duration = 4)
+  })
+  # Helper: recompute lower/upper from mean and uncertainty_pct for given rows
+  .recompute_bounds <- function(ps, rows) {
+    for (i in rows) {
+      m   <- suppressWarnings(as.numeric(ps$mean[i]))
+      pct <- suppressWarnings(as.numeric(ps$uncertainty_pct[i]))
+      if (!is.na(m) && !is.na(pct)) {
+        ps$lower[i] <- m * (1 - pct / 100)
+        ps$upper[i] <- m * (1 + pct / 100)
+      }
+    }
+    ps
+  }
+
+  # Edit parameter table in place — with bidirectional cascade (T1.8, T1.11a)
+  # Edits to uncertainty_pct  -> recompute lower/upper from mean
+  # Edits to lower or upper   -> recompute uncertainty_pct from the symmetric half-width
+  # Edits to mean             -> recompute lower/upper from existing uncertainty_pct
+  # Edits to distribution=constant -> zero uncertainty_pct, set lower=upper=mean
   observeEvent(input$param_table_cell_edit, {
-    info <- input$param_table_cell_edit
-    rv$param_specs[info$row, info$col + 1] <- DT::coerceValue(info$value,
-      rv$param_specs[info$row, info$col + 1])
+    info     <- input$param_table_cell_edit
+    cols     <- names(rv$param_specs)
+    edit_col <- cols[info$col + 1]
+    row      <- info$row
+
+    # Apply the edit
+    rv$param_specs[row, edit_col] <- DT::coerceValue(
+      info$value, rv$param_specs[row, edit_col])
+
+    ps   <- rv$param_specs
+    mean <- suppressWarnings(as.numeric(ps$mean[row]))
+
+    # Cascade rules
+    if (edit_col == "distribution" && identical(ps$distribution[row], "constant")) {
+      if ("uncertainty_pct" %in% cols) ps$uncertainty_pct[row] <- 0
+      if ("lower" %in% cols)            ps$lower[row]            <- mean
+      if ("upper" %in% cols)            ps$upper[row]            <- mean
+    } else if (edit_col %in% c("uncertainty_pct", "mean") &&
+               "uncertainty_pct" %in% cols && !is.na(mean)) {
+      pct <- suppressWarnings(as.numeric(ps$uncertainty_pct[row]))
+      if (!is.na(pct)) {
+        if ("lower" %in% cols) ps$lower[row] <- mean * (1 - pct / 100)
+        if ("upper" %in% cols) ps$upper[row] <- mean * (1 + pct / 100)
+      }
+    } else if (edit_col %in% c("lower", "upper") && !is.na(mean) && mean != 0 &&
+               "uncertainty_pct" %in% cols) {
+      lo <- suppressWarnings(as.numeric(ps$lower[row]))
+      up <- suppressWarnings(as.numeric(ps$upper[row]))
+      if (!is.na(lo) && !is.na(up)) {
+        # Use symmetric half-width as the implied uncertainty_pct
+        half <- ((up - lo) / 2) / mean * 100
+        ps$uncertainty_pct[row] <- round(half, 2)
+      }
+    }
+
+    rv$param_specs <- ps
   })
 
-  # Validation
+  # Validation — surfaces upload status (success/failure) AND data validation errors
   output$validation_status <- renderUI({
-    req(rv$param_specs)
-    v <- validate_param_specs(rv$param_specs)
-    if (v$valid) {
-      tags$div(class = "validation-ok", icon("check-circle"),
-               paste("Valid:", nrow(rv$param_specs), "parameters loaded"))
-    } else {
-      tags$div(class = "validation-error", icon("exclamation-triangle"),
-               paste("Errors:", paste(v$errors, collapse = "; ")))
+    blocks <- list()
+    # Show upload status banner if present (T1.1: makes upload errors visible)
+    if (!is.null(rv$upload_status)) {
+      cls <- if (rv$upload_status$type == "success") "validation-ok" else "validation-error"
+      ic  <- if (rv$upload_status$type == "success") "check-circle" else "exclamation-triangle"
+      blocks <- c(blocks, list(
+        tags$div(class = cls, icon(ic), rv$upload_status$message)
+      ))
     }
+    if (is.null(rv$param_specs)) {
+      blocks <- c(blocks, list(
+        tags$div(class = "validation-error", icon("info-circle"),
+                 "No data loaded. Select an example or upload a template.")
+      ))
+    } else {
+      v <- validate_param_specs(rv$param_specs)
+      if (v$valid) {
+        blocks <- c(blocks, list(
+          tags$div(class = "validation-ok", icon("check-circle"),
+                   paste("Valid:", nrow(rv$param_specs), "parameters loaded"))
+        ))
+      } else {
+        blocks <- c(blocks, list(
+          tags$div(class = "validation-error", icon("exclamation-triangle"),
+                   paste("Errors:", paste(v$errors, collapse = "; ")))
+        ))
+      }
+    }
+    do.call(tagList, blocks)
   })
 
   # --- QA/QC ---
@@ -221,6 +362,16 @@ app_server <- function(input, output, session) {
 
   observeEvent(input$run_sim, {
     req(rv$param_specs)
+
+    # T1.2 / T2.2: completeness check before running the simulation
+    comp <- validate_completeness(rv$param_specs)
+    if (!isTRUE(comp$valid)) {
+      showNotification(paste0("Cannot run simulation. ", comp$message),
+                       type = "error", duration = 12)
+      rv$sim_log <- paste0(rv$sim_log,
+                           "Completeness check failed: ", comp$message, "\n")
+      return()
+    }
 
     rv$sim_running <- TRUE
     rv$sim_error   <- NULL
@@ -381,6 +532,11 @@ app_server <- function(input, output, session) {
           setProgress(1.00, detail = "Done.")
           rv$sim_running <- FALSE
 
+          # T5.1: auto-navigate to Results tab on success
+          bslib::nav_select(id = "nav", selected = "6. Results", session = session)
+          showNotification("Simulation complete. Showing Results.",
+                           type = "message", duration = 5)
+
         }, error = function(e) {
           rv$sim_log   <- paste0(rv$sim_log, "ERROR: ", e$message, "\n")
           rv$sim_error <- e$message
@@ -430,10 +586,26 @@ app_server <- function(input, output, session) {
     if (nrow(row) > 0) paste0(round(row$mean, 1), " t CO2eq") else "---"
   })
 
+  # T6.3: secondary inline display of CO2eq (kept for sensitivity)
+  output$vb_co2e_inline <- renderText({
+    req(rv$uncertainty)
+    row <- rv$uncertainty[rv$uncertainty$variable == "total_co2e", ]
+    if (nrow(row) > 0) paste0(round(row$mean, 1), " t (95% CI ",
+                              round(row$ci_lower, 1), "–",
+                              round(row$ci_upper, 1), ")") else "---"
+  })
+
   output$vb_cv <- renderText({
     req(rv$uncertainty)
     row <- rv$uncertainty[rv$uncertainty$variable == "total_co2e", ]
     if (nrow(row) > 0) paste0(round(row$cv_pct, 1), "%") else "---"
+  })
+
+  # T6.1 / T8.1: IPCC 95% margin of error
+  output$vb_moe <- renderText({
+    req(rv$uncertainty)
+    row <- rv$uncertainty[rv$uncertainty$variable == "total_co2e", ]
+    if (nrow(row) > 0) paste0("±", round(row$moe_pct, 1), "%") else "---"
   })
 
   output$results_histogram <- plotly::renderPlotly({
@@ -481,14 +653,19 @@ app_server <- function(input, output, session) {
     sys_names <- names(rv$mc_results$by_system)
     summary_rows <- lapply(sys_names, function(sn) {
       res <- rv$mc_results$by_system[[sn]]$results
+      m   <- mean(res$total_co2e)
+      lo  <- quantile(res$total_co2e, 0.025, names = FALSE)
+      hi  <- quantile(res$total_co2e, 0.975, names = FALSE)
       data.frame(
         System = sn,
         Mean_CH4_t = round(mean(res$total_ch4), 2),
         Mean_N2O_t = round(mean(res$total_n2o), 4),
-        Mean_CO2eq_t = round(mean(res$total_co2e), 2),
-        CV_pct = round(sd(res$total_co2e) / mean(res$total_co2e) * 100, 1),
-        CI_Lower = round(quantile(res$total_co2e, 0.025), 2),
-        CI_Upper = round(quantile(res$total_co2e, 0.975), 2)
+        Mean_CO2eq_t = round(m, 2),
+        # T6.1: IPCC 95% margin of error (primary), CV% (secondary)
+        MoE_95_pct = round(((hi - lo) / 2) / m * 100, 1),
+        CV_pct = round(sd(res$total_co2e) / m * 100, 1),
+        CI_Lower = round(lo, 2),
+        CI_Upper = round(hi, 2)
       )
     })
     DT::datatable(do.call(rbind, summary_rows), rownames = FALSE,
@@ -614,6 +791,20 @@ app_server <- function(input, output, session) {
     req(rv$ipcc_table)
     DT::datatable(rv$ipcc_table, rownames = FALSE,
                   options = list(pageLength = 10, dom = 't'))
+  })
+
+  # T8.3: input documentation table for IPCC inventory submission / QA
+  output$inputs_doc_table <- DT::renderDT({
+    req(rv$param_specs)
+    ps <- rv$param_specs
+    keep <- intersect(c("cattle_type", "aggregation_level", "sub_category",
+                        "parameter", "param_type", "mean", "uncertainty_pct",
+                        "lower", "upper", "distribution", "data_source",
+                        "ipcc_ref"),
+                      names(ps))
+    DT::datatable(ps[, keep, drop = FALSE], rownames = FALSE,
+                  options = list(pageLength = 25, scrollX = TRUE),
+                  class = "compact stripe")
   })
 
   output$download_xlsx <- downloadHandler(
