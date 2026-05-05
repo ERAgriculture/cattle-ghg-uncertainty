@@ -289,6 +289,15 @@ app_ui <- function() {
                       choices = c("Country X (hypothetical dairy)" = "uganda",
                                   "Country Y (hypothetical pastoral)" = "zimbabwe",
                                   "Custom Upload" = "custom")),
+          # B1: explicit hint when "Custom Upload" selected so the user knows the
+          # dropdown registered (the example tables don't auto-load for "custom")
+          conditionalPanel(
+            condition = "input.country == 'custom'",
+            div(style = "background:#FEF3C7; border-left:3px solid #F59E0B; padding:8px 10px; margin-top:8px; font-size:0.85rem; color:#92400E; border-radius:4px;",
+                icon("info-circle"),
+                " Custom mode selected. Use the file uploader below to load your own template. ",
+                "The data preview will appear once your file uploads successfully.")
+          ),
           hr(),
           div(class = "info-panel",
               style = "font-size: 0.82rem; padding: 8px 10px; margin-top: 4px;",
@@ -350,21 +359,33 @@ app_ui <- function() {
       title = "3. Uncertainty",
       icon = icon("sliders-h"),
       div(class = "info-panel", style = "margin: 16px;",
-          tags$strong("What to do: "),
-          "Review and adjust the probability distribution and uncertainty range for each parameter. ",
-          "Click on any cell to change the distribution type (normal, lognormal, beta, triangular, pert, uniform, constant). ",
-          tags$br(), tags$br(),
-          # T1.7: triangular distribution conversion guidance
-          tags$strong("Note on triangular distributions: "),
-          tags$em("triangular is most often used when only the minimum, most-likely (mode), and maximum are known. ",
-                  "The tool treats lower/upper as ", tags$strong("absolute min/max"),
-                  ", not 95% CI bounds — for triangular, those are usually the same. ",
-                  "If you have a 95% CI but want a triangular shape, use PERT instead (PERT uses the 95% bounds and a most-likely value)."),
-          tags$br(), tags$br(),
-          "or to modify the uncertainty percentage and bounds. ",
-          tags$strong("Activity data"), " parameters (param_type = 'activity_data') support correlated sampling in Tab 4. ",
-          tags$strong("Emission factors"), " (param_type = 'emission_factor') are always sampled independently. ",
-          "Use the quick-set buttons at the bottom to apply common settings to all parameters of one type."),
+          # A2: paragraphs cleanly separated to avoid mid-sentence break
+          tags$p(
+            tags$strong("What to do: "),
+            "Review and adjust each parameter's probability distribution and uncertainty range. ",
+            "Click any cell in the table below to edit the distribution type ",
+            "(normal, lognormal, beta, triangular, pert, uniform, constant), ",
+            "the uncertainty percentage, or the lower/upper bounds. ",
+            tags$strong("Activity data"),
+            " parameters support correlated sampling on the Correlations tab. ",
+            tags$strong("Coefficients"),
+            " (the IPCC equation parameters previously labelled 'emission factor') are sampled independently."
+          ),
+          tags$p(
+            tags$strong("Note on triangular distributions: "),
+            tags$em(
+              "triangular is most often used when only the minimum, most-likely (mode), and maximum are known. ",
+              "The tool treats lower/upper as ", tags$strong("absolute min/max"),
+              ", not 95% CI bounds — for triangular, those are usually the same. ",
+              "If you have a 95% CI but want a triangular shape, use PERT instead ",
+              "(PERT uses the 95% bounds and a most-likely value)."
+            )
+          ),
+          tags$p(
+            tags$strong("Quick-set buttons"),
+            " at the bottom of the table apply common settings to all parameters of one type ",
+            "(e.g. 'Set all activity data to Normal ±15%')."
+          )),
       bslib::card(
         bslib::card_header("Distribution & Uncertainty Specification"),
         bslib::card_body(
@@ -462,7 +483,7 @@ app_ui <- function() {
 
         # --- Emission factor correlations ---
         bslib::card(
-          bslib::card_header("Emission Factor Correlations"),
+          bslib::card_header("Coefficient Correlations (per-head EF inputs)"),
           bslib::card_body(
             div(class = "info-panel",
                 "Systematic biases in IPCC methodology (e.g., the Ym% equation) can cause all emission factors ",
@@ -486,19 +507,21 @@ app_ui <- function() {
       )
     ),
 
-    # ==================== TAB 5: SIMULATION ====================
+    # ==================== TAB 5: SIMULATE & RESULTS (merged, B2) ====================
     bslib::nav_panel(
-      title = "5. Simulate",
+      title = "5. Simulate & Results",
       icon = icon("play"),
+      value = "5. Simulate & Results",
       div(class = "info-panel", style = "margin: 16px;",
           tags$strong("What to do: "),
-          "Configure the simulation settings on the left, then click ",
+          "Configure simulation settings on the left, then click ",
           tags$strong("'Run Monte Carlo Simulation'"), ". ",
-          "The tool will sample all parameters from their distributions and run the full IPCC equation chain ",
+          "The tool will sample all parameters from their distributions and run the IPCC equation chain ",
           "thousands of times. Use 10,000 iterations for reliable results (1,000 for quick testing). ",
-          "A random seed ensures reproducibility -- the same seed always produces the same results. ",
-          "Check 'Run uncertainty decomposition' to separate activity data from emission factor uncertainty. ",
-          "When the simulation is complete, proceed to the Results and Sensitivity tabs."),
+          tags$br(), tags$br(),
+          tags$strong("Results appear in this same tab"), " once the simulation completes — scroll down ",
+          "to see the summary cards, distribution histogram, decomposition chart, and by-system / by-category breakdowns. ",
+          "Use Tab 7 (Sensitivity) and Tab 8 (IPCC Report) for deeper drill-downs."),
       bslib::layout_columns(
         col_widths = c(4, 8),
         bslib::card(
@@ -527,6 +550,23 @@ app_ui <- function() {
             div(style = "font-size:0.78rem; color:#666; margin-top:-8px; margin-bottom:8px;",
                 tags$em("All sources are included by default. Uncheck a source to exclude it from the totals (the calculation still runs but its contribution is zeroed in CH4 / N2O / CO2eq sums).")),
             hr(),
+            # E1, E3: IPCC software-aligned optional inputs (collapsible)
+            tags$details(
+              tags$summary(tags$strong("IPCC software-aligned options (advanced)")),
+              div(style = "padding: 8px 4px;",
+                  numericInput("tw",
+                               "Mean daily temperature in winter, Tw (°C)",
+                               value = 20, min = -40, max = 40, step = 1),
+                  div(style = "font-size:0.75rem; color:#666; margin-top:-8px; margin-bottom:8px;",
+                      tags$em("Triggers IPCC cold-climate Cfi adjustment when Tw < 20°C: Cfi(in_cold) = Cfi + 0.0048 × (20 − Tw). Leave at 20 for tropical / temperate regions.")),
+                  sliderInput("pct_calving",
+                              "Fraction of females that calve in a year (Cp pro-rate)",
+                              min = 0, max = 1, value = 1, step = 0.05),
+                  div(style = "font-size:0.75rem; color:#666; margin-top:-8px; margin-bottom:8px;",
+                      tags$em("Pro-rates Cp for the share of cows actually pregnant in the year (IPCC software 'Pregnancy fraction')."))
+              )
+            ),
+            hr(),
             checkboxInput("run_decomposition", "Run uncertainty decomposition (AD/EF/Combined)",
                           value = TRUE),
             checkboxInput("run_comparison", "Compare with/without correlations", value = FALSE),
@@ -543,78 +583,66 @@ app_ui <- function() {
             verbatimTextOutput("sim_log")
           )
         )
-      )
-    ),
-
-    # ==================== TAB 6: RESULTS ====================
-    bslib::nav_panel(
-      title = "6. Results",
-      icon = icon("chart-bar"),
-      div(class = "info-panel", style = "margin: 16px;",
-          tags$strong("What to do: "),
-          "Review the simulation results below. The ", tags$strong("summary cards"),
-          " at the top show total emissions and overall uncertainty (CV%). The ",
-          tags$strong("histogram"), " shows the full distribution of simulated CO2eq values with ",
-          "95% confidence interval lines (red dashes). The ",
-          tags$strong("decomposition chart"), " shows how much uncertainty comes from activity data vs. emission factors. ",
-          "The ", tags$strong("by-system table"), " breaks down results per production system. ",
-          "A CV below 25% indicates reasonably good data quality; above 50% suggests priority areas for data improvement."),
-      bslib::layout_columns(
-        col_widths = c(3, 3, 3, 3),
-        # T6.3: CH4 + N2O headline; CO2eq moved to a smaller secondary card.
-        # T6.1: 95% Margin of Error replaces CV as the IPCC-aligned headline metric.
-        bslib::value_box(title = "Total CH4", value = textOutput("vb_ch4"),
-                          showcase = icon("fire"), theme = "success"),
-        bslib::value_box(title = "Total N2O", value = textOutput("vb_n2o"),
-                          showcase = icon("cloud"), theme = "primary"),
-        bslib::value_box(title = "95% Margin of Error",
-                          value = textOutput("vb_moe"),
-                          p("IPCC-aligned uncertainty metric"),
-                          showcase = icon("ruler-horizontal"), theme = "warning"),
-        bslib::value_box(title = "CV (%)", value = textOutput("vb_cv"),
-                          p("Coefficient of variation"),
-                          showcase = icon("percent"), theme = "info")
       ),
-      div(style = "padding: 0 12px 8px; color: #555; font-size: 0.85rem;",
-          tags$em("Total CO₂eq: "), textOutput("vb_co2e_inline", inline = TRUE),
-          tags$em(" · retained for sensitivity analysis across sources.")),
-      bslib::layout_columns(
-        col_widths = c(6, 6),
-        bslib::card(
-          bslib::card_header("Emission Distribution (Total CO2eq)"),
-          bslib::card_body(plotly::plotlyOutput("results_histogram"))
+
+      # ==== Results section (merged into Tab 5 per B2) ====
+      conditionalPanel(
+        condition = "output.sim_complete == true",
+        tags$hr(style = "margin: 24px 12px;"),
+        h3("Simulation results", style = "margin: 8px 16px;"),
+        bslib::layout_columns(
+          col_widths = c(3, 3, 3, 3),
+          bslib::value_box(title = "Total CH4", value = textOutput("vb_ch4"),
+                            showcase = icon("fire"), theme = "success"),
+          bslib::value_box(title = "Total N2O", value = textOutput("vb_n2o"),
+                            showcase = icon("cloud"), theme = "primary"),
+          bslib::value_box(title = "95% Margin of Error",
+                            value = textOutput("vb_moe"),
+                            p("IPCC-aligned uncertainty metric"),
+                            showcase = icon("ruler-horizontal"), theme = "warning"),
+          bslib::value_box(title = "CV (%)", value = textOutput("vb_cv"),
+                            p("Coefficient of variation"),
+                            showcase = icon("percent"), theme = "info")
+        ),
+        div(style = "padding: 0 12px 8px; color: #555; font-size: 0.85rem;",
+            tags$em("Total CO₂eq: "), textOutput("vb_co2e_inline", inline = TRUE),
+            tags$em(" · retained for sensitivity analysis across sources.")),
+        bslib::layout_columns(
+          col_widths = c(6, 6),
+          bslib::card(
+            bslib::card_header("Emission Distribution (Total CO2eq)"),
+            bslib::card_body(plotly::plotlyOutput("results_histogram"))
+          ),
+          bslib::card(
+            bslib::card_header("Uncertainty Decomposition"),
+            bslib::card_body(
+              plotly::plotlyOutput("decomposition_plot")
+            )
+          )
         ),
         bslib::card(
-          bslib::card_header("Uncertainty Decomposition"),
+          bslib::card_header("By-System Breakdown"),
+          bslib::card_body(DT::DTOutput("results_by_system"))
+        ),
+        bslib::card(
+          bslib::card_header("By Reporting Category (IPCC Table 3.3 layout)"),
           bslib::card_body(
-            # T6.4 / T1.5 / T8.2 (partial): IPCC framing callout
-            div(style = "font-size:0.82rem; color:#444; background:#FFF8E1; border-left:3px solid #F59E0B; padding:8px 10px; margin-bottom:10px; border-radius:4px;",
-                tags$strong("Note on AD vs EF terminology: "),
-                "this chart currently uses the tool's internal classification — ",
-                tags$em("Activity Data"), " = the 14 production parameters (cattle_pop, weights, milk yield, intake), ",
-                tags$em("Emission Factor"), " = the 9 IPCC equation parameters. ",
-                "In the IPCC convention, only ", tags$strong("cattle_pop"),
-                " is true Activity Data, and the rest combine to form a per-head ",
-                tags$em("emission factor"),
-                ". A full re-classification is planned for v2.3 (Phase 2)."),
-            plotly::plotlyOutput("decomposition_plot")
+            p("Each row is one IPCC inventory reporting line (system × source). ",
+              "Rows match the granularity used in IPCC Volume 1 Chapter 3 uncertainty reporting."),
+            DT::DTOutput("results_by_category")
           )
-        )
+        ),
+        uiOutput("comparison_card")
       ),
-      bslib::card(
-        bslib::card_header("By-System Breakdown"),
-        bslib::card_body(DT::DTOutput("results_by_system"))
-      ),
-      # T6.2: per-IPCC-reporting-category breakdown
-      bslib::card(
-        bslib::card_header("By Reporting Category (IPCC Table 3.3 layout)"),
-        bslib::card_body(
-          p("Each row is one IPCC inventory reporting line (system × source). ",
-            "Rows match the granularity used in IPCC Volume 1 Chapter 3 uncertainty reporting."),
-          DT::DTOutput("results_by_category")
-        )
-      ),
-      uiOutput("comparison_card")
+      conditionalPanel(
+        condition = "output.sim_complete != true",
+        div(style = "margin: 32px 16px; padding: 24px; text-align: center; background: #F4F8F5; border-radius: 8px; color: #2D6A4F;",
+            icon("chart-line", style = "font-size: 32px;"),
+            tags$h5("Results will appear here", style = "margin-top: 12px;"),
+            tags$p("Click ", tags$strong("Run Monte Carlo Simulation"),
+                   " above to populate this section with histograms, decomposition, and per-system breakdowns.",
+                   style = "color: #666;"))
+      )
     ),
 
     # ==================== TAB 7: SENSITIVITY ====================
@@ -681,13 +709,13 @@ app_ui <- function() {
           "Click ", tags$strong("'Download Excel Report'"), " to get a complete workbook with all results, ",
           "sensitivity rankings, and metadata. Click ", tags$strong("'Download CSV'"), " for a simpler file ",
           "with uncertainty metrics only."),
-      # T8.2 partial: IPCC AD/EF framing callout
-      div(style = "margin: 0 16px 12px; font-size:0.82rem; color:#444; background:#FFF8E1; border-left:3px solid #F59E0B; padding:10px 12px; border-radius:4px;",
-          tags$strong("Note on Activity Data vs Emission Factor columns: "),
-          "the AD_Uncertainty_pct and EF_Uncertainty_pct columns below currently use the tool's internal classification ",
-          "(AD = 14 production parameters; EF = 9 IPCC equation parameters). The IPCC convention is AD = population only, ",
-          "EF = emissions per head per year. A full re-classification of the decomposition is planned for v2.3 — until then, ",
-          "interpret these labels with the caveat above when comparing to other IPCC inventory submissions."),
+      # D1 done — IPCC AD/EF restructure complete; old callout removed.
+      div(style = "margin: 0 16px 12px; font-size:0.82rem; color:#1B4332; background:#D8F3DC; border-left:3px solid #2D6A4F; padding:10px 12px; border-radius:4px;",
+          tags$strong("AD vs EF column convention: "),
+          "in this version, ", tags$em("AD"),
+          " = population uncertainty only (cattle_pop), and ", tags$em("EF"),
+          " = the per-head emission factor uncertainty driven by the 23 coefficients (live weight, feed quality, ",
+          "Ym, Bo, Frac_GASMS, etc.). This matches IPCC Volume 1 Chapter 3 reporting conventions."),
       bslib::card(
         bslib::card_header("IPCC Table 3.3 - Uncertainty Report"),
         bslib::card_body(
@@ -739,21 +767,43 @@ app_ui <- function() {
       )
     ),
 
-    # ==================== TAB 9: TREND ====================
+    # ==================== TAB 9: TREND (F: build-out) ====================
     bslib::nav_panel(
       title = "9. Trend",
       icon = icon("chart-line"),
       div(class = "info-panel", style = "margin: 16px;",
           tags$strong("What to do: "),
-          "This feature will analyze how emission uncertainty changes over time. It will allow you to upload ",
-          "multi-year emission estimates, visualize uncertainty bands across inventory years, and quantify ",
-          "uncertainty in the emission trend itself. This is particularly important for countries tracking ",
-          "progress toward emission reduction targets under the Paris Agreement."),
+          "Quantify how total emissions change between inventory years and how much of that change is uncertain. ",
+          "Upload a long-format CSV with columns ", tags$code("year, parameter, mean, uncertainty_pct"),
+          " (one row per parameter per year), then click ", tags$strong("Run Trend Analysis"),
+          ". The tool runs a separate Monte Carlo simulation for each year and overlays the results."),
+      bslib::layout_columns(
+        col_widths = c(4, 8),
+        bslib::card(
+          bslib::card_header("Trend input"),
+          bslib::card_body(
+            fileInput("trend_upload", "Upload multi-year CSV (year, parameter, mean, uncertainty_pct)",
+                      accept = c(".csv")),
+            sliderInput("trend_n_iter", "Iterations per year",
+                        min = 500, max = 10000, value = 2000, step = 500),
+            actionButton("run_trend", "Run Trend Analysis",
+                         class = "run-btn w-100", icon = icon("play")),
+            hr(),
+            uiOutput("trend_status")
+          )
+        ),
+        bslib::card(
+          bslib::card_header("Trend chart — Total CO2eq with 95% CI band"),
+          bslib::card_body(plotly::plotlyOutput("trend_plot", height = "400px"))
+        )
+      ),
       bslib::card(
-        bslib::card_header("Trend Uncertainty Analysis (Optional)"),
+        bslib::card_header("Trend table"),
         bslib::card_body(
-          p("This feature is under development and will be available in a future release."),
-          p("Requirements: Multi-year population data uploaded in the Correlations tab (Sheet: Population_TimeSeries).")
+          p(tags$em("Year-by-year mean, 95% CI bounds, and 95% margin of error. ",
+                    "The 'Δ vs. base year' column shows the percent change from the earliest year — ",
+                    "use this for trend reporting per IPCC Vol.1 §3.2.")),
+          DT::DTOutput("trend_table")
         )
       )
     ),

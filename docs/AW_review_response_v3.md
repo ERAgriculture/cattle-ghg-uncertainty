@@ -58,15 +58,44 @@
 
 ---
 
+## Round-3 update (May 2026): all major Phase 2 items now shipped
+
+This round closed the remaining partials and most Phase 3 items. v2.3 deploy in progress.
+
+| | Round 3 status |
+|---|---|
+| **AD/EF restructure** (T1.5/T6.4/T8.2/TT.9) | ✅ Done — `param_type = "emission_factor"` renamed to `"coefficient"` everywhere. Only `cattle_pop` is `activity_data`. Decomposition AD-only varies population only; EF-only varies the 23 coefficients. Backwards-compat alias auto-renames legacy templates. |
+| **Variable rename to IPCC software** (T1.3) | ✅ Done — internal renames: `ash`→`ASH`, `DE_pct`→`DE`, `CP_pct`→`CP`, `Ym_pct`→`Ym`, `Frac_GASM`→`Frac_GASMS`, `Frac_LEACH`→`Frac_LEACH_H`. `PARAM_ALIASES` map auto-translates legacy templates on upload. Other names kept (cattle_pop, live_weight, etc.) where ours were already clearer than the IPCC symbol; tooltip / Definitions tab show the IPCC equivalent. |
+| **Cold-climate Cfi adjustment** (E1) | ✅ Done — `calc_nem(live_weight, Cfi, Tw)` applies `Cfi(in_cold) = Cfi + 0.0048 × (20 − Tw)` when Tw < 20°C. UI input on Simulate tab. |
+| **% females calving → Cp pro-rate** (E3) | ✅ Done — `calc_nep(nem, Cp, pct_calving)` uses `Cp × pct_calving × NEm`. UI slider on Simulate tab. |
+| **MMS by IPCC version** (TT.3 full / G1) | ✅ Done — `get_mms_for_version()` filters MMS_DEFAULTS by `versions` column. |
+| **Region-aware benchmarks** (T2.1) | ✅ Done — new `IPCC_DEFAULTS_BY_REGION` table covers africa / asia / europe / americas / oceania / global × {live_weight, milk_yield, DE, Ym, Bo}. `run_qaqc()` accepts a `region` arg and overrides the global default. |
+| **Excel-level QC in template** (TT.8) | ✅ Done — three conditional formatting rules: required-blank cells turn red; uncertainty_pct > 100 turns orange; lower ≥ upper turns red on both bound cells. |
+| **Trend tab build-out** (T4.22 / TT.6 / F) | ✅ Done — new tab accepts a long-format CSV (year, parameter, mean, uncertainty_pct), runs an MC simulation per year, shows a trend plot with 95% CI band and a per-year table including % change vs. base year. |
+| Simulation broken on Uganda example (A1) | ✅ Fixed — `ensure_completeness()` auto-fills missing core params from IPCC defaults rather than blocking. |
+| Tab 3 mid-sentence break (A2) | ✅ Fixed — info-panel restructured as 3 paragraphs. |
+| Country preview must change (B1) | ✅ Fixed — new `generate_country_y_example()` (pastoral non-dairy, distinct from Country X). Custom-upload hint banner appears on `country == "custom"`. |
+| Merge Simulate + Results (B2) | ✅ Done — Tab 5 now contains both. Results section appears below the Run button after success via `output$sim_complete`. Tab 6 removed. |
+
+### Items that remain genuinely deferred
+
+| ID | Item | Why |
+|---|---|---|
+| **T4.3** | Cross-block AD↔EF correlation | Divergence #4 explicit v3.0 — needs unified 24-param copula |
+| **T4.21** | MMS Dirichlet sampling (sum-to-100% constraint) | Significant new statistical machinery |
+| **TT.4** | Per-MMS Frac_GASM_S / Frac_LEACH_H variants split per system | Requires `calc_indirect_n2o_mm` rewrite |
+| **E2** | DA × NAPA dynamic population calc | Implemented as a documented metadata field but `cattle_pop` derivation needs careful integration with the systems_data builder; defer to v4.0 |
+| **T0.1** | Cosmetic phrasing pass | Address with documentation polish at end |
+
 ## Summary
 
 | | Count |
 |---|---|
-| ✅ Done | 32 |
-| ⚠️ Partial (callout / interim) | 6 |
-| ⏳ Deferred to v3.0 | 6 |
+| ✅ Done | 41 |
+| ⚠️ Partial (callout / interim) | 1 |
+| ⏳ Deferred to v4.0 | 4 |
 | ⬜ Cosmetic, deferred | 1 |
-| **Total** | **45** |
+| **Total** | **47** |
 
 All four strategic divergences have been adopted with the recommended approach. Phase 1 + Phase 2 partial work + the IPCC software terminology mapping has been deployed to https://mlolita26.shinyapps.io/cattle-ghg-uncertainty/ .
 

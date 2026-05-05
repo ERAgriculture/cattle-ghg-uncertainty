@@ -16,17 +16,31 @@
 `%||%` <- function(a, b)
   if (is.null(a) || length(a) == 0 || is.na(a[1]) || !nzchar(as.character(a[1]))) b else a
 
+# C1: parameter renaming map (legacy → IPCC-aligned).
+# parse_uploaded_template applies these so existing user templates keep working.
+# New canonical names match the IPCC Inventory Software v2.95 symbols.
+PARAM_ALIASES <- c(
+  "ash"        = "ASH",
+  "DE_pct"     = "DE",
+  "CP_pct"     = "CP",
+  "Ym_pct"     = "Ym",
+  "Frac_GASM"  = "Frac_GASMS",
+  "Frac_LEACH" = "Frac_LEACH_H"
+)
+
 # ---------------------------------------------------------------------------
 # PARAMETER CATALOGUE  (central source of truth for the Vocab sheet and
 #                        for pre-populating the Parameters sheet)
 # ---------------------------------------------------------------------------
 PARAM_CATALOGUE <- data.frame(
+  # C1: parameter names IPCC-aligned (DE, CP, Ym, ASH, Frac_GASMS, Frac_LEACH_H).
+  # Older names (DE_pct, CP_pct, etc.) are auto-renamed by parse_uploaded_template via PARAM_ALIASES.
   parameter = c(
     "cattle_pop","live_weight","mature_weight","weight_gain",
-    "milk_yield","milk_fat","pct_lactating","DE_pct",
-    "Cfi","Ca","C_growth","Cp","hours","CP_pct",
-    "Ym_pct","Bo","ash","UE",
-    "EF3_PRP","Frac_GASM","EF4","EF5","Frac_LEACH",
+    "milk_yield","milk_fat","pct_lactating","DE",
+    "Cfi","Ca","C_growth","Cp","hours","CP",
+    "Ym","Bo","ASH","UE",
+    "EF3_PRP","Frac_GASMS","EF4","EF5","Frac_LEACH_H",
     "protein_milk"),
   definition = c(
     "Number of animals in this sub-category",
@@ -94,8 +108,12 @@ PARAM_CATALOGUE <- data.frame(
     NA, NA, NA, NA,
     0.040, NA, 0.020, 0.0225, 0.054,   # EF3(+100%), EF4(+100%), EF5(+200%), Frac_LEACH(+170%)
     NA),
+  # D1: IPCC convention adopted — only cattle_pop is true Activity Data;
+  # everything else is a "coefficient" (combines into the per-head emission factor)
   param_type = c(
-    rep("activity_data", 14), rep("emission_factor", 9), "activity_data"),
+    "activity_data",          # cattle_pop
+    rep("coefficient", 22),   # all other production parameters + IPCC equation params
+    "coefficient"),           # protein_milk
   # "core" = must be entered by user; "technical" = IPCC coefficient, pre-filled with default
   param_tier = c(
     "core","core","core","core","core","core","core","core",
@@ -243,7 +261,7 @@ generate_template_openxlsx <- function(filepath, include_example) {
   V_IPCCVER   <- c("2006","2019_refinement")
   V_DIST      <- c("normal","posnorm","lognormal","beta",
                    "triangular","pert","uniform","constant","tnorm_0_1")
-  V_PTYPE     <- c("activity_data","emission_factor")
+  V_PTYPE     <- c("activity_data","coefficient")
   V_QUALITY   <- c("measured","country_specific","regional_default",
                    "ipcc_default","expert_judgement")
   # TT.3: MMS list now sourced from MMS_DEFAULTS (covers IPCC 2006 + 2019)
@@ -529,7 +547,7 @@ generate_template_openxlsx <- function(filepath, include_example) {
   for (i in seq_len(n_params)) {
     r <- DATA_START + i - 1
     is_tech <- PARAM_CATALOGUE$param_tier[i] == "technical"
-    is_ef   <- PARAM_CATALOGUE$param_type[i] == "emission_factor"
+    is_ef   <- PARAM_CATALOGUE$param_type[i] == "coefficient"
 
     # value column: technical params get IPCC default; core activity data left blank
     val_cell <- if (include_example) {
@@ -1085,6 +1103,39 @@ generate_template_openxlsx <- function(filepath, include_example) {
   }
 
   # =========================================================================
+  # G3 / TT.8: Excel-level conditional formatting QC
+  # =========================================================================
+  # The Parameters sheet is laid out with banner row 1, legend row 2, headers
+  # row 3, and data rows 4..(DATA_START + N_DATA_ROWS). Reference column IDs
+  # (P_COL_IDX) are still in scope from the generation pass above.
+  qc_data_rows <- 4:(DATA_START + N_DATA_ROWS)
+  red_fill    <- openxlsx::createStyle(fgFill = "#FECACA",
+                                        fontColour = "#7F1D1D")
+  orange_fill <- openxlsx::createStyle(fgFill = "#FED7AA",
+                                        fontColour = "#9A3412")
+
+  # Rule 1: required value cell (col G) blank when sub-category in col A is filled
+  openxlsx::conditionalFormatting(wb, "Parameters",
+    cols = P_COL_IDX["value"], rows = qc_data_rows,
+    rule = sprintf('AND(G%1$d="",A%1$d<>"")', qc_data_rows[1]),
+    style = red_fill, type = "expression")
+
+  # Rule 2: uncertainty_pct (col H) > 100 — likely entered "45%" instead of 45
+  openxlsx::conditionalFormatting(wb, "Parameters",
+    cols = P_COL_IDX["uncertainty_pct"], rows = qc_data_rows,
+    rule = ">100", style = orange_fill, type = "expression")
+
+  # Rule 3: lower_bound (col I) >= upper_bound (col J)
+  openxlsx::conditionalFormatting(wb, "Parameters",
+    cols = P_COL_IDX["lower_bound"], rows = qc_data_rows,
+    rule = sprintf('AND(I%1$d<>"",J%1$d<>"",I%1$d>=J%1$d)', qc_data_rows[1]),
+    style = red_fill, type = "expression")
+  openxlsx::conditionalFormatting(wb, "Parameters",
+    cols = P_COL_IDX["upper_bound"], rows = qc_data_rows,
+    rule = sprintf('AND(I%1$d<>"",J%1$d<>"",I%1$d>=J%1$d)', qc_data_rows[1]),
+    style = red_fill, type = "expression")
+
+  # =========================================================================
   # Save workbook
   # =========================================================================
   openxlsx::saveWorkbook(wb, filepath, overwrite = TRUE)
@@ -1119,7 +1170,7 @@ generate_template_basic <- function(filepath, include_example) {
       data_source="IPCC default / Uganda survey",
       stringsAsFactors=FALSE)
   } else {
-    is_ef <- PARAM_CATALOGUE$param_type == "emission_factor"
+    is_ef <- PARAM_CATALOGUE$param_type == "coefficient"
     data.frame(
       cattle_type="dairy",
       aggregation_level="",
@@ -1276,6 +1327,17 @@ parse_uploaded_template <- function(path) {
   # Rename 'value' -> 'mean' for mc_sampling compatibility
   if ("value" %in% names(params) && !"mean" %in% names(params))
     names(params)[names(params) == "value"] <- "mean"
+
+  # D1: backwards-compat alias — coerce legacy "emission_factor" param_type to "coefficient"
+  if ("param_type" %in% names(params))
+    params$param_type[params$param_type == "emission_factor"] <- "coefficient"
+
+  # C1: backwards-compat aliases for renamed parameters (old user templates)
+  if ("parameter" %in% names(params) && exists("PARAM_ALIASES")) {
+    aliased <- params$parameter %in% names(PARAM_ALIASES)
+    if (any(aliased))
+      params$parameter[aliased] <- PARAM_ALIASES[params$parameter[aliased]]
+  }
 
   # Ensure numeric
   for (nm in c("mean","uncertainty_pct","lower","upper","lower_bound","upper_bound")) {

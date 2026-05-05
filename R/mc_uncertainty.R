@@ -38,7 +38,7 @@ decompose_uncertainty <- function(param_specs, corr_matrix = NULL, n_iter = 1000
 
   # AD only: fix emission factors at means
   ad_specs <- param_specs
-  ef_rows <- ad_specs$param_type == "emission_factor"
+  ef_rows <- ad_specs$param_type == "coefficient"
   ad_specs$distribution[ef_rows] <- "constant"
   ad_specs$lower[ef_rows] <- ad_specs$mean[ef_rows]
   ad_specs$upper[ef_rows] <- ad_specs$mean[ef_rows]

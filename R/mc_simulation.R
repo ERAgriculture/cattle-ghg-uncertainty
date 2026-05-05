@@ -3,7 +3,9 @@
 # Run MC simulation for one system-subsystem combination
 run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
                                mms_fractions = NULL, mcf_values = NULL, ef3_values = NULL,
-                               gwp = "AR5", seed = NULL, ef_corr_matrix = NULL) {
+                               gwp = "AR5", seed = NULL, ef_corr_matrix = NULL,
+                               # E1, E3: optional IPCC software inputs
+                               Tw = 20, pct_calving = 1) {
   samples <- generate_mc_samples(param_specs, corr_matrix, n_iter, seed, ef_corr_matrix)
 
   get_param <- function(name, default = 0) {
@@ -14,6 +16,14 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
   if (is.null(mcf_values)) mcf_values <- c(pasture = 0.015)
   if (is.null(ef3_values)) ef3_values <- c(pasture = 0.02)
 
+  # C1: parameter names IPCC-aligned (DE, CP, Ym, ASH, Frac_GASMS, Frac_LEACH_H).
+  # get_param() falls back to legacy names so old templates still work.
+  get_param_alt <- function(new_name, old_name, default = 0) {
+    if (new_name %in% names(samples)) samples[[new_name]]
+    else if (old_name %in% names(samples)) samples[[old_name]]
+    else rep(default, n_iter)
+  }
+
   results <- ghg_emissions_vec(
     cattle_pop = get_param("cattle_pop"),
     live_weight = get_param("live_weight"),
@@ -23,32 +33,34 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     milk_fat = get_param("milk_fat"),
     pct_lactating = get_param("pct_lactating", 1),
     hours = get_param("hours"),
-    DE_pct = get_param("DE_pct", 55),
+    DE = get_param_alt("DE", "DE_pct", 55),
     Cfi = get_param("Cfi", 0.322),
     Ca = get_param("Ca", 0.17),
     C_growth = get_param("C_growth", 0.8),
     Cp = get_param("Cp", 0.10),
-    Ym_pct = get_param("Ym_pct", 6.5),
+    Ym = get_param_alt("Ym", "Ym_pct", 6.5),
     Bo = get_param("Bo", 0.10),
-    ash = get_param("ash", 0.08),
+    ASH = get_param_alt("ASH", "ash", 0.08),
     UE = get_param("UE", 0.04),
-    CP_pct = get_param("CP_pct", 10),
+    CP = get_param_alt("CP", "CP_pct", 10),
     mms_fractions = mms_fractions,
     mcf_values = mcf_values,
     ef3_values = ef3_values,
     EF3_PRP = get_param("EF3_PRP", 0.02),
-    Frac_GASM = get_param("Frac_GASM", 0.20),
+    Frac_GASMS = get_param_alt("Frac_GASMS", "Frac_GASM", 0.20),
     EF4 = get_param("EF4", 0.010),
     EF5 = get_param("EF5", 0.0075),
-    Frac_LEACH = get_param("Frac_LEACH", 0.02),
-    gwp = gwp
+    Frac_LEACH_H = get_param_alt("Frac_LEACH_H", "Frac_LEACH", 0.02),
+    gwp = gwp,
+    Tw = Tw, pct_calving = pct_calving
   )
 
   list(samples = samples, results = results)
 }
 
 # Run simulation across multiple systems/subsystems
-run_inventory_simulation <- function(systems_data, n_iter = 10000, gwp = "AR5", seed = NULL) {
+run_inventory_simulation <- function(systems_data, n_iter = 10000, gwp = "AR5",
+                                      seed = NULL, Tw = 20, pct_calving = 1) {
   by_system <- list()
 
   for (sys_name in names(systems_data)) {
@@ -62,7 +74,9 @@ run_inventory_simulation <- function(systems_data, n_iter = 10000, gwp = "AR5", 
       ef3_values      = sys$ef3_values,
       gwp             = gwp,
       seed            = if (!is.null(seed)) seed + which(names(systems_data) == sys_name) else NULL,
-      ef_corr_matrix  = sys$ef_corr_matrix
+      ef_corr_matrix  = sys$ef_corr_matrix,
+      Tw              = if (!is.null(sys$Tw)) sys$Tw else Tw,
+      pct_calving     = if (!is.null(sys$pct_calving)) sys$pct_calving else pct_calving
     )
     by_system[[sys_name]] <- sim
   }

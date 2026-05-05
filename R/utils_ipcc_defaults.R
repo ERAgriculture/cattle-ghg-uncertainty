@@ -11,14 +11,16 @@ IPCC_DEFAULTS <- list(
   MW = list(cows = 300, heifers = 300, adult_males = 350, growing_males = 350, calves = 300),
   C_growth = list(female = 0.8, castrate = 1.0, bull = 1.2),
   pct_lactating = 0.60, pct_pregnant_cows = 0.60, pct_pregnant_heifers = 0.20,
-  milk_yield = 4.0, milk_fat = 4.0, Ym = 6.5, DE_pct = 55.0,
-  Bo = 0.10, ash = 0.08, UE = 0.04, CP_pct = 10.0,
-  EF3_PRP = 0.02, Frac_GASM = 0.20, EF4 = 0.010, EF5 = 0.0075, Frac_LEACH = 0.02
+  milk_yield = 4.0, milk_fat = 4.0, Ym = 6.5, DE = 55.0,
+  Bo = 0.10, ASH = 0.08, UE = 0.04, CP = 10.0,
+  EF3_PRP = 0.02, Frac_GASMS = 0.20, EF4 = 0.010, EF5 = 0.0075, Frac_LEACH_H = 0.02
 )
 
-## TT.3: MMS list expanded to cover IPCC 2006 (8 systems) and 2019 Refinement
+## TT.3 / G1: MMS list expanded to cover IPCC 2006 (8 systems) and 2019 Refinement
 ## (adds anaerobic_digester, aerobic_treatment, burned_for_fuel, solid_storage_covered).
 ## `versions` lists which IPCC editions recognise each system.
+## `get_mms_for_version(version)` filters MMS_DEFAULTS$id by version (used for
+## conditional dropdowns once the user selects an IPCC guidelines version in metadata).
 MMS_DEFAULTS <- data.frame(
   id = c("pasture", "daily_spread", "solid_storage", "solid_storage_covered",
          "dry_lot", "deep_bedding", "liquid_slurry", "composting", "lagoon",
@@ -40,6 +42,48 @@ MMS_DEFAULTS <- data.frame(
   ef3 = c(0.02, 0.0, 0.005, 0.005, 0.02, 0.01, 0.005, 0.006, 0.0, 0.0006, 0.005, 0.0),
   stringsAsFactors = FALSE
 )
+
+## G2: region-aware IPCC benchmarks (Vol.4 Tables 10A.1, 10A.2, 10.4, 10.7).
+## Used by run_qaqc() benchmark check to flag values that deviate strongly from
+## the closest matching regional default. Falls back to "global" if no match.
+IPCC_DEFAULTS_BY_REGION <- data.frame(
+  parameter   = c(rep("live_weight", 6), rep("milk_yield", 6),
+                  rep("DE", 6), rep("Ym", 6), rep("Bo", 6)),
+  region      = rep(c("africa","asia","europe","americas","oceania","global"), 5),
+  default_val = c(
+    # live_weight (kg) per Table 10A.2
+    275, 350, 600, 500, 500, 400,
+    # milk_yield (kg/head/day) typical
+    4, 8, 22, 18, 15, 10,
+    # DE (%) typical regional ranges
+    55, 60, 70, 65, 65, 62,
+    # Ym (%) per Table 10.12
+    6.5, 6.5, 6.0, 5.5, 6.0, 6.5,
+    # Bo (m3 CH4/kg VS)
+    0.10, 0.13, 0.24, 0.18, 0.15, 0.13
+  ),
+  stringsAsFactors = FALSE
+)
+
+# Lookup: returns region-specific default or NA
+get_regional_default <- function(parameter, region = "global") {
+  if (is.null(region) || is.na(region)) region <- "global"
+  region <- tolower(trimws(region))
+  if (!region %in% IPCC_DEFAULTS_BY_REGION$region) region <- "global"
+  hit <- IPCC_DEFAULTS_BY_REGION[
+    IPCC_DEFAULTS_BY_REGION$parameter == parameter &
+    IPCC_DEFAULTS_BY_REGION$region == region, , drop = FALSE]
+  if (nrow(hit) == 0) return(NA_real_)
+  hit$default_val[1]
+}
+
+## G1: helper to filter MMS_DEFAULTS by IPCC version string ("2006" or "2019_refinement")
+get_mms_for_version <- function(version = "2006") {
+  v_key <- if (grepl("2019", version)) "2019" else "2006"
+  has_version <- vapply(strsplit(MMS_DEFAULTS$versions, ","),
+                        function(v) v_key %in% v, logical(1))
+  MMS_DEFAULTS[has_version, , drop = FALSE]
+}
 
 GWP_VALUES <- list(
   AR4 = list(CH4 = 25, N2O = 298),
@@ -163,7 +207,7 @@ DISTRIBUTION_LABELS <- c(
   tnorm_0_1 = "Truncated Normal to [0,1]"
 )
 
-PARAM_TYPES <- c("activity_data", "emission_factor")
+PARAM_TYPES <- c("activity_data", "coefficient", "emission_factor")  # emission_factor accepted as legacy alias
 
 # ==========================================================================
 # EXPANDED DEFAULT LOOKUPS BY NEW SUB-CATEGORY
@@ -226,21 +270,44 @@ AGE_BY_SUBCAT <- list(
   feedlot_cattle = "young_1-3yr"
 )
 
-# Generate example Uganda parameter specs
+# Country X \u2014 hypothetical East African dairy system (mid-altitude smallholder)
+# Visibly distinct from Country Y (B1): dairy cattle, milking, higher live weight.
 generate_uganda_example <- function() {
   data.frame(
     cattle_type       = rep("dairy", 12),
-    aggregation_level = rep("Eastern Uganda \u2013 pastoral", 12),
+    aggregation_level = rep("Country X \u2013 smallholder dairy", 12),
     sub_category      = rep("cows", 12),
     parameter = c("cattle_pop", "live_weight", "mature_weight", "weight_gain",
-                   "milk_yield", "milk_fat", "DE_pct", "Cfi", "Ca", "Cp",
-                   "Ym_pct", "Bo"),
+                   "milk_yield", "milk_fat", "DE", "Cfi", "Ca", "Cp",
+                   "Ym", "Bo"),
     mean = c(500000, 275, 300, 0, 4, 4, 55, 0.386, 0.17, 0.10, 6.5, 0.10),
     uncertainty_pct = c(10, 15, 10, 0, 20, 10, 10, 5, 20, 15, 15, 20),
     distribution = c("normal", "normal", "normal", "constant", "normal", "normal",
                       "normal", "pert", "triangular", "beta", "pert", "pert"),
     lower = NA_real_, upper = NA_real_,
-    param_type = c(rep("activity_data", 10), rep("emission_factor", 2)),
+    # D1: only cattle_pop is activity_data; everything else is "coefficient"
+    param_type = c("activity_data", rep("coefficient", 11)),
+    stringsAsFactors = FALSE
+  )
+}
+
+# Country Y \u2014 hypothetical pastoral non-dairy beef system (semi-arid rangeland)
+# B1: visibly different from Country X \u2014 non-dairy, smaller animals, no milk.
+generate_country_y_example <- function() {
+  data.frame(
+    cattle_type       = rep("non_dairy", 11),
+    aggregation_level = rep("Country Y \u2013 pastoral rangeland", 11),
+    sub_category      = rep("breeding_cows", 11),
+    parameter = c("cattle_pop", "live_weight", "mature_weight", "weight_gain",
+                   "milk_yield", "DE", "Cfi", "Ca", "Cp",
+                   "Ym", "Bo"),
+    mean = c(2400000, 230, 260, 0.05, 1.5, 50, 0.322, 0.36, 0.10, 7.0, 0.10),
+    uncertainty_pct = c(15, 20, 15, 50, 40, 15, 5, 25, 25, 20, 25),
+    distribution = c("normal", "normal", "normal", "pert", "lognormal",
+                      "normal", "pert", "triangular", "beta", "pert", "pert"),
+    lower = NA_real_, upper = NA_real_,
+    # D1: only cattle_pop is activity_data; everything else is "coefficient"
+    param_type = c("activity_data", rep("coefficient", 10)),
     stringsAsFactors = FALSE
   )
 }

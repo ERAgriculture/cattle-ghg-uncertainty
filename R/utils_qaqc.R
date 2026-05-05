@@ -1,16 +1,25 @@
 # QA/QC checks for uploaded parameter specifications
 # run_qaqc() returns a tidy data.frame: one row per (group x parameter x check)
 
-ASYMMETRIC_PARAMS <- c("EF3_PRP", "EF4", "EF5", "Frac_LEACH")
-FRACTION_PARAMS   <- c("pct_lactating", "ash", "UE", "Frac_GASM", "Frac_LEACH")
+# C1: IPCC-aligned names; legacy names auto-renamed by parse_uploaded_template
+ASYMMETRIC_PARAMS <- c("EF3_PRP", "EF4", "EF5", "Frac_LEACH_H")
+FRACTION_PARAMS   <- c("pct_lactating", "ASH", "UE", "Frac_GASMS", "Frac_LEACH_H")
 
-run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE) {
+run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global") {
   ps <- param_specs
 
   # Build reference lookup from catalogue
   ref <- catalogue[, c("parameter", "ipcc_default", "suggested_lower_bound",
                         "suggested_upper_bound", "param_tier")]
   ps <- merge(ps, ref, by = "parameter", all.x = TRUE, sort = FALSE)
+
+  # G2: override ipcc_default with region-specific value where available
+  if (exists("get_regional_default")) {
+    for (i in seq_len(nrow(ps))) {
+      reg_val <- get_regional_default(ps$parameter[i], region)
+      if (!is.na(reg_val)) ps$ipcc_default[i] <- reg_val
+    }
+  }
 
   # Optional group label for multi-group uploads
   has_group_cols <- all(c("cattle_type", "sub_category") %in% names(ps))

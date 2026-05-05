@@ -2,9 +2,10 @@
 # Source: IPCC 2006 Guidelines, Volume 4, Chapter 10 (Eq 10.25-10.34) & Chapter 11
 
 # Nitrogen excretion rate - kg N/head/year (simplified from Eq 10.31-10.34)
-calc_n_excretion <- function(ge, DE_pct, CP_pct, milk_yield = 0, pct_lactating = 0, weight_gain = 0) {
-  DMI <- (ge * DE_pct / 100) / 18.45
-  N_intake <- DMI * (CP_pct / 100) / 6.25
+# C1: DE (was DE_pct), CP (was CP_pct) — IPCC software-aligned names
+calc_n_excretion <- function(ge, DE, CP, milk_yield = 0, pct_lactating = 0, weight_gain = 0) {
+  DMI <- (ge * DE / 100) / 18.45
+  N_intake <- DMI * (CP / 100) / 6.25
 
   N_retained <- 0
   if (milk_yield > 0 && pct_lactating > 0) {
@@ -51,10 +52,11 @@ calc_direct_n2o_prp <- function(Nex, pct_pasture, EF3_PRP = 0.02) {
 }
 
 # Indirect N2O from PRP - kg N2O/head/year
-calc_indirect_n2o_prp <- function(Nex, pct_pasture, Frac_GASM = 0.20, EF4 = 0.010,
-                                   Frac_LEACH = 0.02, EF5 = 0.0075) {
+# C1: Frac_GASMS (was Frac_GASM), Frac_LEACH_H (was Frac_LEACH) — IPCC software-aligned
+calc_indirect_n2o_prp <- function(Nex, pct_pasture, Frac_GASMS = 0.20, EF4 = 0.010,
+                                   Frac_LEACH_H = 0.02, EF5 = 0.0075) {
   N_prp <- Nex * pct_pasture
-  volatilization <- N_prp * Frac_GASM * EF4 * (44 / 28)
-  leaching <- N_prp * Frac_LEACH * EF5 * (44 / 28)
+  volatilization <- N_prp * Frac_GASMS * EF4 * (44 / 28)
+  leaching <- N_prp * Frac_LEACH_H * EF5 * (44 / 28)
   volatilization + leaching
 }

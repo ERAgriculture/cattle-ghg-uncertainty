@@ -49,7 +49,7 @@ validate_param_specs <- function(param_specs) {
     if (any(bad_pt))
       errors <- c(errors, paste("Invalid param_type value(s):",
                                  paste(unique(param_specs$param_type[bad_pt]), collapse = ", "),
-                                 "- must be 'activity_data' or 'emission_factor'"))
+                                 "- must be 'activity_data' or 'coefficient' (legacy: 'emission_factor')"))
   }
 
   list(valid = length(errors) == 0, errors = errors, warnings = warnings)
@@ -147,55 +147,123 @@ validate_manure_fractions <- function(fractions) {
   list(valid = TRUE, errors = character())
 }
 
-# T1.2 / T2.2: completeness check — every defined sub-category must have all
-# `core` parameters from the catalogue. Returns a list with $valid, $missing
-# (data frame of group × parameter), and $message (human-readable summary).
-validate_completeness <- function(param_specs, catalogue = PARAM_CATALOGUE) {
+# C1: also normalise legacy parameter names to the new IPCC-aligned names
+# before any completeness check or downstream processing.
+normalise_param_names <- function(param_specs) {
+  if (!"parameter" %in% names(param_specs) || !exists("PARAM_ALIASES"))
+    return(param_specs)
+  aliased <- param_specs$parameter %in% names(PARAM_ALIASES)
+  if (any(aliased))
+    param_specs$parameter[aliased] <- PARAM_ALIASES[param_specs$parameter[aliased]]
+  if ("param_type" %in% names(param_specs))
+    param_specs$param_type[param_specs$param_type == "emission_factor"] <- "coefficient"
+  param_specs
+}
+
+# T1.2 / T2.2 + A1: completeness check — instead of blocking the Run button when
+# core parameters are missing, auto-fill them from PARAM_CATALOGUE$ipcc_default.
+# Returns a list with $param_specs (possibly augmented), $auto_filled (data frame
+# of what was added), $message, and $valid (only FALSE if a core param has no
+# default available — genuine error).
+ensure_completeness <- function(param_specs, catalogue = PARAM_CATALOGUE) {
   if (is.null(param_specs) || nrow(param_specs) == 0)
-    return(list(valid = FALSE, missing = NULL,
-                message = "No parameters loaded."))
+    return(list(valid = FALSE, param_specs = param_specs,
+                auto_filled = NULL, message = "No parameters loaded."))
+
+  # C1: normalise any legacy parameter names first
+  param_specs <- normalise_param_names(param_specs)
 
   required <- catalogue$parameter[catalogue$param_tier == "core"]
+  defaults_lut <- setNames(catalogue$ipcc_default, catalogue$parameter)
+  unc_lut      <- setNames(catalogue$suggested_uncertainty_pct, catalogue$parameter)
+  dist_lut     <- setNames(catalogue$suggested_distribution, catalogue$parameter)
+  type_lut     <- setNames(catalogue$param_type, catalogue$parameter)
+  ref_lut      <- setNames(catalogue$ipcc_ref, catalogue$parameter)
 
   group_cols <- intersect(c("cattle_type", "aggregation_level", "sub_category"),
                           names(param_specs))
   if (length(group_cols) == 0) {
-    # Single-group fallback
-    found  <- unique(param_specs$parameter)
-    miss   <- setdiff(required, found)
-    if (length(miss) == 0) return(list(valid = TRUE, missing = NULL, message = "Complete."))
-    return(list(valid = FALSE,
-                missing = data.frame(group = "(all)",
-                                     parameter = miss,
-                                     stringsAsFactors = FALSE),
-                message = paste("Missing core parameter(s):",
-                                paste(miss, collapse = ", "))))
+    return(list(valid = TRUE, param_specs = param_specs, auto_filled = NULL,
+                message = "Single-group input — no per-group completeness check."))
   }
 
   groups <- unique(param_specs[, group_cols, drop = FALSE])
-  miss_rows <- list()
+  added_rows <- list()
+  unfillable <- list()
+
   for (i in seq_len(nrow(groups))) {
-    g     <- groups[i, , drop = FALSE]
-    sel   <- Reduce(`&`, lapply(group_cols, function(c) param_specs[[c]] == g[[c]]))
+    g <- groups[i, , drop = FALSE]
+    sel <- Reduce(`&`, lapply(group_cols, function(c) param_specs[[c]] == g[[c]]))
     found <- unique(param_specs$parameter[sel])
     miss  <- setdiff(required, found)
-    if (length(miss) > 0) {
-      label <- paste(unlist(g), collapse = " / ")
-      miss_rows[[length(miss_rows) + 1]] <- data.frame(
-        group = label, parameter = miss, stringsAsFactors = FALSE)
+    if (length(miss) == 0) next
+
+    for (p in miss) {
+      def <- defaults_lut[[p]]
+      if (is.null(def) || is.na(def)) {
+        # No default — record as unfillable
+        unfillable[[length(unfillable) + 1]] <- list(
+          group = paste(unlist(g), collapse = " / "),
+          parameter = p
+        )
+        # Skip; row is left missing, downstream will warn but not crash
+        next
+      }
+      pct <- unc_lut[[p]]
+      if (is.na(pct)) pct <- 20  # safe fallback
+      lower <- def * (1 - pct / 100)
+      upper <- def * (1 + pct / 100)
+      new_row <- as.data.frame(
+        c(as.list(g),
+          list(parameter = p,
+               mean = def,
+               uncertainty_pct = pct,
+               lower = lower,
+               upper = upper,
+               distribution = dist_lut[[p]],
+               param_type = type_lut[[p]],
+               ipcc_ref = ref_lut[[p]],
+               data_source = "AUTO-FILLED (IPCC default)")),
+        stringsAsFactors = FALSE)
+      added_rows[[length(added_rows) + 1]] <- new_row
     }
   }
 
-  if (length(miss_rows) == 0)
-    return(list(valid = TRUE, missing = NULL,
-                message = "All sub-categories have the required core parameters."))
+  if (length(added_rows) > 0) {
+    # Coerce all auto-fill rows to match the existing param_specs columns
+    target_cols <- names(param_specs)
+    fill_df <- do.call(rbind, lapply(added_rows, function(r) {
+      missing_cols <- setdiff(target_cols, names(r))
+      for (mc in missing_cols) r[[mc]] <- NA
+      r[, target_cols, drop = FALSE]
+    }))
+    param_specs <- rbind(param_specs, fill_df)
+  }
 
-  miss_df <- do.call(rbind, miss_rows)
-  msg <- paste0("Missing ", nrow(miss_df), " parameter-rows across ",
-                length(unique(miss_df$group)), " sub-categor",
-                if (length(unique(miss_df$group)) == 1) "y" else "ies",
-                ". First few: ",
-                paste(head(paste0(miss_df$group, " — ", miss_df$parameter), 3),
-                      collapse = "; "), ".")
-  list(valid = FALSE, missing = miss_df, message = msg)
+  msg_parts <- character()
+  if (length(added_rows) > 0)
+    msg_parts <- c(msg_parts,
+      sprintf("Auto-filled %d core parameter(s) from IPCC defaults.",
+              length(added_rows)))
+  if (length(unfillable) > 0) {
+    uf <- vapply(unfillable, function(x) sprintf("%s — %s", x$group, x$parameter),
+                 character(1))
+    msg_parts <- c(msg_parts,
+      sprintf("Cannot run: %d core parameter(s) have no IPCC default and are missing: %s.",
+              length(unfillable), paste(head(uf, 3), collapse = "; ")))
+  }
+  if (length(msg_parts) == 0) msg_parts <- "All sub-categories complete."
+
+  list(
+    valid = length(unfillable) == 0,
+    param_specs = param_specs,
+    auto_filled = added_rows,
+    message = paste(msg_parts, collapse = " ")
+  )
+}
+
+# Backwards-compat shim — old callers may still use validate_completeness()
+validate_completeness <- function(param_specs, catalogue = PARAM_CATALOGUE) {
+  res <- ensure_completeness(param_specs, catalogue)
+  list(valid = res$valid, missing = NULL, message = res$message)
 }

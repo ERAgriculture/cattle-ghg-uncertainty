@@ -2,8 +2,9 @@
 # Source: IPCC 2006 Guidelines, Volume 4, Chapter 10, Eq 10.23-10.24
 
 # Volatile Solids excretion rate (Eq 10.24) - kg DM/head/day
-calc_volatile_solids <- function(ge, DE_pct, UE = 0.04, ash = 0.08) {
-  (ge * (1 - DE_pct / 100) + UE * ge) * ((1 - ash) / 18.45)
+# C1: DE (was DE_pct), ASH (was ash) — IPCC software-aligned names
+calc_volatile_solids <- function(ge, DE, UE = 0.04, ASH = 0.08) {
+  (ge * (1 - DE / 100) + UE * ge) * ((1 - ASH) / 18.45)
 }
 
 # Manure CH4 emission factor per head per year (Eq 10.23) - kg CH4/head/year

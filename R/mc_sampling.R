@@ -49,7 +49,7 @@ generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
   if (!is.null(seed)) set.seed(seed)
 
   ad_params <- param_specs[param_specs$param_type == "activity_data", ]
-  ef_params <- param_specs[param_specs$param_type == "emission_factor", ]
+  ef_params <- param_specs[param_specs$param_type == "coefficient", ]
   n_ad <- nrow(ad_params)
   n_ef <- nrow(ef_params)
 

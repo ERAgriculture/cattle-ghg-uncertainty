@@ -48,16 +48,19 @@ app_server <- function(input, output, session) {
 
   # Helper: load an example dataset
   .load_example <- function(name) {
-    # T0.3: anonymised example labels — underlying data unchanged
+    # T0.3 + B1: distinct example datasets per country selection
     if (name == "uganda") {
       rv$param_specs <- fill_bounds(generate_uganda_example())
-      rv$sim_log <- "Country X (hypothetical dairy) example data loaded.\n"
+      rv$sim_log <- "Country X (hypothetical dairy smallholder) example data loaded — 12 parameters, dairy / cows.\n"
     } else if (name == "zimbabwe") {
-      rv$param_specs <- fill_bounds(generate_uganda_example())  # placeholder
-      rv$sim_log <- "Country Y (hypothetical pastoral) example loaded (using Country X defaults as placeholder).\n"
+      rv$param_specs <- fill_bounds(generate_country_y_example())
+      rv$sim_log <- "Country Y (hypothetical pastoral non-dairy) example data loaded — 11 parameters, non_dairy / breeding_cows.\n"
     }
     rv$has_custom_upload <- FALSE
-    rv$upload_status     <- NULL
+    rv$upload_status     <- list(type = "success",
+                                 message = sprintf("%s example loaded — %d parameters",
+                                   if (name == "uganda") "Country X" else "Country Y",
+                                   nrow(rv$param_specs)))
   }
 
   observeEvent(input$confirm_load_example, {
@@ -132,7 +135,7 @@ app_server <- function(input, output, session) {
   })
   observeEvent(input$set_all_pert, {
     req(rv$param_specs)
-    ef <- rv$param_specs$param_type == "emission_factor"
+    ef <- rv$param_specs$param_type == "coefficient"
     rv$param_specs$distribution[ef] <- "pert"
     showNotification("Set all emission-factor parameters to PERT",
                      type = "message", duration = 4)
@@ -231,7 +234,12 @@ app_server <- function(input, output, session) {
 
   qaqc_result <- reactive({
     req(rv$param_specs)
-    run_qaqc(rv$param_specs)
+    # G2: pass region from metadata for region-aware benchmark check
+    region <- if (!is.null(rv$inv_metadata) && "region" %in% names(rv$inv_metadata) &&
+                  nzchar(rv$inv_metadata$region %||% "")) {
+      rv$inv_metadata$region
+    } else "global"
+    run_qaqc(rv$param_specs, region = region)
   })
 
   output$qaqc_summary_ui <- renderUI({
@@ -385,7 +393,7 @@ app_server <- function(input, output, session) {
   ef_corr_reactive <- reactive({
     req(rv$param_specs)
     if (is.null(input$ef_corr_mode) || input$ef_corr_mode == "none") return(NULL)
-    ef_params <- rv$param_specs[rv$param_specs$param_type == "emission_factor", ]
+    ef_params <- rv$param_specs[rv$param_specs$param_type == "coefficient", ]
     n_ef <- nrow(ef_params)
     if (n_ef < 2) return(NULL)
     rho <- if (!is.null(input$ef_corr_rho)) input$ef_corr_rho else 0.3
@@ -418,14 +426,21 @@ app_server <- function(input, output, session) {
   observeEvent(input$run_sim, {
     req(rv$param_specs)
 
-    # T1.2 / T2.2: completeness check before running the simulation
-    comp <- validate_completeness(rv$param_specs)
+    # T1.2 / T2.2 / A1: auto-fill missing core params from IPCC defaults
+    # rather than blocking the simulation.
+    comp <- ensure_completeness(rv$param_specs)
     if (!isTRUE(comp$valid)) {
       showNotification(paste0("Cannot run simulation. ", comp$message),
                        type = "error", duration = 12)
       rv$sim_log <- paste0(rv$sim_log,
                            "Completeness check failed: ", comp$message, "\n")
       return()
+    }
+    if (length(comp$auto_filled) > 0) {
+      rv$param_specs <- comp$param_specs
+      showNotification(comp$message, type = "warning", duration = 6)
+      rv$sim_log <- paste0(rv$sim_log,
+                           "Auto-fill: ", comp$message, "\n")
     }
 
     rv$sim_running <- TRUE
@@ -501,7 +516,7 @@ app_server <- function(input, output, session) {
             } else NULL
 
             ef_corr <- if (!is.null(rv$ef_corr_matrix)) {
-              ef_n <- sum(sys_specs$param_type == "emission_factor")
+              ef_n <- sum(sys_specs$param_type == "coefficient")
               if (nrow(rv$ef_corr_matrix) == ef_n) rv$ef_corr_matrix else NULL
             } else NULL
 
@@ -519,7 +534,10 @@ app_server <- function(input, output, session) {
 
           sim_result <- run_inventory_simulation(
             systems_data, n_iter = input$n_iter,
-            gwp = input$gwp_version, seed = input$seed
+            gwp = input$gwp_version, seed = input$seed,
+            # E1, E3: read from UI inputs (default 20°C Tw, 1.0 = no Cp pro-rate)
+            Tw = if (!is.null(input$tw)) input$tw else 20,
+            pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1
           )
 
           # T1.12: zero out per-source contributions the user has unchecked.
@@ -616,9 +634,8 @@ app_server <- function(input, output, session) {
           setProgress(1.00, detail = "Done.")
           rv$sim_running <- FALSE
 
-          # T5.1: auto-navigate to Results tab on success
-          bslib::nav_select(id = "nav", selected = "6. Results", session = session)
-          showNotification("Simulation complete. Showing Results.",
+          # B2: results appear inline in the same Simulate tab — no nav needed
+          showNotification("Simulation complete. Scroll down to see results.",
                            type = "message", duration = 5)
 
         }, error = function(e) {
@@ -631,6 +648,12 @@ app_server <- function(input, output, session) {
   })
 
   output$sim_log <- renderText(rv$sim_log)
+
+  # B2: drives the inline results section visibility on the merged Tab 5
+  output$sim_complete <- reactive({
+    !is.null(rv$mc_results) && !is.null(rv$uncertainty)
+  })
+  outputOptions(output, "sim_complete", suspendWhenHidden = FALSE)
 
   output$sim_status <- renderUI({
     if (!is.null(rv$sim_error)) {
@@ -1051,4 +1074,67 @@ app_server <- function(input, output, session) {
       write.csv(rv$uncertainty, file, row.names = FALSE)
     }
   )
+
+  # ====================================================================
+  # F / T4.22 / TT.6: Trend tab — multi-year inventory uncertainty
+  # ====================================================================
+  rv_trend <- reactiveValues(results = NULL, message = NULL)
+
+  observeEvent(input$run_trend, {
+    req(input$trend_upload, rv$param_specs)
+    tryCatch({
+      df <- read.csv(input$trend_upload$datapath, stringsAsFactors = FALSE)
+      n_iter <- if (!is.null(input$trend_n_iter)) input$trend_n_iter else 2000
+      res <- run_trend_analysis(df, base_specs = rv$param_specs, n_iter = n_iter)
+      rv_trend$results <- res
+      rv_trend$message <- list(type = "success",
+        text = sprintf("Trend computed for %d years (%d–%d). Total change: %s%%.",
+                       nrow(res), min(res$Year), max(res$Year),
+                       res$Delta_vs_base_pct[nrow(res)]))
+      showNotification(rv_trend$message$text, type = "message", duration = 5)
+    }, error = function(e) {
+      rv_trend$message <- list(type = "error",
+        text = paste("Trend run failed:", e$message))
+      showNotification(rv_trend$message$text, type = "error", duration = 10)
+    })
+  })
+
+  output$trend_status <- renderUI({
+    if (is.null(rv_trend$message)) {
+      div(style = "font-size:0.85rem; color:#555;",
+          icon("info-circle"),
+          " Upload a long-format CSV and click Run.")
+    } else {
+      bg <- if (rv_trend$message$type == "success") "#D8F3DC" else "#FECACA"
+      fg <- if (rv_trend$message$type == "success") "#1B4332" else "#7F1D1D"
+      div(style = sprintf("font-size:0.85rem; background:%s; color:%s; padding:8px 10px; border-radius:6px;",
+                          bg, fg),
+          rv_trend$message$text)
+    }
+  })
+
+  output$trend_table <- DT::renderDT({
+    req(rv_trend$results)
+    DT::datatable(rv_trend$results, rownames = FALSE,
+                  options = list(pageLength = 25))
+  })
+
+  output$trend_plot <- plotly::renderPlotly({
+    req(rv_trend$results)
+    df <- rv_trend$results
+    plotly::plot_ly() |>
+      plotly::add_ribbons(x = df$Year, ymin = df$CI_Lower_t, ymax = df$CI_Upper_t,
+                          name = "95% CI", line = list(color = "transparent"),
+                          fillcolor = "rgba(45,106,79,0.25)") |>
+      plotly::add_trace(x = df$Year, y = df$Mean_t_CO2eq,
+                        type = "scatter", mode = "lines+markers",
+                        name = "Mean", line = list(color = "#1B4332", width = 3),
+                        marker = list(size = 8, color = "#1B4332")) |>
+      plotly::layout(
+        title = "Trend in total CO₂eq emissions (95% CI)",
+        xaxis = list(title = "Inventory year"),
+        yaxis = list(title = "Total CO₂eq (tonnes)"),
+        hovermode = "x unified"
+      )
+  })
 }
