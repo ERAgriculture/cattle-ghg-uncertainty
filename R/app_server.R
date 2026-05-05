@@ -20,7 +20,8 @@ app_server <- function(input, output, session) {
     comparison_result = NULL,
     comparison_sensitivity = NULL,
     upload_status = NULL,   # NULL | list(type = "success"|"error", message = "...")
-    has_custom_upload = FALSE
+    has_custom_upload = FALSE,
+    sim_view = "settings"   # R1.5: "settings" or "results" — drives Tab 5 panel toggle
   )
 
   # --- DATA INPUT ---
@@ -70,7 +71,7 @@ app_server <- function(input, output, session) {
 
   # T1.1 fix: surface upload errors and successes visibly on Tab 1.
   # Previously errors only landed in rv$sim_log (Tab 5) — invisible to a user on Tab 1,
-  # who would see the Uganda data still there and assume the upload silently failed.
+  # who would see the Country X example data still there and assume the upload silently failed.
   observeEvent(input$data_upload, {
     req(input$data_upload)
     fname <- input$data_upload$name
@@ -116,11 +117,26 @@ app_server <- function(input, output, session) {
     })
   })
 
-  # Parameter data table
+  # Parameter data table — R1.3: imputed rows rendered in red bold
   output$param_table <- DT::renderDT({
     req(rv$param_specs)
-    DT::datatable(rv$param_specs, options = list(pageLength = 20, scrollX = TRUE),
-                  editable = TRUE, rownames = FALSE)
+    ps <- rv$param_specs
+    has_imputed <- "imputed" %in% names(ps) && any(isTRUE(ps$imputed) | ps$imputed == TRUE, na.rm = TRUE)
+    dt <- DT::datatable(ps,
+                        options = list(pageLength = 20, scrollX = TRUE,
+                                       columnDefs = list(list(
+                                         targets = which(names(ps) == "imputed") - 1,
+                                         visible = FALSE))),
+                        editable = TRUE, rownames = FALSE)
+    if (has_imputed) {
+      # Highlight imputed rows in red bold
+      dt <- DT::formatStyle(dt, "imputed",
+                            target = "row",
+                            backgroundColor = DT::styleEqual(c(TRUE), c("#FECACA")),
+                            color = DT::styleEqual(c(TRUE), c("#7F1D1D")),
+                            fontWeight = DT::styleEqual(c(TRUE), c("bold")))
+    }
+    dt
   })
 
   # T3.2: quick-set buttons to apply common distribution settings
@@ -318,10 +334,10 @@ app_server <- function(input, output, session) {
       m <- diag(length(ad_names))
       rownames(m) <- colnames(m) <- ad_names
       pairs <- list(
-        c("live_weight",   "mature_weight",  0.85),
-        c("live_weight",   "weight_gain",    0.40),
-        c("milk_yield",    "milk_fat",      -0.30),
-        c("milk_yield",    "pct_lactating",  0.20),
+        c("W",      "MW",            0.85),
+        c("W",      "WG",             0.40),
+        c("Milk",   "Fat",           -0.30),
+        c("Milk",   "pct_lactating",  0.20),
         c("DE_pct",        "CP_pct",         0.50),
         c("DE_pct",        "Ym_pct",        -0.40)
       )
@@ -426,6 +442,25 @@ app_server <- function(input, output, session) {
   observeEvent(input$run_sim, {
     req(rv$param_specs)
 
+    # R1.11: redirect trend-mode runs to Tab 9
+    if (!is.null(input$analysis_mode) && input$analysis_mode == "trend") {
+      showNotification(
+        "Trend mode selected on the Home page. Go to Tab 9 (Trend) and upload a multi-year CSV to run a trend analysis. The single-year run on this tab is for analysis_mode = 'single'.",
+        type = "warning", duration = 12)
+      bslib::nav_select(id = "nav", selected = "9. Trend", session = session)
+      return()
+    }
+
+    # R1.4: block run if no emission sources selected
+    if (is.null(input$emission_sources) || length(input$emission_sources) == 0) {
+      showNotification(
+        "Please tick at least one emission source on the left before running the simulation.",
+        type = "error", duration = 8)
+      rv$sim_log <- paste0(rv$sim_log,
+        "Run blocked: no emission sources selected.\n")
+      return()
+    }
+
     # T1.2 / T2.2 / A1: auto-fill missing core params from IPCC defaults
     # rather than blocking the simulation.
     comp <- ensure_completeness(rv$param_specs)
@@ -528,12 +563,22 @@ app_server <- function(input, output, session) {
               ef3_vals  <- default_ef3_vals
             }
 
-            corr <- if (input$corr_mode != "none" && !is.null(rv$corr_matrix)) {
-              ad_names <- sys_specs$parameter[sys_specs$param_type == "activity_data"]
-              expand_corr_matrix(rv$corr_matrix, ad_names)
+            # R1.1: After D1 (AD/EF restructure), only cattle_pop is "activity_data".
+            # The time-series correlation matrix has live_weight, milk_yield, DE, etc. —
+            # all of which are now "coefficient". Apply the time-series matrix to the
+            # coefficient block where its parameters actually live.
+            ts_coef_corr <- if (input$corr_mode != "none" && !is.null(rv$corr_matrix)) {
+              coef_names <- sys_specs$parameter[sys_specs$param_type == "coefficient"]
+              expand_corr_matrix(rv$corr_matrix, coef_names)
             } else NULL
 
-            ef_corr <- if (!is.null(rv$ef_corr_matrix)) {
+            # AD block has only cattle_pop — within-block correlation is meaningless.
+            corr <- NULL
+
+            # If time-series matrix is available, prefer it over uniform-rho.
+            ef_corr <- if (!is.null(ts_coef_corr)) {
+              ts_coef_corr
+            } else if (!is.null(rv$ef_corr_matrix)) {
               ef_n <- sum(sys_specs$param_type == "coefficient")
               if (nrow(rv$ef_corr_matrix) == ef_n) rv$ef_corr_matrix else NULL
             } else NULL
@@ -672,6 +717,23 @@ app_server <- function(input, output, session) {
     !is.null(rv$mc_results) && !is.null(rv$uncertainty)
   })
   outputOptions(output, "sim_complete", suspendWhenHidden = FALSE)
+
+  # R1.5: view toggle for Tab 5 — switch to results when sim finishes
+  observe({
+    if (!is.null(rv$mc_results) && !is.null(rv$uncertainty)) {
+      isolate({
+        if (rv$sim_view == "settings") rv$sim_view <- "results"
+      })
+    }
+  })
+
+  # Back button: return to settings
+  observeEvent(input$show_settings_btn, {
+    rv$sim_view <- "settings"
+  })
+
+  output$sim_view <- reactive(rv$sim_view)
+  outputOptions(output, "sim_view", suspendWhenHidden = FALSE)
 
   output$sim_status <- renderUI({
     if (!is.null(rv$sim_error)) {
@@ -976,19 +1038,20 @@ app_server <- function(input, output, session) {
                   options = list(pageLength = 10, dom = 't'))
   })
 
-  # T1.4 + T1.3: parameter glossary with IPCC software terminology mapping
+  # T1.4 + R1.7: parameter glossary — variable names are now IPCC-aligned, so the
+  # separate ipcc_software_name column is dropped (redundant). "Our column"
+  # renamed to "Variable name".
   output$definitions_table <- DT::renderDT({
     cat <- PARAM_CATALOGUE
-    cat$ipcc_framing <- ifelse(cat$parameter == "cattle_pop",
+    cat$ipcc_framing <- ifelse(cat$parameter %in% c("cattle_pop", "N"),
                                "Activity data (population)",
                                "Coefficient (combines into EF)")
     DT::datatable(
-      cat[, c("parameter", "ipcc_software_name", "definition", "unit",
+      cat[, c("parameter", "definition", "unit",
               "ipcc_default", "suggested_distribution",
               "param_tier", "ipcc_framing", "ipcc_ref")],
       rownames = FALSE,
-      colnames = c("Our column" = "parameter",
-                   "IPCC Inventory Software" = "ipcc_software_name",
+      colnames = c("Variable name" = "parameter",
                    "Definition" = "definition",
                    "Unit" = "unit",
                    "IPCC default" = "ipcc_default",

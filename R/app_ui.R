@@ -162,60 +162,42 @@ app_ui <- function() {
               tags$li("Cross-block correlations between activity data and emission factors are not yet supported (planned for v3.0).")
             )
           )
+        ),
+        # R1.11: single-year vs trend choice on the Home page
+        bslib::card(
+          bslib::card_header(h4("Choose your analysis mode", style = "margin: 0;")),
+          bslib::card_body(
+            radioButtons("analysis_mode",
+              label = NULL,
+              choices = c(
+                "Single year — quantify uncertainty in one inventory year (default)" = "single",
+                "Trend — compare uncertainty across multiple years (uses Tab 9)"   = "trend"
+              ),
+              selected = "single"),
+            tags$p(tags$em("IPCC Volume 1 Chapter 3 recommends running uncertainty analysis ",
+                           "for both the first and last year of an inventory and quantifying the ",
+                           "trend uncertainty. Use 'Trend' if you have multi-year data; use ",
+                           "'Single year' for a one-off uncertainty estimate."),
+                   style = "color:#555; font-size:0.85rem; margin-top:8px;")
+          )
         )
       )
     ),
 
-    # ==================== DEFINITIONS TAB (T1.4 + T1.3) ====================
+    # ==================== DEFINITIONS TAB (T1.4 + R1.7 + R1.8) ====================
     bslib::nav_panel(
       title = "Definitions",
       icon = icon("book"),
       div(class = "info-panel", style = "margin: 16px;",
           tags$strong("Parameter glossary. "),
-          "All 24 parameters used in the IPCC Tier 2 calculations, with their plain-language definition, ",
-          "unit, IPCC default, IPCC reference table/equation, IPCC framing, and the matching variable name ",
-          "in the official ", tags$strong("IPCC Inventory Software"),
-          " (so values can be transposed between tools without ambiguity).",
-          tags$br(), tags$br(),
-          # T1.3: classification-level mapping from screenshots
-          tags$strong("Inventory category / classification levels — IPCC Software vs this app:"),
-          tags$table(
-            style = "width: 100%; max-width: 880px; margin-top: 8px; border-collapse: collapse;",
-            tags$thead(tags$tr(style = "background:#D8F3DC;",
-              tags$th(style = "padding:6px; border:1px solid #E0DDD5; text-align:left;", "IPCC Software"),
-              tags$th(style = "padding:6px; border:1px solid #E0DDD5; text-align:left;", "Symbol"),
-              tags$th(style = "padding:6px; border:1px solid #E0DDD5; text-align:left;", "This app"),
-              tags$th(style = "padding:6px; border:1px solid #E0DDD5; text-align:left;", "Example value"))),
-            tags$tbody(
-              tags$tr(
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "Sector"),
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "—"),
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "(fixed: AFOLU)"),
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "3 — Agriculture, Forestry and Other Land Use")),
-              tags$tr(
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "Category"),
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "—"),
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "(fixed: Livestock)"),
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "3.A — Livestock")),
-              tags$tr(
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "Subcategory"),
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "—"),
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", tags$code("cattle_type")),
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "3.A.1.a.i — Dairy Cows / 3.A.2.a.i — Dairy cows")),
-              tags$tr(
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "Geographical zone"),
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", tags$code("Z")),
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", tags$code("aggregation_level")),
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "National (Malawi); region; AEZ")),
-              tags$tr(
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "Livestock Subcategory / Subdivision"),
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", tags$code("T / Tsd")),
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", tags$code("sub_category")),
-                tags$td(style="padding:6px; border:1px solid #E0DDD5;", "Mature Dairy Cow; Heifers; Calves")))),
-          tags$br(),
-          tags$em("Source: IPCC Inventory Software v2.95, screenshots provided by Andreas Wilkes, May 2026.")),
+          "All parameters used in the IPCC Tier 2 calculations, with their plain-language ",
+          "definition, unit, IPCC default value, suggested distribution, tier (core / technical), ",
+          "IPCC framing (activity data vs coefficient), and IPCC reference table or equation. ",
+          "Variable names match the ", tags$strong("IPCC Inventory Software"),
+          " v2.95 nomenclature directly.")
+      ,
       bslib::card(
-        bslib::card_header("Parameter definitions (with IPCC Software equivalent)"),
+        bslib::card_header("Parameter definitions"),
         bslib::card_body(DT::DTOutput("definitions_table"))
       )
     ),
@@ -273,6 +255,20 @@ app_ui <- function() {
           "Choose your IPCC guidelines version. The parameter table on the right shows the loaded data -- ",
           "you can click on any cell to edit values directly. Check the validation panel at the bottom left to ",
           "ensure your data is complete and valid before proceeding to the next tab.",
+          tags$br(), tags$br(),
+          # R1.9: MMS sub-category broadcast guidance prominent in the app
+          tags$strong("Manure Management Systems (MMS) — sub-category broadcast: "),
+          tags$em("if all sub-categories of the same cattle_type+aggregation_level use the same MMS allocation, "),
+          tags$em("you can leave the "), tags$code("sub_category"),
+          tags$em(" column blank in the Manure_Management sheet — values will apply to every sub-category in that group. "),
+          tags$em("Otherwise, fill in one block per sub-category."),
+          tags$br(),
+          # R1.10: MMS dropdown by IPCC version
+          tags$strong("MMS list and IPCC version: "),
+          tags$em("the template ships with all 12 MMS types from IPCC 2006 + 2019 Refinement combined. "),
+          tags$em("Validation enforces version-appropriate options based on your "),
+          tags$code("ipcc_version"),
+          tags$em(" choice in Inventory_Metadata. Entries marked '(2019)' (anaerobic_digester, aerobic_treatment, burned_for_fuel, solid_storage_covered) are only valid when ipcc_version = 2019_refinement."),
           tags$br(), tags$br(),
           # T1.6: clarify the data model
           tags$strong("How values, uncertainty and bounds relate: "),
@@ -453,7 +449,7 @@ app_ui <- function() {
               radioButtons("corr_group_scope", "Apply correlations within:",
                            choices = c(
                              "All AD parameters"                     = "all",
-                             "Population-related only (cattle_pop, live_weight, mature_weight, weight_gain)" = "population",
+                             "Population-related only (N, W, MW, WG)" = "population",
                              "Intake / feed-quality only (DE_pct, CP_pct, Cfi, Ca, etc.)"      = "intake"
                            ),
                            selected = "all"),
@@ -464,7 +460,7 @@ app_ui <- function() {
               div(class = "info-panel",
                   tags$strong("IPCC-guidance preset: "),
                   "applies a sparse correlation matrix with only well-documented structural pairs ",
-                  "(e.g. live_weight ↔ mature_weight, milk_yield ↔ milk_fat). ",
+                  "(e.g. W ↔ MW, Milk ↔ Fat). ",
                   "All other pairs are zero. Use this when you have no time series but want some realism beyond independence.")
             ),
             conditionalPanel(
@@ -519,10 +515,13 @@ app_ui <- function() {
           "The tool will sample all parameters from their distributions and run the IPCC equation chain ",
           "thousands of times. Use 10,000 iterations for reliable results (1,000 for quick testing). ",
           tags$br(), tags$br(),
-          tags$strong("Results appear in this same tab"), " once the simulation completes — scroll down ",
-          "to see the summary cards, distribution histogram, decomposition chart, and by-system / by-category breakdowns. ",
-          "Use Tab 7 (Sensitivity) and Tab 8 (IPCC Report) for deeper drill-downs."),
-      bslib::layout_columns(
+          tags$strong("Once the simulation completes, this tab will switch to the results view."),
+          " Use the ", tags$em("Back to settings"), " button at the top of the results to change inputs and re-run. ",
+          "Tab 7 (Sensitivity) and Tab 8 (IPCC Report) provide deeper drill-downs."),
+      # R1.5: view toggle — output.sim_view is "settings" or "results"
+      conditionalPanel(
+        condition = "output.sim_view != 'results'",
+        bslib::layout_columns(
         col_widths = c(4, 8),
         bslib::card(
           bslib::card_header("Simulation Settings"),
@@ -535,7 +534,8 @@ app_ui <- function() {
                                     "AR5 (CH4=28, N2O=265)" = "AR5",
                                     "AR6 (CH4=27.9, N2O=273)" = "AR6"),
                         selected = "AR5"),
-            # T1.12: emission source selector
+            # T1.12 / R1.4: emission source selector — none ticked by default,
+            # forcing the user to make an explicit choice before running.
             checkboxGroupInput("emission_sources", "Emission sources to include",
                                choices = c(
                                  "Enteric fermentation CH4"      = "enteric_ch4",
@@ -544,11 +544,12 @@ app_ui <- function() {
                                  "Manure management N2O indirect"= "manure_n2o_indirect",
                                  "Pasture deposition N2O"        = "pasture_n2o"
                                ),
-                               selected = c("enteric_ch4", "manure_ch4",
-                                            "manure_n2o_direct", "manure_n2o_indirect",
-                                            "pasture_n2o")),
-            div(style = "font-size:0.78rem; color:#666; margin-top:-8px; margin-bottom:8px;",
-                tags$em("All sources are included by default. Uncheck a source to exclude it from the totals (the calculation still runs but its contribution is zeroed in CH4 / N2O / CO2eq sums).")),
+                               selected = character(0)),
+            div(style = "font-size:0.78rem; color:#92400E; background:#FEF3C7; padding:8px 10px; border-radius:6px; margin-bottom:8px;",
+                icon("exclamation-triangle"),
+                tags$strong(" Tick at least one source above"),
+                " — the simulation cannot run without an explicit selection. ",
+                tags$em("(Most users tick all 5 for a full inventory.)")),
             hr(),
             # E1, E3: IPCC software-aligned optional inputs (collapsible)
             tags$details(
@@ -583,12 +584,16 @@ app_ui <- function() {
             verbatimTextOutput("sim_log")
           )
         )
-      ),
+      )
+      ),  # close R1.5 conditionalPanel for settings
 
-      # ==== Results section (merged into Tab 5 per B2) ====
+      # ==== Results section (merged into Tab 5 per B2 / R1.5) ====
       conditionalPanel(
-        condition = "output.sim_complete == true",
-        tags$hr(style = "margin: 24px 12px;"),
+        condition = "output.sim_view == 'results'",
+        div(style = "margin: 12px 16px;",
+            actionButton("show_settings_btn", HTML("&#8592; Back to settings"),
+                         class = "btn-outline-secondary",
+                         icon = icon("arrow-left"))),
         h3("Simulation results", style = "margin: 8px 16px;"),
         bslib::layout_columns(
           col_widths = c(3, 3, 3, 3),
@@ -634,15 +639,7 @@ app_ui <- function() {
         ),
         uiOutput("comparison_card")
       ),
-      conditionalPanel(
-        condition = "output.sim_complete != true",
-        div(style = "margin: 32px 16px; padding: 24px; text-align: center; background: #F4F8F5; border-radius: 8px; color: #2D6A4F;",
-            icon("chart-line", style = "font-size: 32px;"),
-            tags$h5("Results will appear here", style = "margin-top: 12px;"),
-            tags$p("Click ", tags$strong("Run Monte Carlo Simulation"),
-                   " above to populate this section with histograms, decomposition, and per-system breakdowns.",
-                   style = "color: #666;"))
-      )
+      # R1.5: placeholder removed — settings panel itself shows when sim_view is settings
     ),
 
     # ==================== TAB 7: SENSITIVITY ====================
@@ -713,7 +710,7 @@ app_ui <- function() {
       div(style = "margin: 0 16px 12px; font-size:0.82rem; color:#1B4332; background:#D8F3DC; border-left:3px solid #2D6A4F; padding:10px 12px; border-radius:4px;",
           tags$strong("AD vs EF column convention: "),
           "in this version, ", tags$em("AD"),
-          " = population uncertainty only (cattle_pop), and ", tags$em("EF"),
+          " = population uncertainty only (N), and ", tags$em("EF"),
           " = the per-head emission factor uncertainty driven by the 23 coefficients (live weight, feed quality, ",
           "Ym, Bo, Frac_GASMS, etc.). This matches IPCC Volume 1 Chapter 3 reporting conventions."),
       bslib::card(

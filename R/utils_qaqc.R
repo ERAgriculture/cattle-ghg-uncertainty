@@ -165,6 +165,16 @@ run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global"
     }
 
     # ------------------------------------------------------------------
+    # Check 4b (R1.3): imputation flag — auto-filled from IPCC default
+    # ------------------------------------------------------------------
+    if ("imputed" %in% names(ps) && isTRUE(ps$imputed[i])) {
+      add(grp, p, "imputation", "warn",
+          sprintf(
+            "%s was auto-filled from the IPCC default (%.4g). Please verify before final submission, or replace with country-specific data.",
+            p, mu))
+    }
+
+    # ------------------------------------------------------------------
     # Check 5b (T2.3): fractional parameter with unbounded distribution
     # If a fractional parameter (must lie in [0,1]) uses an unbounded
     # continuous distribution (normal, lognormal), MC samples can fall outside

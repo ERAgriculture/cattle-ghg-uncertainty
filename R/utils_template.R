@@ -20,12 +20,22 @@
 # parse_uploaded_template applies these so existing user templates keep working.
 # New canonical names match the IPCC Inventory Software v2.95 symbols.
 PARAM_ALIASES <- c(
-  "ash"        = "ASH",
-  "DE_pct"     = "DE",
-  "CP_pct"     = "CP",
-  "Ym_pct"     = "Ym",
-  "Frac_GASM"  = "Frac_GASMS",
-  "Frac_LEACH" = "Frac_LEACH_H"
+  # Phase 2 — first batch
+  "ash"          = "ASH",
+  "DE_pct"       = "DE",
+  "CP_pct"       = "CP",
+  "Ym_pct"       = "Ym",
+  "Frac_GASM"    = "Frac_GASMS",
+  "Frac_LEACH"   = "Frac_LEACH_H",
+  # R1.6 — full IPCC alignment per IPCC Inventory Software v2.95
+  "cattle_pop"   = "N",
+  "live_weight"  = "W",
+  "mature_weight"= "MW",
+  "weight_gain"  = "WG",
+  "milk_yield"   = "Milk",
+  "milk_fat"     = "Fat",
+  "protein_milk" = "MilkPR",
+  "C_growth"     = "C"
 )
 
 # ---------------------------------------------------------------------------
@@ -33,15 +43,16 @@ PARAM_ALIASES <- c(
 #                        for pre-populating the Parameters sheet)
 # ---------------------------------------------------------------------------
 PARAM_CATALOGUE <- data.frame(
-  # C1: parameter names IPCC-aligned (DE, CP, Ym, ASH, Frac_GASMS, Frac_LEACH_H).
-  # Older names (DE_pct, CP_pct, etc.) are auto-renamed by parse_uploaded_template via PARAM_ALIASES.
+  # R1.6: parameter names fully IPCC-aligned (per IPCC Inventory Software v2.95).
+  # Older names (cattle_pop, live_weight, DE_pct, etc.) are auto-renamed by
+  # parse_uploaded_template via PARAM_ALIASES so legacy templates still work.
   parameter = c(
-    "cattle_pop","live_weight","mature_weight","weight_gain",
-    "milk_yield","milk_fat","pct_lactating","DE",
-    "Cfi","Ca","C_growth","Cp","hours","CP",
+    "N","W","MW","WG",
+    "Milk","Fat","pct_lactating","DE",
+    "Cfi","Ca","C","Cp","hours","CP",
     "Ym","Bo","ASH","UE",
     "EF3_PRP","Frac_GASMS","EF4","EF5","Frac_LEACH_H",
-    "protein_milk"),
+    "MilkPR"),
   definition = c(
     "Number of animals in this sub-category",
     "Average live body weight of the animals",
@@ -409,7 +420,7 @@ generate_template_openxlsx <- function(filepath, include_example) {
   # Write as label-value pairs (transposed layout — more readable)
   meta_fields <- list(
     list(label="Country / region",         col="country",       req=TRUE,
-         hint="Free text, e.g. Uganda or Zimbabwe-Highveld",      dropdown=NULL),
+         hint="Free text, e.g. Country-X or Region-A",            dropdown=NULL),
     list(label="Inventory year",           col="inventory_year",req=TRUE,
          hint="Integer year, e.g. 2021",                          dropdown=NULL),
     list(label="Livestock species",        col="species",       req=TRUE,
@@ -429,10 +440,10 @@ generate_template_openxlsx <- function(filepath, include_example) {
   apply_style("Inventory_Metadata", s_hdr, rows=1, cols=1:4)
 
   example_vals <- list(
-    country="Uganda", inventory_year=2021, species="cattle_non_dairy",
+    country="Country X", inventory_year=2021, species="cattle_non_dairy",
     ipcc_version="2006",
-    prepared_by="MAAIF Uganda",
-    notes="Example inventory — Uganda pastoral system")
+    prepared_by="National GHG Inventory Team",
+    notes="Hypothetical example inventory — replace with your country's data.")
 
   for (i in seq_along(meta_fields)) {
     f <- meta_fields[[i]]
@@ -534,7 +545,7 @@ generate_template_openxlsx <- function(filepath, include_example) {
   n_params <- nrow(PARAM_CATALOGUE)
   DATA_START <- 4   # first data row
 
-  # Example values: activity data from Uganda survey, EFs from IPCC defaults
+  # Example values: hypothetical Country X activity data + IPCC defaults
   # Blank template: activity data blank, EFs pre-filled with IPCC defaults
   ex_values <- c(500000, 275, 300, 0.10, 4, 4, 0.60, 55,
                  0.386, 0.17, 0.8, 0.10, 0, 10,
@@ -565,7 +576,7 @@ generate_template_openxlsx <- function(filepath, include_example) {
 
     row_data <- list(
       cattle_type       = if (include_example) "dairy"                      else "dairy",
-      aggregation_level = if (include_example) "Eastern Uganda – pastoral" else "Region_or_system_name",
+      aggregation_level = if (include_example) "Country X – smallholder dairy" else "Region_or_system_name",
       sub_category      = if (include_example) "cows"                       else "sub_category_name",
       parameter         = PARAM_CATALOGUE$parameter[i],
       definition        = PARAM_CATALOGUE$definition[i],
@@ -579,7 +590,7 @@ generate_template_openxlsx <- function(filepath, include_example) {
       upper             = NA,  # formula below
       param_type        = PARAM_CATALOGUE$param_type[i],
       ipcc_ref          = PARAM_CATALOGUE$ipcc_ref[i],
-      data_source       = if (include_example) "IPCC default / Uganda survey" else ""
+      data_source       = if (include_example) "IPCC default / hypothetical Country X" else ""
     )
 
     # Write each column
@@ -734,7 +745,7 @@ generate_template_openxlsx <- function(filepath, include_example) {
   if (include_example) {
     manure_data <- data.frame(
       cattle_type=c("dairy","dairy"),
-      aggregation_level=c("Eastern Uganda \u2013 pastoral","Eastern Uganda \u2013 pastoral"),
+      aggregation_level=c("Country X \u2013 smallholder dairy","Country X \u2013 smallholder dairy"),
       sub_category=c("cows","cows"),
       mms_type=c("pasture","solid_storage"),
       fraction_pct=c(70,30),
@@ -778,9 +789,10 @@ generate_template_openxlsx <- function(filepath, include_example) {
   # =========================================================================
   openxlsx::addWorksheet(wb, "Parameter_TimeSeries", tabColour = "#40916C",
                          gridLines = TRUE)
-  ts_params <- c("cattle_pop", "live_weight", "mature_weight", "weight_gain",
-                 "milk_yield", "milk_fat", "pct_lactating", "DE_pct",
-                 "CP_pct", "protein_milk")
+  # R1.6: time-series uses IPCC names (parser still aliases legacy names on upload)
+  ts_params <- c("N", "W", "MW", "WG",
+                 "Milk", "Fat", "pct_lactating", "DE",
+                 "CP", "MilkPR")
   ts_units <- c("head", "kg", "kg", "kg/day",
                 "kg/head/day", "%", "fraction (0-1)", "%", "%", "%")
   ts_desc  <- c("No. of animals", "Avg. live body weight", "Mature body weight",
@@ -820,7 +832,7 @@ generate_template_openxlsx <- function(filepath, include_example) {
           "When you upload this template in Tab 1, the app automatically computes a Pearson",
           "correlation matrix and uses it in Monte Carlo sampling (Tab 4 > Activity Data).",
           "You do NOT need every column - absent parameters are treated as uncorrelated (r=0).",
-          "Delete the Uganda example rows and replace with your data.",
+          "Delete the Country X example rows and replace with your data.",
           "Minimum: 2 numeric columns and 5 rows.")
   } else {
     paste("CORRELATIONS: Fill in one row per year for each parameter you have historical data for.",
@@ -861,17 +873,17 @@ generate_template_openxlsx <- function(filepath, include_example) {
   if (include_example) {
     ts_ex <- data.frame(
       year         = 2013:2022,
-      cattle_pop   = c(4320000, 4410000, 4480000, 4530000, 4490000,
+      N            = c(4320000, 4410000, 4480000, 4530000, 4490000,
                        4560000, 4620000, 4670000, 4720000, 4790000),
-      live_weight  = c(278, 275, 272, 270, 274, 271, 268, 273, 276, 274),
-      mature_weight= c(302, 300, 300, 299, 301, 300, 298, 301, 302, 300),
-      weight_gain  = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-      milk_yield   = c(3.9, 4.1, 4.0, 3.8, 4.2, 4.0, 3.9, 4.1, 4.0, 4.3),
-      milk_fat     = c(3.9, 4.0, 4.1, 3.9, 4.0, 4.0, 4.1, 4.0, 3.9, 4.1),
+      W            = c(278, 275, 272, 270, 274, 271, 268, 273, 276, 274),
+      MW           = c(302, 300, 300, 299, 301, 300, 298, 301, 302, 300),
+      WG           = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+      Milk         = c(3.9, 4.1, 4.0, 3.8, 4.2, 4.0, 3.9, 4.1, 4.0, 4.3),
+      Fat          = c(3.9, 4.0, 4.1, 3.9, 4.0, 4.0, 4.1, 4.0, 3.9, 4.1),
       pct_lactating= c(0.59, 0.61, 0.60, 0.58, 0.62, 0.60, 0.59, 0.61, 0.60, 0.62),
-      DE_pct       = c(54.5, 55.0, 55.5, 54.0, 55.5, 55.0, 54.5, 56.0, 55.0, 55.5),
-      CP_pct       = c(9.8, 10.0, 10.2, 9.6, 10.3, 10.0, 9.9, 10.4, 10.1, 10.2),
-      protein_milk = c(3.2, 3.3, 3.3, 3.2, 3.4, 3.3, 3.2, 3.4, 3.3, 3.4)
+      DE           = c(54.5, 55.0, 55.5, 54.0, 55.5, 55.0, 54.5, 56.0, 55.0, 55.5),
+      CP           = c(9.8, 10.0, 10.2, 9.6, 10.3, 10.0, 9.9, 10.4, 10.1, 10.2),
+      MilkPR       = c(3.2, 3.3, 3.3, 3.2, 3.4, 3.3, 3.2, 3.4, 3.3, 3.4)
     )
     ts_n_ex <- nrow(ts_ex)
     openxlsx::writeData(wb, "Parameter_TimeSeries", ts_ex,
@@ -898,7 +910,7 @@ generate_template_openxlsx <- function(filepath, include_example) {
 
   TS_NOTE_ROW <- TS_BLANK_END + 2
   ts_note <- if (include_example) {
-    "Add more rows above if needed. Delete rows 5-14 (Uganda example) and replace with your own data."
+    "Add more rows above if needed. Delete rows 5-14 (Country X example) and replace with your own data."
   } else {
     "Add more rows above if needed. Enter one row per year, starting from row 5."
   }
@@ -914,7 +926,7 @@ generate_template_openxlsx <- function(filepath, include_example) {
   if (FALSE) { # dead block — kept only so unicode – below doesn't break parse
     pop_example_dead <- data.frame(
       cattle_type="dairy",
-      aggregation_level="Eastern Uganda \u2013 pastoral",
+      aggregation_level="Country X \u2013 smallholder dairy",
       sub_category="cows",
       "2018"=450000L,"2019"=460000L,"2020"=470000L,
       "2021"=480000L,"2022"=490000L,"2023"=500000L,
@@ -1154,7 +1166,7 @@ generate_template_basic <- function(filepath, include_example) {
   params <- if (include_example) {
     data.frame(
       cattle_type="dairy",
-      aggregation_level="Eastern Uganda \u2013 pastoral",
+      aggregation_level="Country X \u2013 smallholder dairy",
       sub_category="cows",
       parameter=PARAM_CATALOGUE$parameter,
       definition=PARAM_CATALOGUE$definition,
@@ -1167,7 +1179,7 @@ generate_template_basic <- function(filepath, include_example) {
       lower=NA_real_, upper=NA_real_,
       param_type=PARAM_CATALOGUE$param_type,
       ipcc_ref=PARAM_CATALOGUE$ipcc_ref,
-      data_source="IPCC default / Uganda survey",
+      data_source="IPCC default / hypothetical Country X",
       stringsAsFactors=FALSE)
   } else {
     is_ef <- PARAM_CATALOGUE$param_type == "coefficient"
@@ -1255,8 +1267,12 @@ parse_uploaded_template <- function(path) {
         .name_repair = "unique")),
       error = function(e) NULL)
   }
-  expected_param_names <- c("year", "cattle_pop", "live_weight", "milk_yield",
-                            "DE", "DE_pct", "CP", "CP_pct")
+  expected_param_names <- c("year",
+                            # New IPCC-aligned names
+                            "N", "W", "Milk", "DE", "CP", "MW", "WG", "Fat",
+                            # Legacy fallbacks
+                            "cattle_pop", "live_weight", "milk_yield",
+                            "DE_pct", "CP_pct")
   population <- NULL
   if (!is.null(ts_sheet)) {
     for (sk in 0:3) {

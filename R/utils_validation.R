@@ -11,9 +11,10 @@ validate_param_specs <- function(param_specs) {
     return(list(valid = FALSE, errors = errors, warnings = warnings))
   }
 
-  pop_rows <- param_specs$parameter == "cattle_pop"
+  # R1.6: accept both legacy "cattle_pop" and new IPCC name "N"
+  pop_rows <- param_specs$parameter %in% c("N", "cattle_pop")
   if (any(param_specs$mean[pop_rows] < 0, na.rm = TRUE))
-    errors <- c(errors, "Cattle population cannot be negative")
+    errors <- c(errors, "Cattle population (N) cannot be negative")
 
   de_rows <- param_specs$parameter == "DE_pct"
   if (any(param_specs$mean[de_rows] > 100 | param_specs$mean[de_rows] < 0, na.rm = TRUE))
@@ -79,18 +80,28 @@ validate_inventory_metadata <- function(meta) {
   list(valid = length(errors) == 0, errors = errors, warnings = warnings)
 }
 
-# Validate Manure_Management rows (fractions sum to 100, controlled MMS types)
-validate_manure_sheet <- function(manure_df) {
+# Validate Manure_Management rows (fractions sum to 100, controlled MMS types).
+# R1.10: when `meta` is supplied, MMS list is filtered to the selected IPCC version.
+validate_manure_sheet <- function(manure_df, meta = NULL) {
   errors <- character()
   warnings <- character()
   if (is.null(manure_df) || nrow(manure_df) == 0)
     return(list(valid = TRUE, errors = errors, warnings = warnings))
 
-  # TT.3: MMS list expanded to cover IPCC 2006 + 2019 Refinement
-  valid_mms <- if (exists("MMS_DEFAULTS")) MMS_DEFAULTS$id else
+  # TT.3 + R1.10: MMS list filtered by IPCC version when version is provided.
+  # The MMS_DEFAULTS data.frame has a `versions` column listing which IPCC editions
+  # recognise each system; `get_mms_for_version()` filters accordingly.
+  ipcc_v <- if (!is.null(meta) && "ipcc_version" %in% names(meta))
+    meta$ipcc_version else "2006"
+  valid_mms <- if (exists("get_mms_for_version")) {
+    get_mms_for_version(ipcc_v)$id
+  } else if (exists("MMS_DEFAULTS")) {
+    MMS_DEFAULTS$id
+  } else {
     c("pasture", "daily_spread", "solid_storage", "solid_storage_covered",
       "dry_lot", "deep_bedding", "liquid_slurry", "composting", "lagoon",
       "anaerobic_digester", "aerobic_treatment", "burned_for_fuel")
+  }
   if ("mms_type" %in% names(manure_df)) {
     bad <- !(manure_df$mms_type %in% valid_mms)
     if (any(bad))
@@ -223,14 +234,18 @@ ensure_completeness <- function(param_specs, catalogue = PARAM_CATALOGUE) {
                distribution = dist_lut[[p]],
                param_type = type_lut[[p]],
                ipcc_ref = ref_lut[[p]],
-               data_source = "AUTO-FILLED (IPCC default)")),
+               data_source = "AUTO-FILLED (IPCC default)",
+               imputed = TRUE)),  # R1.3: flag for visibility downstream
         stringsAsFactors = FALSE)
       added_rows[[length(added_rows) + 1]] <- new_row
     }
   }
 
+  # R1.3: ensure 'imputed' column exists across all rows
+  if (!"imputed" %in% names(param_specs))
+    param_specs$imputed <- FALSE
+
   if (length(added_rows) > 0) {
-    # Coerce all auto-fill rows to match the existing param_specs columns
     target_cols <- names(param_specs)
     fill_df <- do.call(rbind, lapply(added_rows, function(r) {
       missing_cols <- setdiff(target_cols, names(r))

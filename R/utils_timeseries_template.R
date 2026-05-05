@@ -107,10 +107,11 @@ generate_timeseries_template <- function(filepath) {
   wr(16, 2, "COLUMN GUIDE", s_h2)
 
   col_guide <- data.frame(
-    Parameter = c("year", "cattle_pop", "live_weight", "mature_weight",
-                  "weight_gain", "milk_yield", "milk_fat", "pct_lactating",
-                  "DE_pct", "CP_pct", "protein_milk",
-                  "Cfi", "Ca", "C_growth", "Cp", "hours"),
+    # R1.6: IPCC-aligned names
+    Parameter = c("year", "N", "W", "MW",
+                  "WG", "Milk", "Fat", "pct_lactating",
+                  "DE", "CP", "MilkPR",
+                  "Cfi", "Ca", "C", "Cp", "hours"),
     Unit = c("(non-numeric)", "head", "kg", "kg",
              "kg/day", "kg/head/day", "%", "fraction 0-1",
              "%", "%", "%",
@@ -177,9 +178,10 @@ generate_timeseries_template <- function(filepath) {
   openxlsx::addWorksheet(wb, "TimeSeries", tabColour = "#40916C",
                           gridLines = TRUE)
 
-  params <- c("cattle_pop", "live_weight", "mature_weight", "weight_gain",
-              "milk_yield", "milk_fat", "pct_lactating", "DE_pct",
-              "CP_pct", "protein_milk")
+  # R1.6: IPCC-aligned names
+  params <- c("N", "W", "MW", "WG",
+              "Milk", "Fat", "pct_lactating", "DE",
+              "CP", "MilkPR")
 
   units <- c("head", "kg", "kg", "kg/day",
              "kg/head/day", "%", "fraction (0-1)", "%",
@@ -230,24 +232,24 @@ generate_timeseries_template <- function(filepath) {
 
   DATA_START <- 4
 
-  # Example data: 10 years of Uganda-like values with realistic year-to-year variation
+  # Example data: 10 years of hypothetical Country X values with realistic year-to-year variation
   set.seed(42)
   years <- 2013:2022
   n_ex  <- length(years)
 
   ex <- data.frame(
     year         = years,
-    cattle_pop   = round(c(4320000, 4410000, 4480000, 4530000, 4490000,
+    N            = round(c(4320000, 4410000, 4480000, 4530000, 4490000,
                             4560000, 4620000, 4670000, 4720000, 4790000)),
-    live_weight  = round(c(278, 275, 272, 270, 274, 271, 268, 273, 276, 274), 1),
-    mature_weight= round(c(302, 300, 300, 299, 301, 300, 298, 301, 302, 300), 1),
-    weight_gain  = round(c(0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00), 2),
-    milk_yield   = round(c(3.9, 4.1, 4.0, 3.8, 4.2, 4.0, 3.9, 4.1, 4.0, 4.3), 2),
-    milk_fat     = round(c(3.9, 4.0, 4.1, 3.9, 4.0, 4.0, 4.1, 4.0, 3.9, 4.1), 2),
+    W            = round(c(278, 275, 272, 270, 274, 271, 268, 273, 276, 274), 1),
+    MW           = round(c(302, 300, 300, 299, 301, 300, 298, 301, 302, 300), 1),
+    WG           = round(c(0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00), 2),
+    Milk         = round(c(3.9, 4.1, 4.0, 3.8, 4.2, 4.0, 3.9, 4.1, 4.0, 4.3), 2),
+    Fat          = round(c(3.9, 4.0, 4.1, 3.9, 4.0, 4.0, 4.1, 4.0, 3.9, 4.1), 2),
     pct_lactating= round(c(0.59, 0.61, 0.60, 0.58, 0.62, 0.60, 0.59, 0.61, 0.60, 0.62), 3),
-    DE_pct       = round(c(54.5, 55.0, 55.5, 54.0, 55.5, 55.0, 54.5, 56.0, 55.0, 55.5), 1),
-    CP_pct       = round(c(9.8, 10.0, 10.2, 9.6, 10.3, 10.0, 9.9, 10.4, 10.1, 10.2), 1),
-    protein_milk = round(c(3.2, 3.3, 3.3, 3.2, 3.4, 3.3, 3.2, 3.4, 3.3, 3.4), 2)
+    DE           = round(c(54.5, 55.0, 55.5, 54.0, 55.5, 55.0, 54.5, 56.0, 55.0, 55.5), 1),
+    CP           = round(c(9.8, 10.0, 10.2, 9.6, 10.3, 10.0, 9.9, 10.4, 10.1, 10.2), 1),
+    MilkPR       = round(c(3.2, 3.3, 3.3, 3.2, 3.4, 3.3, 3.2, 3.4, 3.3, 3.4), 2)
   )
 
   openxlsx::writeData(wb, "TimeSeries", ex,

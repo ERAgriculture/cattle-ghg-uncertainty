@@ -47,7 +47,7 @@ MMS_DEFAULTS <- data.frame(
 ## Used by run_qaqc() benchmark check to flag values that deviate strongly from
 ## the closest matching regional default. Falls back to "global" if no match.
 IPCC_DEFAULTS_BY_REGION <- data.frame(
-  parameter   = c(rep("live_weight", 6), rep("milk_yield", 6),
+  parameter   = c(rep("W", 6), rep("Milk", 6),
                   rep("DE", 6), rep("Ym", 6), rep("Bo", 6)),
   region      = rep(c("africa","asia","europe","americas","oceania","global"), 5),
   default_val = c(
@@ -109,7 +109,7 @@ SPECIES_LABELS <- c(
   buffalo = "Buffalo"
 )
 
-# Production systems (informed by Uganda/Zimbabwe inventories + IPCC Table 10A.1/10A.2)
+# Production systems (informed by hypothetical-country inventories + IPCC Table 10A.1/10A.2)
 PRODUCTION_SYSTEMS <- c(
   "pastoral", "agro_pastoral", "semi_intensive_dairy", "intensive_dairy",
   "extensive_ranching", "semi_intensive_beef", "intensive_beef",
@@ -152,7 +152,7 @@ ANIMAL_SUBCATEGORY_LABELS <- c(
 # Sex categories
 SEX_OPTIONS <- c("female", "male", "mixed")
 
-# Age class categories (harmonised with Uganda/Zimbabwe templates)
+# Age class categories (harmonised with hypothetical-country templates)
 AGE_CLASSES <- c("adult_>3yr", "young_1-3yr", "calf_<1yr", "mixed")
 AGE_CLASS_LABELS <- c(
   "adult_>3yr" = "Adult (>3 years)",
@@ -277,8 +277,8 @@ generate_uganda_example <- function() {
     cattle_type       = rep("dairy", 12),
     aggregation_level = rep("Country X \u2013 smallholder dairy", 12),
     sub_category      = rep("cows", 12),
-    parameter = c("cattle_pop", "live_weight", "mature_weight", "weight_gain",
-                   "milk_yield", "milk_fat", "DE", "Cfi", "Ca", "Cp",
+    parameter = c("N", "W", "MW", "WG",
+                   "Milk", "Fat", "DE", "Cfi", "Ca", "Cp",
                    "Ym", "Bo"),
     mean = c(500000, 275, 300, 0, 4, 4, 55, 0.386, 0.17, 0.10, 6.5, 0.10),
     uncertainty_pct = c(10, 15, 10, 0, 20, 10, 10, 5, 20, 15, 15, 20),
@@ -298,8 +298,8 @@ generate_country_y_example <- function() {
     cattle_type       = rep("non_dairy", 11),
     aggregation_level = rep("Country Y \u2013 pastoral rangeland", 11),
     sub_category      = rep("breeding_cows", 11),
-    parameter = c("cattle_pop", "live_weight", "mature_weight", "weight_gain",
-                   "milk_yield", "DE", "Cfi", "Ca", "Cp",
+    parameter = c("N", "W", "MW", "WG",
+                   "Milk", "DE", "Cfi", "Ca", "Cp",
                    "Ym", "Bo"),
     mean = c(2400000, 230, 260, 0.05, 1.5, 50, 0.322, 0.36, 0.10, 7.0, 0.10),
     uncertainty_pct = c(15, 20, 15, 50, 40, 15, 5, 25, 25, 20, 25),

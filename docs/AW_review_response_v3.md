@@ -101,6 +101,33 @@ All four strategic divergences have been adopted with the recommended approach. 
 
 ---
 
+## Round 4 status (May 2026, beta-tester pass 2)
+
+| Item | Status |
+|---|---|
+| R1.1 Time-series correlation now applied to coefficient block (the "AD-only = cattle_pop" architecture left no place for it). Fix in `app_server.R` systems_data builder. | ✅ Done |
+| R1.2 Excel template fully anonymised — all "Uganda" / "MAAIF Uganda" / "Eastern Uganda – pastoral" replaced with "Country X" / generic placeholders | ✅ Done |
+| R1.3 Imputation visibility — `imputed` column added to `param_specs`; auto-filled rows render in red bold via `DT::formatStyle()`; new "imputation" QA/QC entry warns on every imputed row | ✅ Done |
+| R1.4 Emission source checkboxes default to none; Run is blocked with explicit error if zero ticked | ✅ Done |
+| R1.5 Simulate ↔ Results flip with "← Back to settings" button. `output$sim_view` toggles between `"settings"` and `"results"` panels | ✅ Done |
+| R1.6 Full IPCC variable rename — `cattle_pop`→`N`, `live_weight`→`W`, `mature_weight`→`MW`, `weight_gain`→`WG`, `milk_yield`→`Milk`, `milk_fat`→`Fat`, `protein_milk`→`MilkPR`, `C_growth`→`C`. PARAM_ALIASES auto-translates legacy templates | ✅ Done |
+| R1.7 Definitions tab simplified — dropped "IPCC Inventory Software" column (variable name now IS the IPCC name), renamed "Our column" → "Variable name" | ✅ Done |
+| R1.8 Removed IPCC classification mapping table (Sector / Category / Geographical zone / Subdivision) from Definitions tab | ✅ Done |
+| R1.9 MMS sub-category broadcast guidance prominent in Tab 1 info-panel | ✅ Done |
+| R1.10 MMS validation now version-aware via `validate_manure_sheet(manure_df, meta)` — invalid MMS for the chosen IPCC version are flagged | ✅ Done |
+| R1.11 Single-year vs Trend radio on Home tab; selecting "trend" + Run redirects to Tab 9 | ✅ Done |
+
+### Asks awaiting your guidance
+
+- **R1.12** Per-MMS column structure (EF4, EF5, Frac_LEACH per-MMS variants from IPCC 2019)
+- **R1.13** Per-MMS Frac variants — `calc_indirect_n2o_mm` rewrite
+- **R1.14** Trend correlations — IPCC 2019 §3.22 fully/partially/not correlated between years
+- **R1.15** Correlations not based on time series — what alternative source? Expert elicitation upload? Cross-parameter from inventory documentation?
+
+These are listed at the bottom of the plan file for tracking.
+
+---
+
 ## What's left to finalise v2 (small, fast)
 
 Items that should land before declaring v2 stable, beyond beta-tester signoff:
