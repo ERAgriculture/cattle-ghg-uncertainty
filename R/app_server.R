@@ -496,9 +496,27 @@ app_server <- function(input, output, session) {
               manure_key <- make_group_key(manure)
               mms_rows   <- manure[manure_key == sg, ]
               if (nrow(mms_rows) > 0) {
-                mms_fracs <- setNames(mms_rows$fraction_pct / 100, mms_rows$mms_type)
-                mcf_vals  <- setNames(mms_rows$MCF_pct / 100,      mms_rows$mms_type)
-                ef3_vals  <- setNames(mms_rows$EF3,                mms_rows$mms_type)
+                # Defensive coercion in case Excel stored these as text
+                fp_num   <- suppressWarnings(as.numeric(mms_rows$fraction_pct))
+                mcf_num  <- suppressWarnings(as.numeric(mms_rows$MCF_pct))
+                ef3_num  <- suppressWarnings(as.numeric(mms_rows$EF3))
+                mms_fracs <- setNames(fp_num / 100,  mms_rows$mms_type)
+                mcf_vals  <- setNames(mcf_num / 100, mms_rows$mms_type)
+                ef3_vals  <- setNames(ef3_num,       mms_rows$mms_type)
+                # Drop any rows that didn't coerce (NA fraction → useless)
+                mms_fracs <- mms_fracs[!is.na(mms_fracs)]
+                mcf_vals  <- mcf_vals[names(mms_fracs)]
+                ef3_vals  <- ef3_vals[names(mms_fracs)]
+                # Replace any leftover NAs in MCF/EF3 with defaults rather than
+                # crashing the simulation
+                mcf_vals[is.na(mcf_vals)] <- 0.015
+                ef3_vals[is.na(ef3_vals)] <- 0.005
+                # Final guard: if all MMS rows were unparsable, use defaults
+                if (length(mms_fracs) == 0) {
+                  mms_fracs <- default_mms_fracs
+                  mcf_vals  <- default_mcf_vals
+                  ef3_vals  <- default_ef3_vals
+                }
               } else {
                 mms_fracs <- default_mms_fracs
                 mcf_vals  <- default_mcf_vals

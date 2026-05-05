@@ -1241,22 +1241,45 @@ parse_uploaded_template <- function(path) {
   manure   <- read_sheet_smart("Manure_Management",
                                c("mms_type", "fraction_pct"))
 
-  # Parameter_TimeSeries: row 1 = param names, rows 2-3 = desc/units (skip), rows 4+ = data.
+  # Parameter_TimeSeries: the main template has 4 header rows (banner + parameter
+  # names + descriptions + units), data starts row 5. The standalone time-series
+  # template has 3 header rows. Try both skip values and pick the one that yields
+  # parameter-name column headers we recognise.
   # Also accept old "Population_TimeSeries" name for backwards compatibility.
   ts_sheet <- if ("Parameter_TimeSeries" %in% sheet_names) "Parameter_TimeSeries" else
                if ("Population_TimeSeries" %in% sheet_names) "Population_TimeSeries" else NULL
-  population <- if (!is.null(ts_sheet)) {
+  read_ts_with_skip <- function(skip_n) {
     tryCatch(
       as.data.frame(readxl::read_excel(
-        path, sheet = ts_sheet, col_names = TRUE, skip = 0,
+        path, sheet = ts_sheet, col_names = TRUE, skip = skip_n,
         .name_repair = "unique")),
       error = function(e) NULL)
-  } else NULL
+  }
+  expected_param_names <- c("year", "cattle_pop", "live_weight", "milk_yield",
+                            "DE", "DE_pct", "CP", "CP_pct")
+  population <- NULL
+  if (!is.null(ts_sheet)) {
+    for (sk in 0:3) {
+      df <- read_ts_with_skip(sk)
+      if (is.null(df)) next
+      if (any(expected_param_names %in% names(df))) {
+        population <- df
+        break
+      }
+    }
+    # Fall back to skip=0 if nothing matched
+    if (is.null(population)) population <- read_ts_with_skip(0)
+  }
 
-  # Detect new-style sheet (row 1 = parameter names used as col headers by readxl)
   corr_matrix_from_ts <- NULL
   if (!is.null(population) && ncol(population) >= 2) {
-    # Skip description/unit rows: if second row is non-numeric text, drop rows until numeric
+    # Apply legacy parameter-name aliases to column names
+    if (exists("PARAM_ALIASES")) {
+      hits <- names(population) %in% names(PARAM_ALIASES)
+      if (any(hits))
+        names(population)[hits] <- PARAM_ALIASES[names(population)[hits]]
+    }
+    # Skip description/unit rows: drop leading rows where the year column is not numeric
     num_check <- suppressWarnings(as.numeric(population[[1]]))
     first_data <- which(!is.na(num_check))[1]
     if (!is.na(first_data) && first_data > 1)
@@ -1265,7 +1288,10 @@ parse_uploaded_template <- function(path) {
     population[] <- lapply(population, function(x) suppressWarnings(as.numeric(x)))
     numeric_cols <- sapply(population, function(x) sum(!is.na(x)) >= 5)
     pop_numeric  <- population[, numeric_cols, drop = FALSE]
-    if (sum(numeric_cols) >= 2 && nrow(pop_numeric) >= 5) {
+    # Drop the year column from the correlation matrix — not a parameter
+    if ("year" %in% names(pop_numeric))
+      pop_numeric$year <- NULL
+    if (ncol(pop_numeric) >= 2 && nrow(pop_numeric) >= 5) {
       tryCatch({
         cm <- cor(pop_numeric, use = "complete.obs")
         corr_matrix_from_ts <- as.matrix(
@@ -1352,8 +1378,12 @@ parse_uploaded_template <- function(path) {
   if (!is.null(manure) && nrow(manure) > 0) {
     if (!"Bo" %in% names(manure)) manure$Bo <- 0.10
     manure$Bo[is.na(manure$Bo)] <- 0.10
-    # Ensure numeric MCF and EF3
-    for (nm in c("MCF_pct","EF3","lower_mcf","upper_mcf","lower_ef3","upper_ef3")) {
+    # Ensure numeric — fraction_pct was missing from this list which caused
+    # "non-numeric argument to binary operator" when systems_data tried to do
+    # `mms_rows$fraction_pct / 100` after upload.
+    for (nm in c("fraction_pct","MCF_pct","EF3","Bo",
+                 "lower_mcf","upper_mcf","lower_ef3","upper_ef3",
+                 "uncertainty_pct_mcf","uncertainty_pct_ef3")) {
       if (nm %in% names(manure))
         manure[[nm]] <- suppressWarnings(as.numeric(manure[[nm]]))
     }
