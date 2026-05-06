@@ -52,14 +52,21 @@ app_server <- function(input, output, session) {
     # T0.3 + B1: distinct example datasets per country selection
     if (name == "uganda") {
       rv$param_specs <- fill_bounds(generate_uganda_example())
-      rv$sim_log <- "Country X (hypothetical dairy smallholder) example data loaded — 12 parameters, dairy / cows.\n"
+      # R2.2: built-in example now ships with synthetic 5-year time-series so
+      # that Tab 4's "From template (auto)" correlation mode works without
+      # requiring a separate Excel upload.
+      rv$population  <- generate_uganda_timeseries()
+      rv$corr_matrix <- compute_corr_from_population(rv$population)
+      rv$sim_log <- "Country X (hypothetical dairy smallholder) example data loaded — 12 parameters, dairy / cows; 5-year synthetic time-series populated for correlation auto-mode.\n"
     } else if (name == "zimbabwe") {
       rv$param_specs <- fill_bounds(generate_country_y_example())
-      rv$sim_log <- "Country Y (hypothetical pastoral non-dairy) example data loaded — 11 parameters, non_dairy / breeding_cows.\n"
+      rv$population  <- generate_country_y_timeseries()
+      rv$corr_matrix <- compute_corr_from_population(rv$population)
+      rv$sim_log <- "Country Y (hypothetical pastoral non-dairy) example data loaded — 11 parameters, non_dairy / breeding_cows; 5-year synthetic time-series populated for correlation auto-mode.\n"
     }
     rv$has_custom_upload <- FALSE
     rv$upload_status     <- list(type = "success",
-                                 message = sprintf("%s example loaded — %d parameters",
+                                 message = sprintf("%s example loaded — %d parameters (with example time-series)",
                                    if (name == "uganda") "Country X" else "Country Y",
                                    nrow(rv$param_specs)))
   }
@@ -139,23 +146,71 @@ app_server <- function(input, output, session) {
     dt
   })
 
-  # T3.2: quick-set buttons to apply common distribution settings
+  # T3.2 / Round 6a #2: quick-set buttons toggle on / undo on second click.
+  # On first click, snapshot current rows then apply the preset.
+  # On second click, restore the snapshot and clear it. The button label flips
+  # between the apply/undo wording in `quickset_normal_label` /
+  # `quickset_pert_label` so the user can see which state it is in.
   observeEvent(input$set_all_normal, {
     req(rv$param_specs)
-    ad <- rv$param_specs$param_type == "activity_data"
-    rv$param_specs$distribution[ad]    <- "normal"
-    rv$param_specs$uncertainty_pct[ad] <- 15
-    rv$param_specs <- fill_bounds(.recompute_bounds(rv$param_specs, which(ad)))
-    showNotification("Set all activity-data parameters to Normal ±15%",
-                     type = "message", duration = 4)
+    if (!is.null(rv$quickset_normal_snapshot)) {
+      rv$param_specs <- rv$quickset_normal_snapshot
+      rv$quickset_normal_snapshot <- NULL
+      showNotification("Reverted activity-data preset (restored previous values).",
+                       type = "message", duration = 4)
+    } else {
+      rv$quickset_normal_snapshot <- rv$param_specs
+      ad <- rv$param_specs$param_type == "activity_data"
+      rv$param_specs$distribution[ad]    <- "normal"
+      rv$param_specs$uncertainty_pct[ad] <- 15
+      rv$param_specs <- fill_bounds(.recompute_bounds(rv$param_specs, which(ad)))
+      showNotification("Set all activity-data parameters to Normal ±15% (click again to undo).",
+                       type = "message", duration = 4)
+    }
   })
   observeEvent(input$set_all_pert, {
     req(rv$param_specs)
-    ef <- rv$param_specs$param_type == "coefficient"
-    rv$param_specs$distribution[ef] <- "pert"
-    showNotification("Set all emission-factor parameters to PERT",
-                     type = "message", duration = 4)
+    if (!is.null(rv$quickset_pert_snapshot)) {
+      rv$param_specs <- rv$quickset_pert_snapshot
+      rv$quickset_pert_snapshot <- NULL
+      showNotification("Reverted coefficient PERT preset (restored previous values).",
+                       type = "message", duration = 4)
+    } else {
+      rv$quickset_pert_snapshot <- rv$param_specs
+      ef <- rv$param_specs$param_type == "coefficient"
+      rv$param_specs$distribution[ef] <- "pert"
+      showNotification("Set all coefficients to PERT (click again to undo).",
+                       type = "message", duration = 4)
+    }
   })
+
+  # If the user edits the parameter table directly after applying a preset,
+  # clear the snapshot so the next click is a fresh apply rather than an
+  # accidental revert that would discard their edits.
+  observeEvent(input$param_table_cell_edit, {
+    rv$quickset_normal_snapshot <- NULL
+    rv$quickset_pert_snapshot   <- NULL
+  })
+  observeEvent(input$uncertainty_table_cell_edit, {
+    rv$quickset_normal_snapshot <- NULL
+    rv$quickset_pert_snapshot   <- NULL
+  })
+
+  # Dynamic button labels (apply / undo) for the quick-set actions.
+  output$quickset_normal_label <- renderText({
+    if (!is.null(rv$quickset_normal_snapshot))
+      "Undo: restore previous activity-data settings"
+    else
+      "Set all activity-data params to Normal ±15%"
+  })
+  outputOptions(output, "quickset_normal_label", suspendWhenHidden = FALSE)
+  output$quickset_pert_label <- renderText({
+    if (!is.null(rv$quickset_pert_snapshot))
+      "Undo: restore previous coefficient settings"
+    else
+      "Set all coefficients to PERT"
+  })
+  outputOptions(output, "quickset_pert_label", suspendWhenHidden = FALSE)
   # Helper: recompute lower/upper from mean and uncertainty_pct for given rows
   .recompute_bounds <- function(ps, rows) {
     for (i in rows) {
@@ -378,6 +433,33 @@ app_server <- function(input, output, session) {
     })
   })
 
+  # Round 6a #5: render the "Compare with/without correlations" checkbox
+  # disabled when no correlations are selected on Tab 4 — the comparison
+  # run would otherwise be identical to the main run and waste compute time.
+  output$run_comparison_ui <- renderUI({
+    no_ad_corr <- is.null(input$corr_mode) || input$corr_mode == "none"
+    no_ef_corr <- is.null(input$ef_corr_mode) || input$ef_corr_mode == "none"
+    if (no_ad_corr && no_ef_corr) {
+      tagList(
+        tags$div(
+          style = "opacity:0.55; pointer-events:none;",
+          checkboxInput("run_comparison",
+                        "Compare with/without correlations",
+                        value = FALSE)
+        ),
+        tags$div(
+          style = "font-size:0.78rem; color:#92400E; background:#FEF3C7; padding:6px 10px; border-radius:4px; margin-top:-6px; margin-bottom:8px;",
+          icon("info-circle"),
+          tags$em(" No correlations selected on Tab 4 — comparison would be identical to the main run, so this option is disabled. Enable a correlation mode to activate it.")
+        )
+      )
+    } else {
+      checkboxInput("run_comparison",
+                    "Compare with/without correlations",
+                    value = FALSE)
+    }
+  })
+
   output$corr_heatmap <- plotly::renderPlotly({
     if (is.null(rv$corr_matrix)) {
       plotly::plot_ly() %>%
@@ -394,9 +476,17 @@ app_server <- function(input, output, session) {
 
   output$corr_ts_status <- renderUI({
     if (is.null(rv$corr_matrix)) {
+      # R2.2: message disambiguates "no template loaded yet" from "template
+      # has no time-series sheet". The built-in examples now include
+      # time-series, so the most likely cause of seeing this card is a real
+      # upload that didn't include the Parameter_TimeSeries sheet.
       div(style = "font-size:0.85rem; color:#92400E; background:#FEF3C7; padding:8px 10px; border-radius:6px;",
-          icon("exclamation-triangle"), " No time series data found. Fill in the ",
-          tags$strong("Parameter_TimeSeries"), " sheet in your input template and re-upload.")
+          icon("exclamation-triangle"),
+          " No time-series data in the loaded inventory. To enable auto-correlation, ",
+          "upload a template with a populated ",
+          tags$strong("Parameter_TimeSeries"),
+          " sheet, or load Country X / Country Y from the dropdown ",
+          "(both ship with example time-series).")
     } else {
       n <- nrow(rv$corr_matrix)
       nms <- paste(rownames(rv$corr_matrix), collapse = ", ")
@@ -442,8 +532,19 @@ app_server <- function(input, output, session) {
   observeEvent(input$run_sim, {
     req(rv$param_specs)
 
+    # Round 6a #1: block run if no analysis mode selected on the Home tab.
+    if (is.null(input$analysis_mode) || !nzchar(input$analysis_mode)) {
+      showNotification(
+        "Please choose an analysis mode (Single year or Trend) on the Home tab before running.",
+        type = "error", duration = 10)
+      rv$sim_log <- paste0(rv$sim_log,
+        "Run blocked: no analysis mode selected on Home tab.\n")
+      bslib::nav_select(id = "nav", selected = "Home", session = session)
+      return()
+    }
+
     # R1.11: redirect trend-mode runs to Tab 9
-    if (!is.null(input$analysis_mode) && input$analysis_mode == "trend") {
+    if (input$analysis_mode == "trend") {
       showNotification(
         "Trend mode selected on the Home page. Go to Tab 9 (Trend) and upload a multi-year CSV to run a trend analysis. The single-year run on this tab is for analysis_mode = 'single'.",
         type = "warning", duration = 12)
@@ -697,9 +798,12 @@ app_server <- function(input, output, session) {
           setProgress(1.00, detail = "Done.")
           rv$sim_running <- FALSE
 
-          # B2: results appear inline in the same Simulate tab — no nav needed
-          showNotification("Simulation complete. Scroll down to see results.",
-                           type = "message", duration = 5)
+          # Round 6a #6: flip directly to the results panel on every successful
+          # run (not just the first one) and surface a short toast that doesn't
+          # mention scrolling — the page already swaps to the results view.
+          rv$sim_view <- "results"
+          showNotification("Simulation complete — results displayed.",
+                           type = "message", duration = 4)
 
         }, error = function(e) {
           rv$sim_log   <- paste0(rv$sim_log, "ERROR: ", e$message, "\n")
@@ -718,11 +822,13 @@ app_server <- function(input, output, session) {
   })
   outputOptions(output, "sim_complete", suspendWhenHidden = FALSE)
 
-  # R1.5: view toggle for Tab 5 — switch to results when sim finishes
+  # R1.5 / Round 6a #6: switch to results view when the simulation completes.
+  # The flip is forced directly in the run handler, so this observer is now
+  # only a fallback for the first-run case.
   observe({
     if (!is.null(rv$mc_results) && !is.null(rv$uncertainty)) {
       isolate({
-        if (rv$sim_view == "settings") rv$sim_view <- "results"
+        rv$sim_view <- "results"
       })
     }
   })
@@ -1064,17 +1170,64 @@ app_server <- function(input, output, session) {
     )
   })
 
-  # T8.4: per-source histograms embedded in IPCC Report
+  # T8.4 / Round 6a #8: per-source histograms embedded in IPCC Report.
+  # Bug fix: previous version referenced `inv$enteric_ch4_total` etc., but the
+  # top-level inventory data.frame only carries cross-system aggregates
+  # (`total_enteric_ch4`, `total_manure_ch4`, `total_direct_n2o`,
+  # `total_indirect_n2o`). Indirect N2O is the sum of MM-indirect and PRP-
+  # indirect across systems, so we now rebuild per-source vectors by summing
+  # the per-system samples directly. Sources with zero variance (because the
+  # source was not ticked, or because all systems sum to zero for that source)
+  # are skipped with a placeholder annotation rather than rendered as a flat
+  # bar at zero.
   output$report_source_histograms <- plotly::renderPlotly({
     req(rv$mc_results)
-    inv <- rv$mc_results$inventory
+    by_sys <- rv$mc_results$by_system
+    if (length(by_sys) == 0)
+      return(plotly::plot_ly() |>
+               plotly::layout(title = "No simulation data available."))
+
+    .sum_across <- function(field) {
+      vals <- lapply(by_sys, function(s) s$results[[field]])
+      vals <- Filter(function(v) !is.null(v) && length(v) > 0, vals)
+      if (length(vals) == 0) return(NULL)
+      Reduce(`+`, vals)
+    }
+    enteric_ch4 <- .sum_across("enteric_ch4_total")
+    manure_ch4  <- .sum_across("manure_ch4_total")
+    mm_n2o_dir  <- .sum_across("direct_n2o_mm_total")
+    mm_n2o_ind  <- .sum_across("indirect_n2o_mm_total")
+    prp_dir     <- .sum_across("direct_n2o_prp_total")
+    prp_ind     <- .sum_across("indirect_n2o_prp_total")
+    pasture_n2o <- if (!is.null(prp_dir) && !is.null(prp_ind)) prp_dir + prp_ind
+                   else if (!is.null(prp_dir)) prp_dir
+                   else prp_ind
+
     sources <- list(
-      "Enteric CH4 (t)"        = inv$enteric_ch4_total,
-      "Manure CH4 (t)"         = inv$manure_ch4_total,
-      "Manure N2O direct (t)"  = inv$direct_n2o_mm_total,
-      "Manure N2O indirect (t)"= inv$indirect_n2o_mm_total,
-      "Pasture N2O (t)"        = inv$direct_n2o_prp_total + inv$indirect_n2o_prp_total
+      "Enteric CH4 (t)"         = enteric_ch4,
+      "Manure CH4 (t)"          = manure_ch4,
+      "Manure N2O direct (t)"   = mm_n2o_dir,
+      "Manure N2O indirect (t)" = mm_n2o_ind,
+      "Pasture N2O (t)"         = pasture_n2o
     )
+
+    has_variance <- function(v) !is.null(v) && length(v) > 1 &&
+      sd(v, na.rm = TRUE) > .Machine$double.eps
+    keep <- vapply(sources, has_variance, logical(1))
+    if (!any(keep)) {
+      return(plotly::plot_ly() |>
+               plotly::layout(
+                 title = "No source has variance to display.",
+                 annotations = list(list(
+                   text = paste("None of the ticked emission sources produced",
+                                "variable output. Ensure at least one source",
+                                "is selected on Tab 5 and that the relevant",
+                                "parameters have non-zero uncertainty."),
+                   showarrow = FALSE, x = 0.5, y = 0.5,
+                   xref = "paper", yref = "paper"))))
+    }
+    sources <- sources[keep]
+
     plots <- lapply(seq_along(sources), function(i) {
       plotly::plot_ly(x = sources[[i]], type = "histogram", nbinsx = 40,
                       marker = list(color = "#2D6A4F"),
@@ -1082,18 +1235,44 @@ app_server <- function(input, output, session) {
         plotly::layout(xaxis = list(title = names(sources)[i]),
                        yaxis = list(title = ""))
     })
-    plotly::subplot(plots, nrows = 2, margin = 0.06,
+    plotly::subplot(plots,
+                    nrows  = max(1, ceiling(length(plots) / 3)),
+                    margin = 0.06,
                     titleX = TRUE, titleY = FALSE)
   })
 
-  # T8.4: tornado chart embedded in IPCC Report (always vs total_co2e)
+  # T8.4 / Round 6a #8: tornado chart embedded in IPCC Report (vs total_co2e).
+  # Bug fix: when sensitivity_analysis() returns an empty list (no input
+  # parameters had variance), or when SRC's lm() coefficients column is named
+  # `Estimate` rather than `src`, the previous code crashed on
+  # `top10[[val_col]]`. We now defend against an empty sensitivity object,
+  # missing column, or zero rows with friendly placeholder annotations.
   output$report_tornado <- plotly::renderPlotly({
-    req(rv$sensitivity)
+    placeholder <- function(msg) {
+      plotly::plot_ly() |>
+        plotly::layout(
+          xaxis = list(visible = FALSE),
+          yaxis = list(visible = FALSE),
+          annotations = list(list(
+            text = msg, showarrow = FALSE,
+            x = 0.5, y = 0.5, xref = "paper", yref = "paper",
+            font = list(size = 14, color = "#555"))))
+    }
+    if (is.null(rv$sensitivity) || length(rv$sensitivity) == 0)
+      return(placeholder("Sensitivity analysis not yet run. Run a simulation on Tab 5 first."))
+
     sens <- rv$sensitivity$src %||% rv$sensitivity$prcc
-    if (is.null(sens) || nrow(sens) == 0) return(plotly::plot_ly())
-    val_col <- if ("src" %in% names(sens)) "src" else "prcc"
-    top10 <- head(sens, 10)
-    top10 <- top10[order(top10[[val_col]]), ]
+    if (is.null(sens) || !is.data.frame(sens) || nrow(sens) == 0)
+      return(placeholder("No input parameters had variance — tornado chart cannot be built."))
+
+    val_col <- if ("src" %in% names(sens)) "src"
+               else if ("prcc" %in% names(sens)) "prcc"
+               else NULL
+    if (is.null(val_col) || !"parameter" %in% names(sens))
+      return(placeholder("Sensitivity result is missing the expected columns."))
+
+    top10 <- utils::head(sens, 10)
+    top10 <- top10[order(top10[[val_col]]), , drop = FALSE]
     plotly::plot_ly(y = factor(top10$parameter, levels = top10$parameter),
                     x = top10[[val_col]], type = "bar", orientation = "h",
                     marker = list(color = ifelse(top10[[val_col]] > 0,
@@ -1162,9 +1341,23 @@ app_server <- function(input, output, session) {
   rv_trend <- reactiveValues(results = NULL, message = NULL)
 
   observeEvent(input$run_trend, {
-    req(input$trend_upload, rv$param_specs)
+    req(rv$param_specs)
     tryCatch({
-      df <- read.csv(input$trend_upload$datapath, stringsAsFactors = FALSE)
+      # R2.3: prefer the Parameter_TimeSeries already parsed from the main
+      # template (rv$population) so the user does not have to upload a
+      # separate CSV. The CSV input remains as an explicit override for
+      # users who want to bring different trend data.
+      df <- if (!is.null(input$trend_upload) &&
+                !is.null(input$trend_upload$datapath) &&
+                nzchar(input$trend_upload$datapath)) {
+        read.csv(input$trend_upload$datapath, stringsAsFactors = FALSE)
+      } else if (!is.null(rv$population) && ncol(rv$population) >= 2) {
+        trend_df_from_population(rv$population, rv$param_specs)
+      } else {
+        stop("No time-series data available. Either load a template that ",
+             "includes a Parameter_TimeSeries sheet (or one of the built-in ",
+             "examples), or upload a long-format CSV here.")
+      }
       n_iter <- if (!is.null(input$trend_n_iter)) input$trend_n_iter else 2000
       res <- run_trend_analysis(df, base_specs = rv$param_specs, n_iter = n_iter)
       rv_trend$results <- res
@@ -1182,9 +1375,21 @@ app_server <- function(input, output, session) {
 
   output$trend_status <- renderUI({
     if (is.null(rv_trend$message)) {
-      div(style = "font-size:0.85rem; color:#555;",
-          icon("info-circle"),
-          " Upload a long-format CSV and click Run.")
+      # R2.3: report whether the trend run will use template TS or a CSV override
+      if (!is.null(rv$population) && ncol(rv$population) >= 2) {
+        n_yrs <- length(unique(rv$population$year))
+        n_par <- ncol(rv$population) - 1
+        div(style = "font-size:0.85rem; color:#1B4332; background:#D8F3DC; padding:8px 10px; border-radius:6px;",
+            icon("check-circle"),
+            sprintf(" Using time-series from loaded template — %d years × %d parameters. ",
+                    n_yrs, n_par),
+            "Click Run to compute the trend, or upload a CSV above to override.")
+      } else {
+        div(style = "font-size:0.85rem; color:#555;",
+            icon("info-circle"),
+            " No time-series in the loaded template. Upload a long-format CSV and click Run, ",
+            "or load Country X / Country Y from Tab 1 to use the example time-series.")
+      }
     } else {
       bg <- if (rv_trend$message$type == "success") "#D8F3DC" else "#FECACA"
       fg <- if (rv_trend$message$type == "success") "#1B4332" else "#7F1D1D"

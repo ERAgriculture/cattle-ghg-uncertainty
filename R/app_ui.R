@@ -37,13 +37,23 @@ app_ui <- function() {
           div(
             style = "display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;",
             tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;", "IPCC 2006/2019"),
+                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;",
+                      "IPCC Tier 2 · Approach 2"),
             tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;", "Monte Carlo Approach 2"),
+                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;",
+                      "Monte Carlo — 10,000+ runs"),
             tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;", "Open Source"),
+                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;",
+                      "Activity data + coefficient uncertainty"),
             tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;", "Enteric + Manure CH4 + N2O")
+                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;",
+                      "CH₄ + N₂O · 5 emission sources"),
+            tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;",
+                      "IPCC Table 3.3 export-ready"),
+            tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
+                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;",
+                      "Sensitivity tornado + decomposition")
           )
         ),
 
@@ -170,10 +180,15 @@ app_ui <- function() {
             radioButtons("analysis_mode",
               label = NULL,
               choices = c(
-                "Single year — quantify uncertainty in one inventory year (default)" = "single",
+                "Single year — quantify uncertainty in one inventory year" = "single",
                 "Trend — compare uncertainty across multiple years (uses Tab 9)"   = "trend"
               ),
-              selected = "single"),
+              selected = character(0)),
+            div(id = "analysis_mode_warning",
+                style = "background:#FEF3C7; border-left:3px solid #F59E0B; padding:8px 10px; margin-top:8px; font-size:0.85rem; color:#92400E; border-radius:4px;",
+                icon("exclamation-triangle"),
+                tags$strong(" Selection required: "),
+                "pick Single year or Trend before moving on. The Run button on Tab 5 will block until a mode is chosen."),
             tags$p(tags$em("IPCC Volume 1 Chapter 3 recommends running uncertainty analysis ",
                            "for both the first and last year of an inventory and quantifying the ",
                            "trend uncertainty. Use 'Trend' if you have multi-year data; use ",
@@ -252,9 +267,17 @@ app_ui <- function() {
       div(class = "info-panel", style = "margin: 16px;",
           tags$strong("What to do: "),
           "Select an example country dataset from the dropdown, or upload your own data using the Excel template. ",
-          "Choose your IPCC guidelines version. The parameter table on the right shows the loaded data -- ",
+          "The parameter table on the right shows the loaded data -- ",
           "you can click on any cell to edit values directly. Check the validation panel at the bottom left to ",
           "ensure your data is complete and valid before proceeding to the next tab.",
+          tags$br(), tags$br(),
+          tags$strong("IPCC guidelines version: "),
+          "this is read directly from the ",
+          tags$code("ipcc_version"), " field in the ",
+          tags$code("Inventory_Metadata"),
+          " sheet of your uploaded template (allowed values: ",
+          tags$code("2006"), " or ", tags$code("2019_refinement"),
+          "). The example datasets ship with this set; you do not need to choose anything in the app.",
           tags$br(), tags$br(),
           # R1.9: MMS sub-category broadcast guidance prominent in the app
           tags$strong("Manure Management Systems (MMS) — sub-category broadcast: "),
@@ -384,15 +407,23 @@ app_ui <- function() {
           )),
       bslib::card(
         bslib::card_header("Distribution & Uncertainty Specification"),
-        bslib::card_body(
-          DT::DTOutput("uncertainty_table"),
-          hr(),
+        bslib::card_body(DT::DTOutput("uncertainty_table")),
+        # R2.1: quick-set buttons moved into card_footer so they remain visible
+        # regardless of how tall the DT grows (pageLength = 20 was pushing them
+        # below the fold). Labels rewritten in IPCC-aligned wording.
+        bslib::card_footer(
           fluidRow(
-            column(4, actionButton("set_all_normal", "Set All AD to Normal +/-15%",
-                                   class = "btn-outline-success btn-sm")),
-            column(4, actionButton("set_all_pert", "Set All EF to PERT",
-                                   class = "btn-outline-primary btn-sm"))
-          )
+            column(5, actionButton(
+              "set_all_normal",
+              label = textOutput("quickset_normal_label", inline = TRUE),
+              class = "btn-outline-success btn-sm w-100")),
+            column(5, actionButton(
+              "set_all_pert",
+              label = textOutput("quickset_pert_label", inline = TRUE),
+              class = "btn-outline-primary btn-sm w-100"))
+          ),
+          tags$p(style = "font-size:0.78rem; color:#666; margin-top:6px;",
+                 tags$em("Click a preset to apply; click the same button again to undo and restore your previous values."))
         )
       )
     ),
@@ -515,8 +546,8 @@ app_ui <- function() {
           "The tool will sample all parameters from their distributions and run the IPCC equation chain ",
           "thousands of times. Use 10,000 iterations for reliable results (1,000 for quick testing). ",
           tags$br(), tags$br(),
-          tags$strong("Once the simulation completes, this tab will switch to the results view."),
-          " Use the ", tags$em("Back to settings"), " button at the top of the results to change inputs and re-run. ",
+          tags$strong("Once the simulation completes, this tab switches to the results view automatically."),
+          " Use the ", tags$em("Back to settings"), " button at the top of the results to change inputs and re-run — the next run will switch back to results when it finishes. ",
           "Tab 7 (Sensitivity) and Tab 8 (IPCC Report) provide deeper drill-downs."),
       # R1.5: view toggle — output.sim_view is "settings" or "results"
       conditionalPanel(
@@ -570,7 +601,10 @@ app_ui <- function() {
             hr(),
             checkboxInput("run_decomposition", "Run uncertainty decomposition (AD/EF/Combined)",
                           value = TRUE),
-            checkboxInput("run_comparison", "Compare with/without correlations", value = FALSE),
+            # Round 6a #5: rendered server-side so we can grey it out when no
+            # correlations are selected on Tab 4 (the comparison would be
+            # identical, so the toggle is meaningless).
+            uiOutput("run_comparison_ui"),
             hr(),
             actionButton("run_sim", "Run Monte Carlo Simulation",
                          class = "run-btn w-100", icon = icon("play")),
@@ -771,22 +805,40 @@ app_ui <- function() {
       div(class = "info-panel", style = "margin: 16px;",
           tags$strong("What to do: "),
           "Quantify how total emissions change between inventory years and how much of that change is uncertain. ",
-          "Upload a long-format CSV with columns ", tags$code("year, parameter, mean, uncertainty_pct"),
-          " (one row per parameter per year), then click ", tags$strong("Run Trend Analysis"),
-          ". The tool runs a separate Monte Carlo simulation for each year and overlays the results."),
+          tags$br(), tags$br(),
+          # R2.3: template-first flow — same Parameter_TimeSeries sheet that
+          # feeds Tab 4's auto-correlation now also drives this tab.
+          tags$strong("Where the data comes from: "),
+          "this tab reads the ", tags$code("Parameter_TimeSeries"),
+          " sheet that you already filled in your main inventory template ",
+          "(or loaded via Country X / Country Y). ",
+          "There is no separate upload step in the normal workflow — just click ",
+          tags$strong("Run Trend Analysis"), ". ",
+          "If you want to run the trend on a different dataset without changing your inventory, ",
+          "use the optional CSV override below (long-format: ",
+          tags$code("year, parameter, mean, uncertainty_pct"), ")."),
       bslib::layout_columns(
         col_widths = c(4, 8),
         bslib::card(
           bslib::card_header("Trend input"),
           bslib::card_body(
-            fileInput("trend_upload", "Upload multi-year CSV (year, parameter, mean, uncertainty_pct)",
-                      accept = c(".csv")),
             sliderInput("trend_n_iter", "Iterations per year",
                         min = 500, max = 10000, value = 2000, step = 500),
             actionButton("run_trend", "Run Trend Analysis",
                          class = "run-btn w-100", icon = icon("play")),
             hr(),
-            uiOutput("trend_status")
+            uiOutput("trend_status"),
+            hr(),
+            tags$details(
+              tags$summary(tags$strong("Optional: override with separate CSV")),
+              div(style = "padding: 6px 0;",
+                  fileInput("trend_upload",
+                    "Upload multi-year CSV (year, parameter, mean, uncertainty_pct)",
+                    accept = c(".csv")),
+                  div(style = "font-size:0.78rem; color:#666;",
+                      tags$em("If a CSV is uploaded here, it takes precedence over the template's Parameter_TimeSeries sheet for this run."))
+              )
+            )
           )
         ),
         bslib::card(
