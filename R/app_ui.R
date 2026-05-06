@@ -483,7 +483,7 @@ app_ui <- function() {
             # T4.1 / Tx.2: simplified default UI; manual entry hidden under Advanced
             radioButtons("corr_mode", "Mode",
                          choices = c("No correlations"        = "none",
-                                     "From template (auto)"   = "timeseries",
+                                     "From template (auto, time-series)" = "timeseries",
                                      "IPCC-guidance preset"   = "preset",
                                      "Advanced — manual entry"= "manual"),
                          selected = "none"),
@@ -573,6 +573,16 @@ app_ui <- function() {
             sliderInput("n_iter", "Number of Iterations",
                         min = 1000, max = 50000, value = 10000, step = 1000),
             numericInput("seed", "Random Seed (for reproducibility)", value = 42),
+            # Round 7 T4.21: Dirichlet MMS allocation precision per IPCC 2019
+            # Box 3.1A. Higher concentration = tighter sampling around the user's
+            # stated MMS percentages. 50 ≈ ±5pp jitter on a 50/50 split.
+            # Set to 0 to disable Dirichlet sampling and use deterministic
+            # MMS shares (pre-Round-7 behaviour).
+            numericInput("mms_concentration",
+                          "MMS allocation precision (Dirichlet concentration)",
+                          value = 50, min = 0, max = 10000, step = 10),
+            div(style = "font-size:0.78rem; color:#666; margin-top:-6px; margin-bottom:8px;",
+                tags$em("0 = deterministic (no MMS uncertainty). 50 ≈ ±5pp on a 50/50 split. Higher = tighter around your stated percentages.")),
             selectInput("gwp_version", "GWP Assessment Report",
                         choices = c("AR4 (CH4=25)" = "AR4",
                                     "AR5 (CH4=28, N2O=265)" = "AR5",
@@ -819,7 +829,7 @@ app_ui <- function() {
       icon = icon("chart-line"),
       div(class = "info-panel", style = "margin: 16px;",
           tags$strong("What to do: "),
-          "Quantify how total emissions change between inventory years and how much of that change is uncertain. ",
+          "Year-by-year inventory uncertainty: quantify how total emissions change between years and how much of that change is uncertain. ",
           tags$br(), tags$br(),
           # R2.3: template-first flow — same Parameter_TimeSeries sheet that
           # feeds Tab 4's auto-correlation now also drives this tab.
@@ -839,6 +849,17 @@ app_ui <- function() {
           bslib::card_body(
             sliderInput("trend_n_iter", "Iterations per year",
                         min = 500, max = 10000, value = 2000, step = 500),
+            # Round 7 R1.14: year-to-year correlation per IPCC 2019 Vol 1
+            # Ch 3 §3.2.2.4. Default = full (coefficients reused across years,
+            # AD redrawn). Three-way override available.
+            radioButtons("year_corr", "Year-to-year correlation",
+                          choices = c(
+                            "Fully correlated coefficients (IPCC 2019 default)" = "full",
+                            "Partial (AR(1), ρ=0.7)"                      = "partial",
+                            "Independent (no year-to-year correlation)"          = "none"),
+                          selected = "full"),
+            div(style = "font-size:0.78rem; color:#666; margin-top:-6px; margin-bottom:8px;",
+                tags$em("IPCC 2019 §3.2.2.4: emission factor uncertainties tend to be fully correlated across years, while activity data are usually re-estimated annually. The default reuses the same coefficient draws every year so the trend reflects AD changes only.")),
             actionButton("run_trend", "Run Trend Analysis",
                          class = "run-btn w-100", icon = icon("play")),
             hr(),

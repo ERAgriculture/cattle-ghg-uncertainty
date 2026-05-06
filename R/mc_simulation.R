@@ -5,8 +5,22 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
                                mms_fractions = NULL, mcf_values = NULL, ef3_values = NULL,
                                gwp = "AR5", seed = NULL, ef_corr_matrix = NULL,
                                # E1, E3: optional IPCC software inputs
-                               Tw = 20, pct_calving = 1) {
-  samples <- generate_mc_samples(param_specs, corr_matrix, n_iter, seed, ef_corr_matrix)
+                               Tw = 20, pct_calving = 1,
+                               # Round 7 R1.13: per-MMS Frac_GasMS / Frac_LeachMS
+                               # named vectors. NULL = fall back to IPCC 2019
+                               # defaults inside calc_indirect_n2o_mm.
+                               frac_gas_values = NULL, frac_leach_values = NULL,
+                               # Round 7 T4.3: unified copula across AD + coefficients
+                               unified_corr_matrix = NULL,
+                               # Round 7 R1.14: pre-sampled coefficient block (trend mode)
+                               pre_sampled_coefficients = NULL,
+                               # Round 7 T4.21: per-iteration MMS fractions matrix
+                               # (n_iter x n_mms). When supplied, overrides the scalar
+                               # mms_fractions argument with row i for iteration i.
+                               mms_fractions_matrix = NULL) {
+  samples <- generate_mc_samples(param_specs, corr_matrix, n_iter, seed, ef_corr_matrix,
+                                  unified_corr_matrix = unified_corr_matrix,
+                                  pre_sampled_coefficients = pre_sampled_coefficients)
 
   get_param <- function(name, default = 0) {
     if (name %in% names(samples)) samples[[name]] else rep(default, n_iter)
@@ -53,7 +67,10 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     EF5           = get_param("EF5", 0.0075),
     Frac_LEACH_H  = get_param_alt("Frac_LEACH_H", "Frac_LEACH", 0.02),
     gwp = gwp,
-    Tw = Tw, pct_calving = pct_calving
+    Tw = Tw, pct_calving = pct_calving,
+    frac_gas_values   = frac_gas_values,
+    frac_leach_values = frac_leach_values,
+    mms_fractions_matrix = mms_fractions_matrix
   )
 
   list(samples = samples, results = results)
@@ -77,7 +94,12 @@ run_inventory_simulation <- function(systems_data, n_iter = 10000, gwp = "AR5",
       seed            = if (!is.null(seed)) seed + which(names(systems_data) == sys_name) else NULL,
       ef_corr_matrix  = sys$ef_corr_matrix,
       Tw              = if (!is.null(sys$Tw)) sys$Tw else Tw,
-      pct_calving     = if (!is.null(sys$pct_calving)) sys$pct_calving else pct_calving
+      pct_calving     = if (!is.null(sys$pct_calving)) sys$pct_calving else pct_calving,
+      frac_gas_values   = sys$frac_gas_values,
+      frac_leach_values = sys$frac_leach_values,
+      unified_corr_matrix      = sys$unified_corr_matrix,
+      pre_sampled_coefficients = sys$pre_sampled_coefficients,
+      mms_fractions_matrix     = sys$mms_fractions_matrix
     )
     by_system[[sys_name]] <- sim
   }

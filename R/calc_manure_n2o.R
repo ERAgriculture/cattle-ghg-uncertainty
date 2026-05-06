@@ -33,14 +33,42 @@ calc_direct_n2o_mm <- function(Nex, mms_fractions, ef3_values) {
 }
 
 # Indirect N2O from manure management - kg N2O/head/year
-calc_indirect_n2o_mm <- function(Nex, mms_fractions, frac_gas = 0.20, EF4 = 0.010,
-                                  frac_leach = 0.02, EF5 = 0.0075) {
+# Round 7 R1.13: per-MMS Frac_GasMS and Frac_LeachMS per IPCC 2019 Refinement
+# Vol 4 Ch 10 Eq 10.26 / 10.28. EF4 and EF5 stay broadcast scalars (per IPCC
+# 2019 they are invariant by MMS).
+#
+# Accepts EITHER:
+#   (a) `frac_gas_values` / `frac_leach_values` as named vectors keyed by
+#       mms_type (post-Round-7 calling convention), OR
+#   (b) `frac_gas` / `frac_leach` as scalars (pre-Round-7 broadcast convention,
+#       still accepted for back-compat — the wrapper builds constant vectors).
+calc_indirect_n2o_mm <- function(Nex, mms_fractions,
+                                  frac_gas_values  = NULL,
+                                  frac_leach_values = NULL,
+                                  EF4 = 0.010, EF5 = 0.0075,
+                                  frac_gas   = 0.20,
+                                  frac_leach = 0.02) {
   total <- 0
   for (mms in names(mms_fractions)) {
     if (mms == "pasture") next
     frac <- mms_fractions[mms]
-    total <- total + Nex * frac * frac_gas * EF4 * (44 / 28)
-    total <- total + Nex * frac * frac_leach * EF5 * (44 / 28)
+    fg <- if (!is.null(frac_gas_values) && mms %in% names(frac_gas_values)
+              && !is.na(frac_gas_values[mms])) {
+      frac_gas_values[mms]
+    } else {
+      # NA fallback to IPCC 2019 default per MMS, then to broadcast scalar
+      def <- mms_frac_defaults_2019(mms)
+      if (!is.na(def$frac_gas)) def$frac_gas else frac_gas
+    }
+    fl <- if (!is.null(frac_leach_values) && mms %in% names(frac_leach_values)
+              && !is.na(frac_leach_values[mms])) {
+      frac_leach_values[mms]
+    } else {
+      def <- mms_frac_defaults_2019(mms)
+      if (!is.na(def$frac_leach)) def$frac_leach else frac_leach
+    }
+    total <- total + Nex * frac * fg * EF4 * (44 / 28)
+    total <- total + Nex * frac * fl * EF5 * (44 / 28)
   }
   total
 }

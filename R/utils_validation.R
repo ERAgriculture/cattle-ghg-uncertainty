@@ -133,6 +133,18 @@ validate_manure_sheet <- function(manure_df, meta = NULL) {
     }
   }
 
+  # Round 7 R1.12: per-MMS Frac_GasMS / Frac_LeachMS range checks
+  for (col in c("Frac_GasMS_pct", "Frac_LeachMS_pct")) {
+    if (col %in% names(manure_df)) {
+      v <- suppressWarnings(as.numeric(manure_df[[col]]))
+      bad <- which(!is.na(v) & (v < 0 | v > 100))
+      if (length(bad) > 0) {
+        errors <- c(errors, sprintf("%s out of range [0,100] in row(s): %s",
+                                    col, paste(bad, collapse = ", ")))
+      }
+    }
+  }
+
   list(valid = length(errors) == 0, errors = errors, warnings = warnings)
 }
 
@@ -176,7 +188,8 @@ normalise_param_names <- function(param_specs) {
 # Returns a list with $param_specs (possibly augmented), $auto_filled (data frame
 # of what was added), $message, and $valid (only FALSE if a core param has no
 # default available — genuine error).
-ensure_completeness <- function(param_specs, catalogue = PARAM_CATALOGUE) {
+ensure_completeness <- function(param_specs, catalogue = PARAM_CATALOGUE,
+                                 region = NULL) {
   if (is.null(param_specs) || nrow(param_specs) == 0)
     return(list(valid = FALSE, param_specs = param_specs,
                 auto_filled = NULL, message = "No parameters loaded."))
@@ -190,6 +203,22 @@ ensure_completeness <- function(param_specs, catalogue = PARAM_CATALOGUE) {
   dist_lut     <- setNames(catalogue$suggested_distribution, catalogue$parameter)
   type_lut     <- setNames(catalogue$param_type, catalogue$parameter)
   ref_lut      <- setNames(catalogue$ipcc_ref, catalogue$parameter)
+
+  # Round 7 T2.1: when a region is supplied, prefer the regional default for
+  # the 5 parameters covered by IPCC_DEFAULTS_BY_REGION (W, Milk, DE, Ym, Bo)
+  # before falling back to the global PARAM_CATALOGUE default. Helper exists
+  # since Round 3 G2 but was never wired to ensure_completeness().
+  region_used <- character()
+  if (!is.null(region) && !is.na(region) && nzchar(region) &&
+      exists("get_regional_default")) {
+    for (p in names(defaults_lut)) {
+      reg_val <- get_regional_default(p, region)
+      if (!is.na(reg_val)) {
+        defaults_lut[[p]] <- reg_val
+        region_used <- c(region_used, p)
+      }
+    }
+  }
 
   group_cols <- intersect(c("cattle_type", "aggregation_level", "sub_category"),
                           names(param_specs))
@@ -256,10 +285,15 @@ ensure_completeness <- function(param_specs, catalogue = PARAM_CATALOGUE) {
   }
 
   msg_parts <- character()
-  if (length(added_rows) > 0)
-    msg_parts <- c(msg_parts,
-      sprintf("Auto-filled %d core parameter(s) from IPCC defaults.",
-              length(added_rows)))
+  if (length(added_rows) > 0) {
+    base_msg <- sprintf("Auto-filled %d core parameter(s) from IPCC defaults.",
+                         length(added_rows))
+    if (length(region_used) > 0)
+      base_msg <- paste0(base_msg,
+        sprintf(" Region '%s' applied for: %s.",
+                region, paste(region_used, collapse = ", ")))
+    msg_parts <- c(msg_parts, base_msg)
+  }
   if (length(unfillable) > 0) {
     uf <- vapply(unfillable, function(x) sprintf("%s — %s", x$group, x$parameter),
                  character(1))

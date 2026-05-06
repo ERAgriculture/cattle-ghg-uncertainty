@@ -169,6 +169,18 @@ run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global"
     }
 
     # ------------------------------------------------------------------
+    # Round 7 R1.16: defensive check on user-overridden param_type values.
+    # ------------------------------------------------------------------
+    if ("param_type" %in% names(ps) && !is.na(ps$param_type[i])) {
+      ptype <- tolower(trimws(as.character(ps$param_type[i])))
+      if (!ptype %in% c("activity_data", "coefficient", "emission_factor")) {
+        add(grp, p, "param_type_invalid", "fail",
+            sprintf("param_type = '%s' is not recognised. Use 'activity_data' or 'coefficient'.",
+                    ps$param_type[i]))
+      }
+    }
+
+    # ------------------------------------------------------------------
     # Check 4b (R1.3 / Round 6b): missing parameter — auto-filled from IPCC default
     # Reported as a dedicated "missing" severity so reviewers see exactly which
     # parameters were not supplied and what default value+reference was used.

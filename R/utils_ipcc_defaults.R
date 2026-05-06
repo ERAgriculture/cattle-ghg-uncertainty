@@ -85,6 +85,46 @@ get_mms_for_version <- function(version = "2006") {
   MMS_DEFAULTS[has_version, , drop = FALSE]
 }
 
+## Round 7 R1.12 / R1.13: per-MMS Frac_GasMS and Frac_LeachMS defaults from
+## IPCC 2019 Refinement Vol 4 Ch 10 Tables 10.22 (volatilization) and 10.23
+## (leaching). Returns a list with mean / lower / upper for the two fractions.
+## Uncertainty bounds set at +-50% per Penman et al. (2000) / Monni et al.
+## (2007) for asymmetric N-fraction parameters.
+MMS_FRAC_DEFAULTS_2019 <- data.frame(
+  mms_type = c("pasture", "daily_spread", "solid_storage",
+               "solid_storage_covered", "dry_lot", "deep_bedding",
+               "liquid_slurry", "anaerobic_digester", "composting",
+               "aerobic_treatment", "lagoon", "burned_for_fuel"),
+  frac_gas       = c(0.00, 0.07, 0.45, 0.10, 0.30, 0.30,
+                     0.48, 0.05, 0.65, 0.40, 0.78, 0.00),
+  frac_gas_low   = c(0.00, 0.04, 0.23, 0.05, 0.15, 0.15,
+                     0.24, 0.02, 0.33, 0.20, 0.39, 0.00),
+  frac_gas_high  = c(0.00, 0.10, 0.68, 0.15, 0.45, 0.45,
+                     0.72, 0.08, 0.98, 0.60, 1.00, 0.00),
+  frac_leach     = c(0.00, 0.00, 0.02, 0.02, 0.00, 0.02,
+                     0.00, 0.00, 0.02, 0.00, 0.00, 0.00),
+  frac_leach_low = c(0.00, 0.00, 0.01, 0.01, 0.00, 0.01,
+                     0.00, 0.00, 0.01, 0.00, 0.00, 0.00),
+  frac_leach_high = c(0.00, 0.00, 0.03, 0.03, 0.00, 0.03,
+                      0.00, 0.00, 0.03, 0.00, 0.00, 0.00),
+  stringsAsFactors = FALSE
+)
+
+mms_frac_defaults_2019 <- function(mms_type) {
+  if (length(mms_type) == 1L) {
+    hit <- MMS_FRAC_DEFAULTS_2019[MMS_FRAC_DEFAULTS_2019$mms_type == mms_type, , drop = FALSE]
+    if (nrow(hit) == 0L) {
+      return(list(frac_gas = 0.20, frac_gas_low = 0.10, frac_gas_high = 0.30,
+                  frac_leach = 0.02, frac_leach_low = 0.01, frac_leach_high = 0.03))
+    }
+    return(as.list(hit[1, -1, drop = FALSE]))
+  }
+  # vectorised
+  hit <- MMS_FRAC_DEFAULTS_2019[match(mms_type, MMS_FRAC_DEFAULTS_2019$mms_type), , drop = FALSE]
+  hit$mms_type <- mms_type
+  hit
+}
+
 GWP_VALUES <- list(
   AR4 = list(CH4 = 25, N2O = 298),
   AR5 = list(CH4 = 28, N2O = 265),
@@ -291,6 +331,25 @@ generate_uganda_example <- function() {
   )
 }
 
+# R2.2: synthetic 5-year time-series for Country X. Produced so that loading the
+# built-in example populates rv$population and rv$corr_matrix the same way an
+# Excel upload would, enabling Tab 4's "From template (auto)" mode without a
+# separate file. Trends are illustrative (population grows slowly; weight gain
+# kicks up with feed quality; Ym drifts down as feed improves).
+generate_uganda_timeseries <- function() {
+  data.frame(
+    year       = 2018:2022,
+    N          = c(480000, 488000, 495000, 503000, 510000),
+    W          = c(265, 268, 272, 276, 280),
+    MW         = c(295, 297, 300, 302, 305),
+    Milk       = c(3.6, 3.8, 4.0, 4.2, 4.4),
+    Fat        = c(4.05, 4.0, 4.0, 3.95, 3.95),
+    DE         = c(54.0, 54.5, 55.0, 55.5, 56.0),
+    Ym         = c(6.8, 6.7, 6.5, 6.4, 6.3),
+    stringsAsFactors = FALSE
+  )
+}
+
 # Country Y \u2014 hypothetical pastoral non-dairy beef system (semi-arid rangeland)
 # B1: visibly different from Country X \u2014 non-dairy, smaller animals, no milk.
 generate_country_y_example <- function() {
@@ -308,6 +367,23 @@ generate_country_y_example <- function() {
     lower = NA_real_, upper = NA_real_,
     # D1: only cattle_pop is activity_data; everything else is "coefficient"
     param_type = c("activity_data", rep("coefficient", 10)),
+    stringsAsFactors = FALSE
+  )
+}
+
+# R2.2: synthetic 5-year time-series for Country Y. Reflects pastoral
+# rangeland dynamics: cyclical herd size driven by drought; weight & DE
+# move together with rainfall; Ym slightly anti-correlated with DE.
+generate_country_y_timeseries <- function() {
+  data.frame(
+    year       = 2018:2022,
+    N          = c(2200000, 2350000, 2400000, 2300000, 2450000),
+    W          = c(220, 235, 230, 225, 240),
+    MW         = c(255, 262, 260, 258, 265),
+    WG         = c(0.04, 0.06, 0.05, 0.04, 0.06),
+    Milk       = c(1.4, 1.6, 1.5, 1.4, 1.6),
+    DE         = c(48, 51, 50, 49, 52),
+    Ym         = c(7.2, 6.9, 7.0, 7.1, 6.8),
     stringsAsFactors = FALSE
   )
 }

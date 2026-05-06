@@ -16,6 +16,33 @@
 `%||%` <- function(a, b)
   if (is.null(a) || length(a) == 0 || is.na(a[1]) || !nzchar(as.character(a[1]))) b else a
 
+# R2.2: compute a Pearson correlation matrix (with nearest-PD projection) from
+# a Parameter_TimeSeries-style data frame. Used both by parse_uploaded_template()
+# (real upload path) and by .load_example() in app_server.R so that the built-in
+# Country X / Country Y examples can populate Tab 4's "From template (auto)"
+# correlation mode without requiring a separate upload.
+compute_corr_from_population <- function(population) {
+  if (is.null(population) || ncol(population) < 2) return(NULL)
+  if (exists("PARAM_ALIASES")) {
+    hits <- names(population) %in% names(PARAM_ALIASES)
+    if (any(hits))
+      names(population)[hits] <- PARAM_ALIASES[names(population)[hits]]
+  }
+  num_check  <- suppressWarnings(as.numeric(population[[1]]))
+  first_data <- which(!is.na(num_check))[1]
+  if (!is.na(first_data) && first_data > 1)
+    population <- population[first_data:nrow(population), , drop = FALSE]
+  population[] <- lapply(population, function(x) suppressWarnings(as.numeric(x)))
+  numeric_cols <- vapply(population, function(x) sum(!is.na(x)) >= 5, logical(1))
+  pop_numeric  <- population[, numeric_cols, drop = FALSE]
+  if ("year" %in% names(pop_numeric)) pop_numeric$year <- NULL
+  if (ncol(pop_numeric) < 2 || nrow(pop_numeric) < 5) return(NULL)
+  tryCatch({
+    cm <- cor(pop_numeric, use = "complete.obs")
+    as.matrix(Matrix::nearPD(cm, corr = TRUE)$mat)
+  }, error = function(e) NULL)
+}
+
 # C1: parameter renaming map (legacy → IPCC-aligned).
 # parse_uploaded_template applies these so existing user templates keep working.
 # New canonical names match the IPCC Inventory Software v2.95 symbols.
@@ -694,12 +721,17 @@ generate_template_openxlsx <- function(filepath, include_example) {
   openxlsx::addWorksheet(wb, "Manure_Management", tabColour = "#1B4332",
                          gridLines = TRUE)
 
+  # Round 7 R1.12: 8 new columns for per-MMS Frac_GasMS / Frac_LeachMS
   MM_COLS   <- c("cattle_type","aggregation_level","sub_category",
                  "mms_type","fraction_pct",
                  "MCF_pct","lower_mcf","upper_mcf","distribution_mcf",
                  "EF3","lower_ef3","upper_ef3","distribution_ef3",
-                 "Bo")
-  MM_WIDTHS <- c(14, 20, 16, 18, 12, 10, 10, 10, 15, 10, 10, 10, 15, 8)
+                 "Bo",
+                 "Frac_GasMS_pct","lower_frac_gas","upper_frac_gas","distribution_frac_gas",
+                 "Frac_LeachMS_pct","lower_frac_leach","upper_frac_leach","distribution_frac_leach")
+  MM_WIDTHS <- c(14, 20, 16, 18, 12, 10, 10, 10, 15, 10, 10, 10, 15, 8,
+                 14, 12, 12, 18, 14, 12, 12, 18)
+  MM_NCOL   <- length(MM_COLS)
 
   openxlsx::setColWidths(wb, "Manure_Management",
                          cols=seq_along(MM_COLS), widths=MM_WIDTHS)
@@ -708,16 +740,16 @@ generate_template_openxlsx <- function(filepath, include_example) {
   openxlsx::writeData(wb, "Manure_Management",
     "Enter one row per manure management system (MMS) per sub-category. fraction_pct values for the same cattle_type+aggregation_level+sub_category MUST sum to 100. SUB-CATEGORY HANDLING: if all sub-categories of the same cattle_type+aggregation_level use the same MMS allocation, you may leave sub_category blank — the values will apply to every sub-category in that group. If sub-categories differ (e.g. cows vs calves), provide a separate set of rows per sub-category. Enter MCF values from IPCC Table 10.17 for your climate zone (see Vocab sheet). EF3 from IPCC Table 10.21. For asymmetric distributions, fill lower_mcf/upper_mcf or lower_ef3/upper_ef3 with min/max values.",
     startRow=1, startCol=1, colNames=FALSE)
-  openxlsx::mergeCells(wb, "Manure_Management", cols=1:14, rows=1)
+  openxlsx::mergeCells(wb, "Manure_Management", cols=1:MM_NCOL, rows=1)
   apply_style("Manure_Management",
     mk(fontColour="white", fgFill=C_SECTION, fontSize=9, textDecoration="italic",
        halign="left", valign="center", wrapText=TRUE),
-    rows=1, cols=1:14)
+    rows=1, cols=1:MM_NCOL)
   openxlsx::setRowHeights(wb, "Manure_Management", rows=1, heights=44)
 
   openxlsx::writeData(wb, "Manure_Management",
     as.data.frame(t(MM_COLS)), startRow=2, startCol=1, colNames=FALSE)
-  apply_style("Manure_Management", s_hdr, rows=2, cols=1:14)
+  apply_style("Manure_Management", s_hdr, rows=2, cols=1:MM_NCOL)
 
   hints_mm <- data.frame(
     cattle_type="dairy / other (free text)",
@@ -734,10 +766,18 @@ generate_template_openxlsx <- function(filepath, include_example) {
     upper_ef3="Optional: max value for asymmetric EF3 distribution",
     distribution_ef3="Distribution for EF3 uncertainty — select from dropdown",
     Bo="Max CH4 capacity (m3/kg VS) — IPCC default 0.10",
+    Frac_GasMS_pct="Volatilisation fraction % per MMS — IPCC 2019 Table 10.22",
+    lower_frac_gas="Optional: min for asymmetric Frac_GasMS distribution",
+    upper_frac_gas="Optional: max for asymmetric Frac_GasMS distribution",
+    distribution_frac_gas="Distribution for Frac_GasMS — select from dropdown",
+    Frac_LeachMS_pct="Leaching fraction % per MMS — IPCC 2019 Table 10.23",
+    lower_frac_leach="Optional: min for asymmetric Frac_LeachMS distribution",
+    upper_frac_leach="Optional: max for asymmetric Frac_LeachMS distribution",
+    distribution_frac_leach="Distribution for Frac_LeachMS — select from dropdown",
     stringsAsFactors=FALSE)
   openxlsx::writeData(wb, "Manure_Management", hints_mm, startRow=3, startCol=1,
                       colNames=FALSE)
-  apply_style("Manure_Management", s_note, rows=3, cols=1:14)
+  apply_style("Manure_Management", s_note, rows=3, cols=1:MM_NCOL)
   openxlsx::setRowHeights(wb, "Manure_Management", rows=3, heights=36)
   openxlsx::freezePane(wb, "Manure_Management", firstActiveRow=4)
 
@@ -758,6 +798,20 @@ generate_template_openxlsx <- function(filepath, include_example) {
       upper_ef3=c(NA_real_,NA_real_),
       distribution_ef3=c("pert","pert"),
       Bo=c(0.10,0.10),
+      Frac_GasMS_pct=c(mms_frac_defaults_2019("pasture")$frac_gas * 100,
+                       mms_frac_defaults_2019("solid_storage")$frac_gas * 100),
+      lower_frac_gas=c(mms_frac_defaults_2019("pasture")$frac_gas_low * 100,
+                       mms_frac_defaults_2019("solid_storage")$frac_gas_low * 100),
+      upper_frac_gas=c(mms_frac_defaults_2019("pasture")$frac_gas_high * 100,
+                       mms_frac_defaults_2019("solid_storage")$frac_gas_high * 100),
+      distribution_frac_gas=c("pert","pert"),
+      Frac_LeachMS_pct=c(mms_frac_defaults_2019("pasture")$frac_leach * 100,
+                         mms_frac_defaults_2019("solid_storage")$frac_leach * 100),
+      lower_frac_leach=c(mms_frac_defaults_2019("pasture")$frac_leach_low * 100,
+                         mms_frac_defaults_2019("solid_storage")$frac_leach_low * 100),
+      upper_frac_leach=c(mms_frac_defaults_2019("pasture")$frac_leach_high * 100,
+                         mms_frac_defaults_2019("solid_storage")$frac_leach_high * 100),
+      distribution_frac_leach=c("pert","pert"),
       stringsAsFactors=FALSE)
     openxlsx::writeData(wb, "Manure_Management", manure_data, startRow=4,
                         startCol=1, colNames=FALSE)
@@ -778,10 +832,18 @@ generate_template_openxlsx <- function(filepath, include_example) {
   apply_style("Manure_Management", s_opt,  rows=data_rng, cols=11:12) # lower/upper_ef3
   apply_style("Manure_Management", s_drop, rows=data_rng, cols=13)   # distribution_ef3
   apply_style("Manure_Management", s_opt,  rows=data_rng, cols=14)   # Bo
+  apply_style("Manure_Management", s_req,  rows=data_rng, cols=15)   # Frac_GasMS_pct
+  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=16:17) # lower/upper frac_gas
+  apply_style("Manure_Management", s_drop, rows=data_rng, cols=18)   # distribution_frac_gas
+  apply_style("Manure_Management", s_req,  rows=data_rng, cols=19)   # Frac_LeachMS_pct
+  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=20:21) # lower/upper frac_leach
+  apply_style("Manure_Management", s_drop, rows=data_rng, cols=22)   # distribution_frac_leach
 
   add_validation("Manure_Management", col=4,  rows=data_rng, "mms")
   add_validation("Manure_Management", col=9,  rows=data_rng, "dist")
   add_validation("Manure_Management", col=13, rows=data_rng, "dist")
+  add_validation("Manure_Management", col=18, rows=data_rng, "dist")
+  add_validation("Manure_Management", col=22, rows=data_rng, "dist")
 
   # =========================================================================
   # SHEET: Parameter_TimeSeries  (rows = years, cols = parameters)
@@ -1287,34 +1349,10 @@ parse_uploaded_template <- function(path) {
     if (is.null(population)) population <- read_ts_with_skip(0)
   }
 
-  corr_matrix_from_ts <- NULL
-  if (!is.null(population) && ncol(population) >= 2) {
-    # Apply legacy parameter-name aliases to column names
-    if (exists("PARAM_ALIASES")) {
-      hits <- names(population) %in% names(PARAM_ALIASES)
-      if (any(hits))
-        names(population)[hits] <- PARAM_ALIASES[names(population)[hits]]
-    }
-    # Skip description/unit rows: drop leading rows where the year column is not numeric
-    num_check <- suppressWarnings(as.numeric(population[[1]]))
-    first_data <- which(!is.na(num_check))[1]
-    if (!is.na(first_data) && first_data > 1)
-      population <- population[first_data:nrow(population), , drop = FALSE]
-    # Convert all columns to numeric
-    population[] <- lapply(population, function(x) suppressWarnings(as.numeric(x)))
-    numeric_cols <- sapply(population, function(x) sum(!is.na(x)) >= 5)
-    pop_numeric  <- population[, numeric_cols, drop = FALSE]
-    # Drop the year column from the correlation matrix — not a parameter
-    if ("year" %in% names(pop_numeric))
-      pop_numeric$year <- NULL
-    if (ncol(pop_numeric) >= 2 && nrow(pop_numeric) >= 5) {
-      tryCatch({
-        cm <- cor(pop_numeric, use = "complete.obs")
-        corr_matrix_from_ts <- as.matrix(
-          Matrix::nearPD(cm, corr = TRUE)$mat)
-      }, error = function(e) NULL)
-    }
-  }
+  # R2.2: shared logic moved to compute_corr_from_population() so that the same
+  # path produces a correlation matrix whether the user uploaded a real
+  # template or loaded a built-in example with a synthetic time-series block.
+  corr_matrix_from_ts <- compute_corr_from_population(population)
 
   # For the transposed Inventory_Metadata layout (Field | Value | Hint)
   if (!is.null(metadata) && ncol(metadata) >= 2) {

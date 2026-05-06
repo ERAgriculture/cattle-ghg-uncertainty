@@ -12,7 +12,13 @@ ghg_emissions <- function(
   EF3_PRP, Frac_GASMS, EF4, EF5, Frac_LEACH_H,
   gwp = "AR5",
   # E1, E3: optional IPCC-software-aligned inputs
-  Tw = 20, pct_calving = 1
+  Tw = 20, pct_calving = 1,
+  # Round 7 R1.13: per-MMS Frac_GasMS / Frac_LeachMS named vectors. NULL =
+  # use IPCC 2019 defaults from mms_frac_defaults_2019(). For back-compat with
+  # callers that haven't been updated, the legacy broadcast Frac_GASMS scalar
+  # above is still applied to the manure-management indirect path as a fallback.
+  frac_gas_values   = NULL,
+  frac_leach_values = NULL
 ) {
   # E1: cold-climate Cfi adjustment via Tw
   nem <- calc_nem(live_weight, Cfi, Tw = Tw)
@@ -42,7 +48,12 @@ ghg_emissions <- function(
 
   direct_n2o_mm_head <- calc_direct_n2o_mm(Nex, mms_fractions, ef3_values)
   indirect_n2o_mm_head <- calc_indirect_n2o_mm(
-    Nex, mms_fractions, 0.20, EF4, 0.02, EF5)
+    Nex, mms_fractions,
+    frac_gas_values  = frac_gas_values,
+    frac_leach_values = frac_leach_values,
+    EF4 = EF4, EF5 = EF5,
+    frac_gas = Frac_GASMS, frac_leach = Frac_LEACH_H
+  )
   direct_n2o_prp_head <- calc_direct_n2o_prp(Nex, pct_pasture, EF3_PRP)
   indirect_n2o_prp_head <- calc_indirect_n2o_prp(
     Nex, pct_pasture, Frac_GASMS, EF4, Frac_LEACH_H, EF5)
@@ -86,7 +97,13 @@ ghg_emissions_vec <- function(
   mms_fractions, mcf_values, ef3_values,
   EF3_PRP, Frac_GASMS, EF4, EF5, Frac_LEACH_H,
   gwp = "AR5",
-  Tw = 20, pct_calving = 1
+  Tw = 20, pct_calving = 1,
+  frac_gas_values   = NULL,
+  frac_leach_values = NULL,
+  # Round 7 T4.21: per-iteration MMS allocation matrix (n_iter x n_mms,
+  # rows sum to 1) sampled from a Dirichlet on the simplex. When supplied,
+  # row i is used for iteration i instead of the broadcast scalar mms_fractions.
+  mms_fractions_matrix = NULL
 ) {
   n <- length(cattle_pop)
   results <- data.frame(
@@ -101,16 +118,27 @@ ghg_emissions_vec <- function(
     total_co2e = numeric(n)
   )
 
+  use_dir <- !is.null(mms_fractions_matrix) &&
+             nrow(mms_fractions_matrix) == n &&
+             !is.null(colnames(mms_fractions_matrix))
+
   for (i in seq_len(n)) {
+    mms_i <- if (use_dir) {
+      setNames(as.numeric(mms_fractions_matrix[i, ]), colnames(mms_fractions_matrix))
+    } else {
+      mms_fractions
+    }
     r <- ghg_emissions(
       cattle_pop[i], live_weight[i], weight_gain[i], mature_weight[i],
       milk_yield[i], milk_fat[i], pct_lactating[i],
       hours[i], DE[i], Cfi[i], Ca[i], C_growth[i], Cp[i],
       Ym[i], Bo[i], ASH[i], UE[i], CP[i],
-      mms_fractions, mcf_values, ef3_values,
+      mms_i, mcf_values, ef3_values,
       EF3_PRP[i], Frac_GASMS[i], EF4[i], EF5[i], Frac_LEACH_H[i],
       gwp,
-      Tw = Tw, pct_calving = if (length(pct_calving) > 1) pct_calving[i] else pct_calving
+      Tw = Tw, pct_calving = if (length(pct_calving) > 1) pct_calving[i] else pct_calving,
+      frac_gas_values   = frac_gas_values,
+      frac_leach_values = frac_leach_values
     )
     results$enteric_ch4_total[i] <- r$enteric_ch4_total
     results$manure_ch4_total[i] <- r$manure_ch4_total

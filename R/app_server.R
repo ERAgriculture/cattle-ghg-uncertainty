@@ -456,6 +456,63 @@ app_server <- function(input, output, session) {
     )
   })
 
+  # Round 7 R1.16: persist Tab 3 cell edits (including param_type override)
+  # back into rv$param_specs and cascade bounds the same way the Tab 1 DT does.
+  # Validates that param_type is one of activity_data/coefficient.
+  observeEvent(input$uncertainty_table_cell_edit, {
+    info <- input$uncertainty_table_cell_edit
+    visible_cols <- c("parameter", "mean", "uncertainty_pct", "distribution",
+                      "lower", "upper", "param_type")
+    edit_col <- visible_cols[info$col + 1]
+    row      <- info$row
+    if (is.na(edit_col)) return()
+
+    new_value <- info$value
+    if (edit_col == "param_type") {
+      vt <- tolower(trimws(as.character(new_value)))
+      if (vt == "emission_factor") vt <- "coefficient"  # legacy alias
+      if (!vt %in% c("activity_data", "coefficient")) {
+        showNotification(
+          sprintf("param_type must be 'activity_data' or 'coefficient' — got '%s'. Edit ignored.",
+                  new_value),
+          type = "error", duration = 6)
+        return()
+      }
+      new_value <- vt
+    }
+
+    rv$param_specs[row, edit_col] <- DT::coerceValue(
+      new_value, rv$param_specs[row, edit_col])
+
+    ps   <- rv$param_specs
+    mean <- suppressWarnings(as.numeric(ps$mean[row]))
+    cols <- names(ps)
+
+    # Same cascade rules as the Tab 1 DT (param_table)
+    if (edit_col == "distribution" && identical(ps$distribution[row], "constant")) {
+      if ("uncertainty_pct" %in% cols) ps$uncertainty_pct[row] <- 0
+      if ("lower" %in% cols)            ps$lower[row]            <- mean
+      if ("upper" %in% cols)            ps$upper[row]            <- mean
+    } else if (edit_col %in% c("uncertainty_pct", "mean") &&
+               "uncertainty_pct" %in% cols && !is.na(mean)) {
+      pct <- suppressWarnings(as.numeric(ps$uncertainty_pct[row]))
+      if (!is.na(pct)) {
+        if ("lower" %in% cols) ps$lower[row] <- mean * (1 - pct / 100)
+        if ("upper" %in% cols) ps$upper[row] <- mean * (1 + pct / 100)
+      }
+    } else if (edit_col %in% c("lower", "upper") && !is.na(mean) && mean != 0 &&
+               "uncertainty_pct" %in% cols) {
+      lo <- suppressWarnings(as.numeric(ps$lower[row]))
+      up <- suppressWarnings(as.numeric(ps$upper[row]))
+      if (!is.na(lo) && !is.na(up)) {
+        half <- ((up - lo) / 2) / mean * 100
+        ps$uncertainty_pct[row] <- round(half, 2)
+      }
+    }
+
+    rv$param_specs <- ps
+  })
+
   # Template downloads
   output$download_template <- downloadHandler(
     filename = "uncertainty_template.xlsx",
@@ -468,35 +525,31 @@ app_server <- function(input, output, session) {
 
   # --- CORRELATIONS ---
 
-  # T4.1: IPCC-guidance preset — sparse matrix with documented structural pairs only
+  # T4.1 / Round 7 R1.15: IPCC-guidance preset — sparse matrix with documented
+  # structural pairs only. After Round 7 the preset operates on the **unified**
+  # set of all parameter names (AD + coefficients) so cross-block pairs
+  # like N <-> W (T4.3) flow correctly. Bug fixed in Round 7: prior code
+  # filtered to activity_data names, which after R1.6 left only `N` and made
+  # the preset matrix 1x1 (effectively a no-op for documented pairs like
+  # W <-> MW that are coefficients post-rename).
   observeEvent(input$corr_mode, {
     if (input$corr_mode == "preset") {
-      ad_names <- if (!is.null(rv$param_specs))
-        rv$param_specs$parameter[rv$param_specs$param_type == "activity_data"]
+      all_names <- if (!is.null(rv$param_specs))
+        rv$param_specs$parameter
       else
-        PARAM_CATALOGUE$parameter[PARAM_CATALOGUE$param_type == "activity_data"]
-      if (length(ad_names) < 2) return()
-      m <- diag(length(ad_names))
-      rownames(m) <- colnames(m) <- ad_names
-      pairs <- list(
-        c("W",      "MW",            0.85),
-        c("W",      "WG",             0.40),
-        c("Milk",   "Fat",           -0.30),
-        c("Milk",   "pct_lactating",  0.20),
-        c("DE_pct",        "CP_pct",         0.50),
-        c("DE_pct",        "Ym_pct",        -0.40)
-      )
-      for (p in pairs) {
-        if (p[1] %in% ad_names && p[2] %in% ad_names) {
-          m[p[1], p[2]] <- as.numeric(p[3])
-          m[p[2], p[1]] <- as.numeric(p[3])
-        }
+        PARAM_CATALOGUE$parameter
+      preset <- build_ipcc_preset_corr(all_names)
+      if (is.null(preset)) {
+        showNotification(
+          "Preset has no applicable pairs for the current parameter set.",
+          type = "warning", duration = 5)
+        return()
       }
-      m <- as.matrix(Matrix::nearPD(m, corr = TRUE)$mat)
-      rownames(m) <- colnames(m) <- ad_names
-      rv$corr_matrix <- m
-      showNotification("Loaded IPCC-guidance preset correlation matrix.",
-                       type = "message", duration = 4)
+      rv$corr_matrix <- preset
+      showNotification(
+        sprintf("Loaded IPCC-guidance preset correlation matrix (%d-parameter scope).",
+                nrow(preset)),
+        type = "message", duration = 4)
     } else if (input$corr_mode == "none") {
       # Don't wipe an uploaded matrix — just don't apply it (sim observer reads input$corr_mode)
     }
@@ -654,7 +707,14 @@ app_server <- function(input, output, session) {
 
     # T1.2 / T2.2 / A1: auto-fill missing core params from IPCC defaults
     # rather than blocking the simulation.
-    comp <- ensure_completeness(rv$param_specs)
+    # Round 7 T2.1: pass region so regional IPCC defaults are preferred over
+    # the global table for the 5 parameters covered by IPCC_DEFAULTS_BY_REGION.
+    region_for_completeness <- if (!is.null(rv$inv_metadata) &&
+                                    "region" %in% names(rv$inv_metadata) &&
+                                    nzchar(rv$inv_metadata$region %||% "")) {
+      rv$inv_metadata$region
+    } else NULL
+    comp <- ensure_completeness(rv$param_specs, region = region_for_completeness)
     if (!isTRUE(comp$valid)) {
       showNotification(paste0("Cannot run simulation. ", comp$message),
                        type = "error", duration = 12)
@@ -717,6 +777,12 @@ app_server <- function(input, output, session) {
           for (sg in sys_groups) {
             sys_specs <- specs[group_key == sg, ]
 
+            # Round 7 R1.13: also extract per-MMS Frac_GasMS / Frac_LeachMS
+            # from the manure sheet if the columns are present. NA -> fall back
+            # to mms_frac_defaults_2019() inside calc_indirect_n2o_mm().
+            frac_gas_vals   <- NULL
+            frac_leach_vals <- NULL
+
             if (!is.null(manure) && nrow(manure) > 0 &&
                 all(c("mms_type", "fraction_pct", "MCF_pct", "EF3") %in% names(manure))) {
               manure_key <- make_group_key(manure)
@@ -737,6 +803,18 @@ app_server <- function(input, output, session) {
                 # crashing the simulation
                 mcf_vals[is.na(mcf_vals)] <- 0.015
                 ef3_vals[is.na(ef3_vals)] <- 0.005
+
+                # Round 7 R1.13: per-MMS Frac_GasMS / Frac_LeachMS columns.
+                if ("Frac_GasMS_pct" %in% names(mms_rows)) {
+                  fg_num <- suppressWarnings(as.numeric(mms_rows$Frac_GasMS_pct)) / 100
+                  frac_gas_vals <- setNames(fg_num, mms_rows$mms_type)
+                  frac_gas_vals <- frac_gas_vals[names(mms_fracs)]
+                }
+                if ("Frac_LeachMS_pct" %in% names(mms_rows)) {
+                  fl_num <- suppressWarnings(as.numeric(mms_rows$Frac_LeachMS_pct)) / 100
+                  frac_leach_vals <- setNames(fl_num, mms_rows$mms_type)
+                  frac_leach_vals <- frac_leach_vals[names(mms_fracs)]
+                }
                 # Final guard: if all MMS rows were unparsable, use defaults
                 if (length(mms_fracs) == 0) {
                   mms_fracs <- default_mms_fracs
@@ -754,12 +832,21 @@ app_server <- function(input, output, session) {
               ef3_vals  <- default_ef3_vals
             }
 
-            # R1.1: After D1 (AD/EF restructure), only cattle_pop is "activity_data".
-            # The time-series correlation matrix has live_weight, milk_yield, DE, etc. —
-            # all of which are now "coefficient". Apply the time-series matrix to the
-            # coefficient block where its parameters actually live.
+            # R1.1 / Round 7 T4.3: build a UNIFIED correlation matrix over both
+            # AD and coefficient parameters. The preset matrix and the time-series
+            # matrix can both span both blocks (post-Round-7), so we expand the
+            # user's matrix to the full (AD + coefficient) parameter list. This
+            # supersedes the prior two-pass `corr_matrix` / `ef_corr_matrix` split,
+            # though both inputs are still passed downstream for back-compat.
+            ad_names   <- sys_specs$parameter[sys_specs$param_type == "activity_data"]
+            coef_names <- sys_specs$parameter[sys_specs$param_type == "coefficient"]
+            all_names  <- c(ad_names, coef_names)
+
+            unified_corr <- if (input$corr_mode != "none" && !is.null(rv$corr_matrix)) {
+              expand_corr_matrix(rv$corr_matrix, all_names)
+            } else NULL
+
             ts_coef_corr <- if (input$corr_mode != "none" && !is.null(rv$corr_matrix)) {
-              coef_names <- sys_specs$parameter[sys_specs$param_type == "coefficient"]
               expand_corr_matrix(rv$corr_matrix, coef_names)
             } else NULL
 
@@ -774,9 +861,28 @@ app_server <- function(input, output, session) {
               if (nrow(rv$ef_corr_matrix) == ef_n) rv$ef_corr_matrix else NULL
             } else NULL
 
+            # Round 7 T4.21: build per-iteration MMS allocation matrix from a
+            # Dirichlet on the simplex with concentration controlled by the
+            # mms_concentration input. concentration <= 0 disables sampling
+            # and falls back to deterministic shares.
+            mms_matrix <- NULL
+            mc_n_iter <- if (!is.null(input$n_iter)) input$n_iter else 10000
+            conc <- if (!is.null(input$mms_concentration)) input$mms_concentration else 0
+            if (length(mms_fracs) >= 2 && !is.na(conc) && conc > 0) {
+              mms_matrix <- sample_dirichlet_simplex(
+                p = as.numeric(mms_fracs),
+                n_iter = mc_n_iter,
+                names_vec = names(mms_fracs),
+                concentration = conc
+              )
+            }
+
             systems_data[[sg]] <- list(
               param_specs = sys_specs, corr_matrix = corr, ef_corr_matrix = ef_corr,
-              mms_fractions = mms_fracs, mcf_values = mcf_vals, ef3_values = ef3_vals
+              unified_corr_matrix = unified_corr,
+              mms_fractions = mms_fracs, mcf_values = mcf_vals, ef3_values = ef3_vals,
+              frac_gas_values = frac_gas_vals, frac_leach_values = frac_leach_vals,
+              mms_fractions_matrix = mms_matrix
             )
           }
 
@@ -1480,7 +1586,9 @@ app_server <- function(input, output, session) {
              "examples), or upload a long-format CSV here.")
       }
       n_iter <- if (!is.null(input$trend_n_iter)) input$trend_n_iter else 2000
-      res <- run_trend_analysis(df, base_specs = rv$param_specs, n_iter = n_iter)
+      yc <- if (!is.null(input$year_corr) && nzchar(input$year_corr)) input$year_corr else "full"
+      res <- run_trend_analysis(df, base_specs = rv$param_specs, n_iter = n_iter,
+                                 year_corr = yc)
       rv_trend$results <- res
       rv_trend$message <- list(type = "success",
         text = sprintf("Trend computed for %d years (%d–%d). Total change: %s%%.",

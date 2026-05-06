@@ -45,13 +45,48 @@ make_uniform_corr <- function(n, rho) {
 #   ef_corr_matrix – optional correlation matrix for emission factors (n_EF x n_EF).
 #                    Pass make_uniform_corr(n_ef, rho) for a uniform assumption.
 generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
-                                 seed = NULL, ef_corr_matrix = NULL) {
+                                 seed = NULL, ef_corr_matrix = NULL,
+                                 # Round 7 T4.3: unified copula across AD + coefficients
+                                 # so cross-block correlations (e.g. N <-> W) are honoured.
+                                 # When supplied, this is a square named matrix covering
+                                 # the union of AD and coefficient parameter names. Falls
+                                 # back to the two-pass behaviour when NULL.
+                                 unified_corr_matrix = NULL,
+                                 # Round 7 R1.14: pre-sampled coefficient block matrix
+                                 # (n_iter x n_coef) used by the trend tab to share the
+                                 # same coefficient draws across years. Overrides the
+                                 # coefficient-block sampler when supplied.
+                                 pre_sampled_coefficients = NULL) {
   if (!is.null(seed)) set.seed(seed)
 
   ad_params <- param_specs[param_specs$param_type == "activity_data", ]
   ef_params <- param_specs[param_specs$param_type == "coefficient", ]
   n_ad <- nrow(ad_params)
   n_ef <- nrow(ef_params)
+
+  # Round 7 T4.3: single-pass unified copula path
+  if (!is.null(unified_corr_matrix) && (n_ad + n_ef) > 0) {
+    all_params <- rbind(ad_params, ef_params)
+    nm <- all_params$parameter
+    M  <- diag(length(nm))
+    rownames(M) <- colnames(M) <- nm
+    common <- intersect(rownames(unified_corr_matrix), nm)
+    if (length(common) >= 2) {
+      M[common, common] <- unified_corr_matrix[common, common]
+      M <- as.matrix(Matrix::nearPD(M, corr = TRUE)$mat)
+      rownames(M) <- colnames(M) <- nm
+      samp <- .copula_sample(n_iter, all_params, M)
+      out  <- as.data.frame(samp)
+      # If the trend tab supplied pre-sampled coefficients, override that block
+      if (!is.null(pre_sampled_coefficients) && n_ef > 0) {
+        for (cn in intersect(colnames(pre_sampled_coefficients), names(out))) {
+          out[[cn]] <- pre_sampled_coefficients[, cn]
+        }
+      }
+      return(out)
+    }
+    # If unified matrix has < 2 overlapping params, fall through to two-pass
+  }
 
   # Activity data: correlated or independent
   if (n_ad > 0) {
@@ -66,14 +101,20 @@ generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     ad_samples <- matrix(nrow = n_iter, ncol = 0)
   }
 
-  # Emission factors: correlated or independent
+  # Emission factors: correlated, independent, or pre-sampled (R1.14 trend mode)
   if (n_ef > 0) {
-    use_ef_corr <- !is.null(ef_corr_matrix) &&
-                   nrow(ef_corr_matrix) == n_ef && ncol(ef_corr_matrix) == n_ef
-    ef_samples <- if (use_ef_corr) {
-      .copula_sample(n_iter, ef_params, ef_corr_matrix)
+    if (!is.null(pre_sampled_coefficients) &&
+        nrow(pre_sampled_coefficients) == n_iter &&
+        all(ef_params$parameter %in% colnames(pre_sampled_coefficients))) {
+      ef_samples <- pre_sampled_coefficients[, ef_params$parameter, drop = FALSE]
     } else {
-      .indep_sample(n_iter, ef_params)
+      use_ef_corr <- !is.null(ef_corr_matrix) &&
+                     nrow(ef_corr_matrix) == n_ef && ncol(ef_corr_matrix) == n_ef
+      ef_samples <- if (use_ef_corr) {
+        .copula_sample(n_iter, ef_params, ef_corr_matrix)
+      } else {
+        .indep_sample(n_iter, ef_params)
+      }
     }
   } else {
     ef_samples <- matrix(nrow = n_iter, ncol = 0)
@@ -92,6 +133,94 @@ compute_correlation_from_timeseries <- function(pop_data) {
     stop("Time series must contain at least 2 numeric columns.")
   cor_matrix <- cor(pop_numeric, use = "complete.obs")
   as.matrix(Matrix::nearPD(cor_matrix, corr = TRUE)$mat)
+}
+
+# Round 7 T4.21: Dirichlet sampling on the MMS allocation simplex per IPCC 2019
+# Box 3.1A. Returns an n_iter x length(alpha_vec) matrix where each row sums to
+# 1. Implementation uses the gamma-quotient construction so we don't pull in
+# `gtools` as a new dependency. concentration controls how tightly samples
+# cluster around the user's stated proportions: alpha_i = concentration * p_i.
+sample_dirichlet_simplex <- function(p, n_iter, names_vec = NULL,
+                                      concentration = 50) {
+  p <- as.numeric(p)
+  if (any(is.na(p)) || any(p < 0)) stop("Dirichlet means must be non-negative.")
+  s <- sum(p)
+  if (s <= 0) {
+    out <- matrix(rep(p, each = n_iter), nrow = n_iter)
+    if (!is.null(names_vec)) colnames(out) <- names_vec
+    return(out)
+  }
+  p <- p / s
+  alpha <- concentration * p
+  alpha[alpha < 1e-6] <- 1e-6  # numerical floor — degenerate categories
+  # Sample n_iter draws from Gamma(alpha_i, 1) and normalise per row
+  k <- length(alpha)
+  g <- matrix(NA_real_, nrow = n_iter, ncol = k)
+  for (j in seq_len(k)) g[, j] <- rgamma(n_iter, shape = alpha[j], rate = 1)
+  g <- g / rowSums(g)
+  if (!is.null(names_vec)) colnames(g) <- names_vec
+  g
+}
+
+# Round 7 R1.15: build the IPCC-guidance preset correlation matrix.
+# Pure function — no rv dependency. Returns a named partial matrix containing
+# only the pairs whose endpoints exist in `all_param_names`. Pairs missing from
+# the spec are silently dropped.
+#
+# Existing pairs (kept from the inline observer that had the post-R1.6 bug):
+#   W <-> MW (0.85), W <-> WG (0.40),
+#   Milk <-> Fat (-0.30), Milk <-> pct_lactating (0.20),
+#   DE <-> CP (0.50), DE <-> Ym (-0.40)
+# New in Round 7:
+#   Cfi <-> Ca (0.60)         R1.15: structural breed/physiology pairing
+#   N   <-> W  (0.30)         T4.3: cross-block AD <-> coefficient pair
+#
+# Note: the post-Round-4 IPCC rename means the documented pairs use the new
+# variable names directly (DE not DE_pct, Ym not Ym_pct, CP not CP_pct).
+# Legacy aliases are accepted via the lookup helper below.
+PRESET_PAIRS <- list(
+  list(a = "W",    b = "MW",            rho = 0.85),
+  list(a = "W",    b = "WG",            rho = 0.40),
+  list(a = "Milk", b = "Fat",           rho = -0.30),
+  list(a = "Milk", b = "pct_lactating", rho = 0.20),
+  list(a = "DE",   b = "CP",            rho = 0.50),
+  list(a = "DE",   b = "Ym",            rho = -0.40),
+  list(a = "Cfi",  b = "Ca",            rho = 0.60),
+  list(a = "N",    b = "W",             rho = 0.30)
+)
+
+# Legacy alias table — accept Round-3 names so the helper finds pairs even if
+# the user uploaded a pre-rename template.
+.PRESET_ALIASES <- list(
+  DE_pct = "DE", Ym_pct = "Ym", CP_pct = "CP",
+  cattle_pop = "N", live_weight = "W", mature_weight = "MW",
+  weight_gain = "WG", milk_yield = "Milk", milk_fat = "Fat"
+)
+
+build_ipcc_preset_corr <- function(all_param_names) {
+  if (length(all_param_names) < 2) return(NULL)
+  # Map any legacy aliases to the canonical IPCC name for matching
+  resolve <- function(nm) {
+    a <- .PRESET_ALIASES[[nm]]
+    if (!is.null(a)) a else nm
+  }
+  canonical <- vapply(all_param_names, resolve, character(1))
+
+  m <- diag(length(all_param_names))
+  rownames(m) <- colnames(m) <- all_param_names
+
+  applied <- 0L
+  for (p in PRESET_PAIRS) {
+    i <- which(canonical == p$a)
+    j <- which(canonical == p$b)
+    if (length(i) >= 1 && length(j) >= 1) {
+      m[i[1], j[1]] <- p$rho
+      m[j[1], i[1]] <- p$rho
+      applied <- applied + 1L
+    }
+  }
+  if (applied == 0L) return(NULL)
+  as.matrix(Matrix::nearPD(m, corr = TRUE)$mat)
 }
 
 # Expand a partial (named) correlation matrix to the full set of AD parameters.
