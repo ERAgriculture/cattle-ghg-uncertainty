@@ -347,10 +347,23 @@ app_ui <- function() {
       div(class = "info-panel", style = "margin: 16px;",
           tags$strong("What to do: "),
           "After loading data, review these automated quality checks. Each row flags a specific check for one parameter. ",
+          tags$strong("Missing"), " (amber) = the parameter was not in your upload and was auto-filled from the IPCC default — verify or replace with country data. ",
           tags$strong("Fail"), " (red) = the value or bounds will likely cause an error in the simulation. ",
           tags$strong("Warn"), " (amber) = the value is unusual compared with IPCC defaults or Penman/Monni uncertainty references -- investigate and document. ",
           tags$strong("Pass"), " (green) = check satisfied. ",
           "Fix any fails before running the simulation. Warnings are advisory -- document your justification for large deviations from IPCC defaults."),
+      conditionalPanel(
+        condition = "output.has_imputed_params == true",
+        div(style = "margin: 0 16px 16px 16px;",
+            bslib::card(
+              style = "border-left: 4px solid #F59E0B;",
+              bslib::card_header(
+                style = "background-color:#FEF3C7; color:#92400E; font-weight:600;",
+                icon("triangle-exclamation"), " Auto-filled parameters"
+              ),
+              bslib::card_body(uiOutput("imputed_params_card"))
+            ))
+      ),
       bslib::layout_columns(
         col_widths = c(3, 9),
         bslib::card(
@@ -756,7 +769,9 @@ app_ui <- function() {
             column(3, downloadButton("download_xlsx", "Download Excel Report",
                                       class = "btn-success")),
             column(3, downloadButton("download_csv", "Download CSV",
-                                      class = "btn-outline-success"))
+                                      class = "btn-outline-success")),
+            column(3, downloadButton("download_docx", "Download Word summary",
+                                      class = "btn-primary"))
           )
         )
       ),

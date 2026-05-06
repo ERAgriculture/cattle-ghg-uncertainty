@@ -125,15 +125,34 @@ app_server <- function(input, output, session) {
   })
 
   # Parameter data table — R1.3: imputed rows rendered in red bold
+  # Round 6b #4: add hover tooltip on imputed rows showing default + IPCC ref
   output$param_table <- DT::renderDT({
     req(rv$param_specs)
     ps <- rv$param_specs
     has_imputed <- "imputed" %in% names(ps) && any(isTRUE(ps$imputed) | ps$imputed == TRUE, na.rm = TRUE)
+
+    options_list <- list(
+      pageLength = 20,
+      scrollX = TRUE,
+      columnDefs = list(list(
+        targets = which(names(ps) == "imputed") - 1,
+        visible = FALSE))
+    )
+
+    if (has_imputed) {
+      imputed_col <- which(names(ps) == "imputed") - 1L  # 0-based for JS
+      options_list$rowCallback <- DT::JS(sprintf(
+        "function(row, data) {
+           if (data[%d] === true || data[%d] === 'TRUE' || data[%d] === 'true') {
+             $(row).attr('title',
+               'Auto-filled from IPCC default. Override in template if local data is available.');
+           }
+         }",
+        imputed_col, imputed_col, imputed_col))
+    }
+
     dt <- DT::datatable(ps,
-                        options = list(pageLength = 20, scrollX = TRUE,
-                                       columnDefs = list(list(
-                                         targets = which(names(ps) == "imputed") - 1,
-                                         visible = FALSE))),
+                        options = options_list,
                         editable = TRUE, rownames = FALSE)
     if (has_imputed) {
       # Highlight imputed rows in red bold
@@ -313,6 +332,73 @@ app_server <- function(input, output, session) {
     run_qaqc(rv$param_specs, region = region)
   })
 
+  # --- Auto-filled parameters card (Round 6b #4) ---
+  imputed_rows <- reactive({
+    ps <- rv$param_specs
+    if (is.null(ps) || !"imputed" %in% names(ps)) return(NULL)
+    flag <- ps$imputed
+    flag[is.na(flag)] <- FALSE
+    out <- ps[as.logical(flag), , drop = FALSE]
+    if (nrow(out) == 0) return(NULL)
+    out
+  })
+
+  output$has_imputed_params <- reactive({
+    !is.null(imputed_rows())
+  })
+  outputOptions(output, "has_imputed_params", suspendWhenHidden = FALSE)
+
+  output$imputed_params_card <- renderUI({
+    rows <- imputed_rows()
+    if (is.null(rows)) return(NULL)
+    tagList(
+      tags$p(
+        sprintf("%d parameter%s not supplied in your upload — auto-filled from IPCC defaults so the simulation could run. Override these values in the template if you have country-specific data.",
+                nrow(rows), if (nrow(rows) == 1) "" else "s"),
+        style = "margin-bottom:8px; color:#92400E;"
+      ),
+      DT::DTOutput("imputed_params_dt")
+    )
+  })
+
+  output$imputed_params_dt <- DT::renderDT({
+    rows <- imputed_rows()
+    req(rows)
+
+    cat_lookup <- PARAM_CATALOGUE[, c("parameter", "unit", "ipcc_ref")]
+    names(cat_lookup)[2:3] <- c("unit_cat", "ipcc_ref_cat")
+    rows <- merge(rows, cat_lookup, by = "parameter", all.x = TRUE, sort = FALSE)
+
+    pick <- function(primary, fallback) {
+      out <- primary
+      missing <- is.na(out) | !nzchar(as.character(out))
+      out[missing] <- fallback[missing]
+      as.character(out)
+    }
+    unit_user <- if ("unit" %in% names(rows)) rows$unit else rep(NA_character_, nrow(rows))
+    ref_user  <- if ("ipcc_ref" %in% names(rows)) rows$ipcc_ref else rep(NA_character_, nrow(rows))
+    unit_disp <- pick(unit_user, rows$unit_cat)
+    ref_disp  <- pick(ref_user,  rows$ipcc_ref_cat)
+    src_disp  <- if ("data_source" %in% names(rows)) rows$data_source else rep("AUTO-FILLED (IPCC default)", nrow(rows))
+
+    display <- data.frame(
+      Parameter = rows$parameter,
+      `Default value used` = formatC(rows$mean, digits = 4, format = "g"),
+      Unit = unit_disp,
+      `IPCC reference` = ref_disp,
+      Source = src_disp,
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    )
+
+    DT::datatable(
+      display,
+      rownames = FALSE,
+      options  = list(dom = "t", paging = FALSE, ordering = FALSE),
+      class    = "compact stripe"
+    )
+  })
+
   output$qaqc_summary_ui <- renderUI({
     df <- qaqc_result()
     s  <- qaqc_summary(df)
@@ -320,6 +406,10 @@ app_server <- function(input, output, session) {
       return(tags$p("Load data first.", style = "color:#888;"))
     tags$div(
       style = "display:flex; gap:8px; flex-wrap:wrap;",
+      if ((s$n_missing %||% 0) > 0)
+        tags$span(
+          style = "font-size:1rem; padding:6px 14px; background-color:#FEF3C7; color:#92400E; border-radius:4px; font-weight:600;",
+          paste(s$n_missing, "auto-filled")),
       tags$span(class = "badge bg-success",
                 style = "font-size:1rem; padding:6px 14px;",
                 paste(s$n_pass, "pass")),
@@ -1332,6 +1422,37 @@ app_server <- function(input, output, session) {
     content = function(file) {
       req(rv$uncertainty)
       write.csv(rv$uncertainty, file, row.names = FALSE)
+    }
+  )
+
+  # Round 6b #9: Word run-summary download
+  output$download_docx <- downloadHandler(
+    filename = function() paste0("uncertainty_summary_", Sys.Date(), ".docx"),
+    content = function(file) {
+      validate(
+        need(!is.null(rv$mc_results),  "Run a Monte Carlo simulation on Tab 5 before downloading the Word summary."),
+        need(!is.null(rv$uncertainty), "Uncertainty metrics not yet computed.")
+      )
+      settings <- list(
+        n_iter            = input$n_iter,
+        corr_mode         = input$corr_mode,
+        ef_corr_mode      = input$ef_corr_mode,
+        run_comparison    = isTRUE(input$run_comparison),
+        gwp_version       = input$gwp_version,
+        seed              = input$seed,
+        analysis_mode     = input$analysis_mode,
+        emission_sources  = input$emission_sources
+      )
+      build_run_summary_docx(
+        path        = file,
+        settings    = settings,
+        param_specs = rv$param_specs,
+        mc_results  = rv$mc_results,
+        uncertainty = rv$uncertainty,
+        sensitivity = rv$sensitivity,
+        ipcc_table  = rv$ipcc_table,
+        ipcc_meta   = rv$inv_metadata
+      )
     }
   )
 

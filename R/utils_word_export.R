@@ -1,0 +1,355 @@
+# Word run-summary export (Round 6b #9).
+#
+# build_run_summary_docx(): writes a self-contained .docx summarising one
+# Monte Carlo run. Depends on officer + flextable + ggplot2.
+# Plotly renderers in the live app are untouched; we rebuild lean ggplot2
+# versions of the three key charts here so the doc renders deterministically
+# on shinyapps.io without a Chromium binary (which webshot2 would require).
+
+# ----------------------------------------------------------------------------
+# Public entry point
+# ----------------------------------------------------------------------------
+
+build_run_summary_docx <- function(path,
+                                   settings,
+                                   param_specs,
+                                   mc_results,
+                                   uncertainty,
+                                   sensitivity = NULL,
+                                   ipcc_table  = NULL,
+                                   ipcc_meta   = NULL,
+                                   app_version = NULL) {
+
+  doc <- officer::read_docx()
+
+  # 1. Title block ----------------------------------------------------------
+  doc <- officer::body_add_par(
+    doc, "Cattle GHG Tier 2 Uncertainty — Run Summary",
+    style = "heading 1"
+  )
+  doc <- officer::body_add_par(
+    doc,
+    sprintf("Approach 2 Monte Carlo simulation. Generated %s.",
+            format(Sys.time(), "%Y-%m-%d %H:%M %Z")),
+    style = "Normal"
+  )
+  if (!is.null(ipcc_meta) && !is.null(ipcc_meta$ipcc_version)) {
+    doc <- officer::body_add_par(
+      doc, sprintf("IPCC guidelines version: %s", ipcc_meta$ipcc_version),
+      style = "Normal")
+  }
+  if (!is.null(ipcc_meta) && !is.null(ipcc_meta$region) && nzchar(ipcc_meta$region)) {
+    doc <- officer::body_add_par(
+      doc, sprintf("Region: %s", ipcc_meta$region), style = "Normal")
+  }
+  doc <- officer::body_add_par(doc, "", style = "Normal")
+
+  # 2. Run settings ---------------------------------------------------------
+  doc <- officer::body_add_par(doc, "1. Run settings", style = "heading 2")
+  doc <- .add_flextable_safe(doc, .settings_flextable(settings))
+
+  # 3. Auto-filled parameters ----------------------------------------------
+  imputed_ft <- .imputed_flextable(param_specs)
+  if (!is.null(imputed_ft)) {
+    doc <- officer::body_add_par(
+      doc, "2. Auto-filled parameters", style = "heading 2")
+    doc <- officer::body_add_par(
+      doc,
+      "These parameters were not in the upload and were filled with IPCC defaults so the simulation could run. Override with country-specific data if available.",
+      style = "Normal")
+    doc <- .add_flextable_safe(doc, imputed_ft)
+  }
+
+  # 4. Headline results -----------------------------------------------------
+  doc <- officer::body_add_par(doc, "3. Headline results", style = "heading 2")
+  doc <- .add_flextable_safe(doc, .results_flextable(uncertainty))
+
+  # 5. IPCC Table 3.3 -------------------------------------------------------
+  if (!is.null(ipcc_table) && is.data.frame(ipcc_table) && nrow(ipcc_table) > 0) {
+    doc <- officer::body_add_par(
+      doc, "4. IPCC Table 3.3 (uncertainty decomposition)", style = "heading 2")
+    doc <- .add_flextable_safe(doc, .ipcc_flextable(ipcc_table))
+  }
+
+  # 6. Sensitivity ----------------------------------------------------------
+  sens_ft <- .sensitivity_flextable(sensitivity)
+  if (!is.null(sens_ft)) {
+    doc <- officer::body_add_par(
+      doc, "5. Sensitivity ranking (top 10)", style = "heading 2")
+    doc <- officer::body_add_par(
+      doc,
+      "Standardised regression coefficient (SRC) and partial rank correlation (PRCC) against total CO2eq. Larger absolute values dominate the output uncertainty.",
+      style = "Normal")
+    doc <- .add_flextable_safe(doc, sens_ft)
+  }
+
+  # 7. Plots ----------------------------------------------------------------
+  doc <- officer::body_add_par(doc, "6. Charts", style = "heading 2")
+
+  hist_plot <- .gg_total_co2e_hist(mc_results)
+  if (!is.null(hist_plot)) {
+    doc <- officer::body_add_par(
+      doc, "Total CO2eq — Monte Carlo distribution", style = "heading 3")
+    doc <- officer::body_add_gg(doc, value = hist_plot, width = 6.0, height = 3.4)
+  }
+
+  tornado_plot <- .gg_tornado(sensitivity)
+  if (!is.null(tornado_plot)) {
+    doc <- officer::body_add_par(
+      doc, "Sensitivity tornado", style = "heading 3")
+    doc <- officer::body_add_gg(doc, value = tornado_plot, width = 6.0, height = 3.6)
+  }
+
+  src_plot <- .gg_source_grid(mc_results)
+  if (!is.null(src_plot)) {
+    doc <- officer::body_add_par(
+      doc, "Per-source emission distributions", style = "heading 3")
+    doc <- officer::body_add_gg(doc, value = src_plot, width = 6.0, height = 4.2)
+  }
+
+  # 8. Footer ---------------------------------------------------------------
+  doc <- officer::body_add_par(doc, "", style = "Normal")
+  footer_bits <- c(
+    "Generated by Cattle GHG Uncertainty Calculator",
+    if (!is.null(app_version)) sprintf("v%s", app_version) else NULL,
+    sprintf("on %s", format(Sys.Date(), "%Y-%m-%d"))
+  )
+  doc <- officer::body_add_par(
+    doc, paste(footer_bits, collapse = " "), style = "Normal")
+
+  print(doc, target = path)
+  invisible(path)
+}
+
+# ----------------------------------------------------------------------------
+# flextable builders
+# ----------------------------------------------------------------------------
+
+.settings_flextable <- function(s) {
+  rows <- list(
+    c("Iterations",            .fmt_int(s$n_iter)),
+    c("AD correlations",       .as_str(s$corr_mode,    "none")),
+    c("EF correlations",       .as_str(s$ef_corr_mode, "none")),
+    c("Comparison run (no corr.)", if (isTRUE(s$run_comparison)) "yes" else "no"),
+    c("GWP basis",             .as_str(s$gwp_version,  "AR5")),
+    c("Seed",                  .as_str(s$seed,         "(random)")),
+    c("Analysis mode",         .as_str(s$analysis_mode, "single-year")),
+    c("Emission sources",
+      if (length(s$emission_sources)) paste(s$emission_sources, collapse = ", ") else "(none)")
+  )
+  df <- do.call(rbind.data.frame, c(rows, list(stringsAsFactors = FALSE)))
+  names(df) <- c("Setting", "Value")
+  ft <- flextable::flextable(df)
+  ft <- flextable::autofit(ft)
+  flextable::theme_box(ft)
+}
+
+.imputed_flextable <- function(param_specs) {
+  if (is.null(param_specs) || !"imputed" %in% names(param_specs)) return(NULL)
+  flag <- param_specs$imputed
+  flag[is.na(flag)] <- FALSE
+  rows <- param_specs[as.logical(flag), , drop = FALSE]
+  if (nrow(rows) == 0) return(NULL)
+
+  cat_lookup <- PARAM_CATALOGUE[, c("parameter", "unit", "ipcc_ref")]
+  names(cat_lookup)[2:3] <- c("unit_cat", "ipcc_ref_cat")
+  rows <- merge(rows, cat_lookup, by = "parameter", all.x = TRUE, sort = FALSE)
+  unit_user <- if ("unit" %in% names(rows)) rows$unit else rep(NA_character_, nrow(rows))
+  ref_user  <- if ("ipcc_ref" %in% names(rows)) rows$ipcc_ref else rep(NA_character_, nrow(rows))
+
+  pick <- function(primary, fallback) {
+    out <- as.character(primary)
+    miss <- is.na(out) | !nzchar(out)
+    out[miss] <- as.character(fallback)[miss]
+    out
+  }
+
+  df <- data.frame(
+    Parameter             = rows$parameter,
+    `Default value used`  = formatC(rows$mean, digits = 4, format = "g"),
+    Unit                  = pick(unit_user, rows$unit_cat),
+    `IPCC reference`      = pick(ref_user,  rows$ipcc_ref_cat),
+    Source                = if ("data_source" %in% names(rows)) rows$data_source
+                            else rep("AUTO-FILLED (IPCC default)", nrow(rows)),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  ft <- flextable::flextable(df)
+  ft <- flextable::autofit(ft)
+  flextable::theme_box(ft)
+}
+
+.results_flextable <- function(uncertainty) {
+  if (is.null(uncertainty) || !is.data.frame(uncertainty) || nrow(uncertainty) == 0) {
+    return(flextable::flextable(data.frame(Note = "No uncertainty results available.")))
+  }
+  display_vars <- c("total_co2e", "total_ch4", "total_n2o",
+                    "enteric_ch4_total", "manure_ch4_total",
+                    "direct_n2o_mm_total", "indirect_n2o_mm_total")
+  keep <- uncertainty[uncertainty$variable %in% display_vars, , drop = FALSE]
+  if (nrow(keep) == 0) keep <- uncertainty
+  keep <- keep[match(display_vars, keep$variable), , drop = FALSE]
+  keep <- keep[!is.na(keep$variable), , drop = FALSE]
+
+  df <- data.frame(
+    Source     = .pretty_var(keep$variable),
+    Mean       = formatC(keep$mean,     digits = 4, format = "g"),
+    `95% CI lower` = formatC(keep$ci_lower, digits = 4, format = "g"),
+    `95% CI upper` = formatC(keep$ci_upper, digits = 4, format = "g"),
+    `CV%`      = formatC(keep$cv_pct,   digits = 3, format = "g"),
+    `MoE%`     = formatC(keep$moe_pct,  digits = 3, format = "g"),
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  ft <- flextable::flextable(df)
+  ft <- flextable::autofit(ft)
+  flextable::theme_box(ft)
+}
+
+.ipcc_flextable <- function(ipcc_table) {
+  ft <- flextable::flextable(ipcc_table)
+  ft <- flextable::autofit(ft)
+  flextable::theme_box(ft)
+}
+
+.sensitivity_flextable <- function(sens) {
+  if (is.null(sens) || length(sens) == 0) return(NULL)
+  src  <- sens$src
+  prcc <- sens$prcc
+  if ((is.null(src)  || nrow(src) == 0) &&
+      (is.null(prcc) || nrow(prcc) == 0)) return(NULL)
+
+  base <- if (!is.null(src) && nrow(src) > 0) src else prcc
+  val_col <- if ("src" %in% names(base)) "src"
+             else if ("prcc" %in% names(base)) "prcc"
+             else names(base)[2]
+  base <- base[order(-abs(base[[val_col]])), , drop = FALSE]
+  base <- utils::head(base, 10)
+
+  src_disp  <- if ("src" %in% names(base))
+                 formatC(base$src,  digits = 3, format = "f") else NULL
+  prcc_disp <- if (!is.null(prcc) && "prcc" %in% names(prcc))
+                 formatC(prcc$prcc[match(base$parameter, prcc$parameter)],
+                         digits = 3, format = "f") else NULL
+
+  df <- data.frame(Parameter = base$parameter, stringsAsFactors = FALSE)
+  if (!is.null(src_disp))  df$SRC  <- src_disp
+  if (!is.null(prcc_disp)) df$PRCC <- prcc_disp
+  ft <- flextable::flextable(df)
+  ft <- flextable::autofit(ft)
+  flextable::theme_box(ft)
+}
+
+# ----------------------------------------------------------------------------
+# ggplot helpers
+# ----------------------------------------------------------------------------
+
+.gg_total_co2e_hist <- function(mc_results) {
+  if (is.null(mc_results) || is.null(mc_results$inventory)) return(NULL)
+  inv <- mc_results$inventory
+  if (!"total_co2e" %in% names(inv)) return(NULL)
+  x <- inv$total_co2e
+  if (length(x) == 0 || all(is.na(x))) return(NULL)
+  q025 <- stats::quantile(x, 0.025, names = FALSE)
+  q975 <- stats::quantile(x, 0.975, names = FALSE)
+
+  ggplot2::ggplot(data.frame(value = x), ggplot2::aes(x = value)) +
+    ggplot2::geom_histogram(bins = 40, fill = "#2D6A4F", colour = "white") +
+    ggplot2::geom_vline(xintercept = c(q025, q975),
+                        linetype = "dashed", colour = "#C1121F") +
+    ggplot2::geom_vline(xintercept = mean(x), colour = "black") +
+    ggplot2::labs(x = "Total CO2eq (Gg CO2eq)", y = "Frequency") +
+    ggplot2::theme_minimal(base_size = 10)
+}
+
+.gg_tornado <- function(sens) {
+  if (is.null(sens) || length(sens) == 0) return(NULL)
+  base <- if (!is.null(sens$src) && is.data.frame(sens$src) && nrow(sens$src) > 0) {
+    sens$src
+  } else if (!is.null(sens$prcc) && is.data.frame(sens$prcc) && nrow(sens$prcc) > 0) {
+    sens$prcc
+  } else NULL
+  if (is.null(base)) return(NULL)
+  val_col <- if ("src" %in% names(base)) "src" else "prcc"
+  if (!val_col %in% names(base) || !"parameter" %in% names(base)) return(NULL)
+
+  top <- utils::head(base, 10)
+  top <- top[order(top[[val_col]]), , drop = FALSE]
+  top$parameter <- factor(top$parameter, levels = top$parameter)
+
+  ggplot2::ggplot(top, ggplot2::aes(x = .data[[val_col]], y = parameter,
+                                     fill = .data[[val_col]] > 0)) +
+    ggplot2::geom_col() +
+    ggplot2::scale_fill_manual(values = c(`TRUE` = "#2D6A4F", `FALSE` = "#C1121F"),
+                                guide = "none") +
+    ggplot2::labs(x = toupper(val_col), y = NULL) +
+    ggplot2::theme_minimal(base_size = 10)
+}
+
+.gg_source_grid <- function(mc_results) {
+  if (is.null(mc_results) || is.null(mc_results$inventory)) return(NULL)
+  inv <- mc_results$inventory
+  picks <- c(
+    "Enteric CH4"          = "enteric_ch4_total",
+    "Manure CH4"           = "manure_ch4_total",
+    "Manure N2O (direct)"  = "direct_n2o_mm_total",
+    "Manure N2O (indirect)"= "indirect_n2o_mm_total",
+    "Total CO2eq"          = "total_co2e"
+  )
+  parts <- list()
+  for (lab in names(picks)) {
+    col <- picks[[lab]]
+    if (col %in% names(inv)) {
+      v <- inv[[col]]
+      if (length(v) > 0 && stats::sd(v, na.rm = TRUE) > 0) {
+        parts[[length(parts) + 1L]] <- data.frame(value = v, source = lab)
+      }
+    }
+  }
+  if (length(parts) == 0) return(NULL)
+  df <- do.call(rbind, parts)
+  df$source <- factor(df$source, levels = unique(df$source))
+
+  ggplot2::ggplot(df, ggplot2::aes(x = value)) +
+    ggplot2::geom_histogram(bins = 30, fill = "#2D6A4F", colour = "white") +
+    ggplot2::facet_wrap(~ source, scales = "free", ncol = 3) +
+    ggplot2::labs(x = NULL, y = "Frequency") +
+    ggplot2::theme_minimal(base_size = 9) +
+    ggplot2::theme(strip.text = ggplot2::element_text(face = "bold"))
+}
+
+# ----------------------------------------------------------------------------
+# Internal helpers
+# ----------------------------------------------------------------------------
+
+.add_flextable_safe <- function(doc, ft) {
+  if (is.null(ft)) return(doc)
+  flextable::body_add_flextable(doc, ft, align = "left")
+}
+
+.fmt_int <- function(x) {
+  if (is.null(x) || length(x) == 0 || is.na(x)) return("(unset)")
+  format(as.integer(x), big.mark = ",")
+}
+
+.as_str <- function(x, default = "") {
+  if (is.null(x) || length(x) == 0) return(default)
+  if (is.na(x))                      return(default)
+  if (!nzchar(as.character(x)))      return(default)
+  as.character(x)
+}
+
+.pretty_var <- function(v) {
+  map <- c(
+    total_co2e            = "Total CO2eq",
+    total_ch4             = "Total CH4",
+    total_n2o             = "Total N2O",
+    enteric_ch4_total     = "Enteric CH4",
+    manure_ch4_total      = "Manure CH4",
+    direct_n2o_mm_total   = "Manure direct N2O",
+    indirect_n2o_mm_total = "Manure indirect N2O"
+  )
+  out <- map[v]
+  out[is.na(out)] <- v[is.na(out)]
+  unname(out)
+}

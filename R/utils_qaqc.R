@@ -10,7 +10,11 @@ run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global"
 
   # Build reference lookup from catalogue
   ref <- catalogue[, c("parameter", "ipcc_default", "suggested_lower_bound",
-                        "suggested_upper_bound", "param_tier")]
+                        "suggested_upper_bound", "param_tier",
+                        "unit", "ipcc_ref")]
+  # Rename catalogue's unit/ipcc_ref to avoid clobbering values already on ps
+  names(ref)[names(ref) == "unit"]     <- "unit_cat"
+  names(ref)[names(ref) == "ipcc_ref"] <- "ipcc_ref_cat"
   ps <- merge(ps, ref, by = "parameter", all.x = TRUE, sort = FALSE)
 
   # G2: override ipcc_default with region-specific value where available
@@ -165,13 +169,25 @@ run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global"
     }
 
     # ------------------------------------------------------------------
-    # Check 4b (R1.3): imputation flag — auto-filled from IPCC default
+    # Check 4b (R1.3 / Round 6b): missing parameter — auto-filled from IPCC default
+    # Reported as a dedicated "missing" severity so reviewers see exactly which
+    # parameters were not supplied and what default value+reference was used.
     # ------------------------------------------------------------------
     if ("imputed" %in% names(ps) && isTRUE(ps$imputed[i])) {
-      add(grp, p, "imputation", "warn",
+      unit_str <- if ("unit" %in% names(ps) && !is.na(ps$unit[i]) && nzchar(ps$unit[i])) {
+        ps$unit[i]
+      } else if (!is.na(ps$unit_cat[i])) {
+        ps$unit_cat[i]
+      } else ""
+      ref_str <- if ("ipcc_ref" %in% names(ps) && !is.na(ps$ipcc_ref[i]) && nzchar(ps$ipcc_ref[i])) {
+        ps$ipcc_ref[i]
+      } else if (!is.na(ps$ipcc_ref_cat[i])) {
+        ps$ipcc_ref_cat[i]
+      } else "IPCC default"
+      add(grp, p, "missing_parameter", "missing",
           sprintf(
-            "%s was auto-filled from the IPCC default (%.4g). Please verify before final submission, or replace with country-specific data.",
-            p, mu))
+            "%s not supplied in upload — auto-filled with IPCC default %.4g %s (%s). Override in template if local data is available.",
+            p, mu, unit_str, ref_str))
     }
 
     # ------------------------------------------------------------------
@@ -223,22 +239,32 @@ run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global"
 
   result <- do.call(rbind, lapply(rows, as.data.frame, stringsAsFactors = FALSE))
   param_order <- unique(ps$parameter)
-  result[order(match(result$parameter, param_order), result$check), ]
+  # Sort: missing → fail → warn → pass, then by parameter and check name
+  status_rank <- c(missing = 1L, fail = 2L, warn = 3L, pass = 4L)
+  result <- result[order(
+    status_rank[result$status],
+    match(result$parameter, param_order),
+    result$check
+  ), ]
+  rownames(result) <- NULL
+  result
 }
 
 qaqc_summary <- function(qaqc_df) {
   list(
-    n_pass = sum(qaqc_df$status == "pass", na.rm = TRUE),
-    n_warn = sum(qaqc_df$status == "warn", na.rm = TRUE),
-    n_fail = sum(qaqc_df$status == "fail", na.rm = TRUE)
+    n_pass    = sum(qaqc_df$status == "pass", na.rm = TRUE),
+    n_warn    = sum(qaqc_df$status == "warn", na.rm = TRUE),
+    n_fail    = sum(qaqc_df$status == "fail", na.rm = TRUE),
+    n_missing = sum(qaqc_df$status == "missing", na.rm = TRUE)
   )
 }
 
 qaqc_icon <- function(status) {
   switch(status,
-    pass = '<span style="color:#2D6A4F;font-weight:bold;">&#10003; pass</span>',
-    warn = '<span style="color:#B45309;font-weight:bold;">&#9651; warn</span>',
-    fail = '<span style="color:#C1121F;font-weight:bold;">&#10007; fail</span>',
+    pass    = '<span style="color:#2D6A4F;font-weight:bold;">&#10003; pass</span>',
+    warn    = '<span style="color:#B45309;font-weight:bold;">&#9651; warn</span>',
+    fail    = '<span style="color:#C1121F;font-weight:bold;">&#10007; fail</span>',
+    missing = '<span style="color:#92400E;font-weight:bold;background-color:#FEF3C7;padding:1px 6px;border-radius:3px;">&#9888; missing</span>',
     status
   )
 }

@@ -19,6 +19,9 @@ library(mc2d)
 library(Matrix)
 library(future)
 library(promises)
+# Round 6b: Word run-summary export
+library(officer)
+library(flextable)
 
 # Launch app
 shinyApp(ui = app_ui(), server = app_server)
