@@ -711,7 +711,7 @@ app_server <- function(input, output, session) {
       showNotification(
         "Trend mode selected on the Home page. Go to Tab 9 (Trend) and upload a multi-year CSV to run a trend analysis. The single-year run on this tab is for analysis_mode = 'single'.",
         type = "warning", duration = 12)
-      bslib::nav_select(id = "nav", selected = "9. Trend", session = session)
+      bslib::nav_select(id = "nav", selected = "7. Trend", session = session)
       return()
     }
 
@@ -1594,7 +1594,12 @@ app_server <- function(input, output, session) {
   # ====================================================================
   # F / T4.22 / TT.6: Trend tab — multi-year inventory uncertainty
   # ====================================================================
-  rv_trend <- reactiveValues(results = NULL, message = NULL)
+  # Round 8: rv_trend now caches per-year MC samples + delta + slope so the
+  # trend tab can compute sensitivity and produce Excel/CSV/Word reports.
+  rv_trend <- reactiveValues(results = NULL, samples_by_year = NULL,
+                              co2e_by_year = NULL, slope = NULL,
+                              delta_total = NULL, year_corr = NULL,
+                              years = NULL, message = NULL)
 
   observeEvent(input$run_trend, {
     req(rv$param_specs)
@@ -1618,12 +1623,21 @@ app_server <- function(input, output, session) {
       yc <- if (!is.null(input$year_corr) && nzchar(input$year_corr)) input$year_corr else "full"
       res <- run_trend_analysis(df, base_specs = rv$param_specs, n_iter = n_iter,
                                  year_corr = yc)
-      rv_trend$results <- res
+      # Round 8: res is now a list, not a data frame
+      rv_trend$results         <- res$table
+      rv_trend$samples_by_year <- res$samples_by_year
+      rv_trend$co2e_by_year    <- res$co2e_by_year
+      rv_trend$slope           <- res$slope
+      rv_trend$delta_total     <- res$delta_total
+      rv_trend$year_corr       <- res$year_corr
+      rv_trend$years           <- res$years
       rv_trend$message <- list(type = "success",
-        text = sprintf("Trend computed for %d years (%d–%d). Total change: %s%%.",
-                       nrow(res), min(res$Year), max(res$Year),
-                       res$Delta_vs_base_pct[nrow(res)]))
-      showNotification(rv_trend$message$text, type = "message", duration = 5)
+        text = sprintf("Trend computed for %d years (%d–%d). Δ vs base: %.1f%% [95%% CI %.1f%%, %.1f%%]; slope: %.0f t CO₂eq/yr.",
+                       nrow(res$table), min(res$table$Year), max(res$table$Year),
+                       res$delta_total$pct_mean,
+                       res$delta_total$pct_ci[1], res$delta_total$pct_ci[2],
+                       res$slope$mean))
+      showNotification(rv_trend$message$text, type = "message", duration = 7)
     }, error = function(e) {
       rv_trend$message <- list(type = "error",
         text = paste("Trend run failed:", e$message))
@@ -1660,12 +1674,19 @@ app_server <- function(input, output, session) {
   output$trend_table <- DT::renderDT({
     req(rv_trend$results)
     DT::datatable(rv_trend$results, rownames = FALSE,
-                  options = list(pageLength = 25))
+                  options = list(pageLength = 25, dom = "t"))
   })
 
   output$trend_plot <- plotly::renderPlotly({
     req(rv_trend$results)
     df <- rv_trend$results
+    sub <- if (!is.null(rv_trend$slope) && !is.null(rv_trend$delta_total)) {
+      sprintf("Δ vs base: %.1f%% (95%% CI %.1f%%, %.1f%%)  •  Slope: %.0f t CO₂eq/yr (95%% CI %.0f, %.0f)",
+              rv_trend$delta_total$pct_mean,
+              rv_trend$delta_total$pct_ci[1], rv_trend$delta_total$pct_ci[2],
+              rv_trend$slope$mean,
+              rv_trend$slope$ci[1], rv_trend$slope$ci[2])
+    } else NULL
     plotly::plot_ly() |>
       plotly::add_ribbons(x = df$Year, ymin = df$CI_Lower_t, ymax = df$CI_Upper_t,
                           name = "95% CI", line = list(color = "transparent"),
@@ -1675,10 +1696,146 @@ app_server <- function(input, output, session) {
                         name = "Mean", line = list(color = "#1B4332", width = 3),
                         marker = list(size = 8, color = "#1B4332")) |>
       plotly::layout(
-        title = "Trend in total CO₂eq emissions (95% CI)",
+        title = list(text = paste0("Trend in total CO₂eq emissions (95% CI)",
+                                    if (!is.null(sub)) paste0("<br><sub>", sub, "</sub>") else "")),
         xaxis = list(title = "Inventory year"),
         yaxis = list(title = "Total CO₂eq (tonnes)"),
         hovermode = "x unified"
       )
   })
+
+  # Round 8 — Trend sensitivity (per-year + delta)
+
+  trend_sens_per_year <- reactive({
+    req(rv_trend$samples_by_year, rv_trend$co2e_by_year)
+    yrs <- names(rv_trend$samples_by_year)
+    last <- yrs[length(yrs)]
+    sensitivity_analysis(
+      rv_trend$samples_by_year[[last]],
+      rv_trend$co2e_by_year[[last]],
+      method = "both"
+    )
+  })
+
+  trend_sens_delta <- reactive({
+    req(rv_trend$samples_by_year, rv_trend$delta_total)
+    yrs <- names(rv_trend$samples_by_year)
+    if (length(yrs) < 2) return(NULL)
+    s_y1 <- as.data.frame(rv_trend$samples_by_year[[1]])
+    s_yN <- as.data.frame(rv_trend$samples_by_year[[length(yrs)]])
+    names(s_y1) <- paste0(names(s_y1), "_y1")
+    names(s_yN) <- paste0(names(s_yN), "_yN")
+    combined <- cbind(s_y1, s_yN)
+    sensitivity_analysis(
+      combined, rv_trend$delta_total$per_iter, method = "both"
+    )
+  })
+
+  .trend_tornado_plot <- function(sens, title_text) {
+    placeholder <- function(msg) {
+      plotly::plot_ly() |>
+        plotly::layout(
+          xaxis = list(visible = FALSE),
+          yaxis = list(visible = FALSE),
+          annotations = list(list(
+            text = msg, showarrow = FALSE, x = 0.5, y = 0.5,
+            xref = "paper", yref = "paper",
+            font = list(size = 13, color = "#555"))))
+    }
+    if (is.null(sens) || length(sens) == 0)
+      return(placeholder("Run a trend simulation first."))
+    base <- if (!is.null(sens$src) && is.data.frame(sens$src) && nrow(sens$src) > 0) {
+      sens$src
+    } else if (!is.null(sens$prcc) && is.data.frame(sens$prcc) && nrow(sens$prcc) > 0) {
+      sens$prcc
+    } else NULL
+    if (is.null(base) || nrow(base) == 0)
+      return(placeholder("No input parameters had variance."))
+    val_col <- if ("src" %in% names(base)) "src"
+               else if ("prcc" %in% names(base)) "prcc"
+               else NULL
+    if (is.null(val_col) || !"parameter" %in% names(base))
+      return(placeholder("Sensitivity result missing expected columns."))
+    top10 <- utils::head(base[order(-abs(base[[val_col]])), , drop = FALSE], 10)
+    top10 <- top10[order(top10[[val_col]]), , drop = FALSE]
+    plotly::plot_ly(y = factor(top10$parameter, levels = top10$parameter),
+                    x = top10[[val_col]], type = "bar", orientation = "h",
+                    marker = list(color = ifelse(top10[[val_col]] > 0,
+                                                 "#2D6A4F", "#C1121F"))) |>
+      plotly::layout(title = list(text = title_text, font = list(size = 12)),
+                     xaxis = list(title = toupper(val_col)),
+                     yaxis = list(title = ""),
+                     margin = list(l = 130))
+  }
+
+  output$trend_tornado_per_year <- plotly::renderPlotly({
+    .trend_tornado_plot(trend_sens_per_year(),
+                         "Top 10 drivers — latest year")
+  })
+
+  output$trend_tornado_delta <- plotly::renderPlotly({
+    .trend_tornado_plot(trend_sens_delta(),
+                         "Top 10 drivers — Δ Y_N − Y_1")
+  })
+
+  # Round 8 — Trend downloads (Excel / CSV / Word)
+
+  .trend_filename <- function(ext) {
+    yc <- if (!is.null(rv_trend$year_corr)) rv_trend$year_corr else "trend"
+    paste0("trend_", yc, "_", Sys.Date(), ".", ext)
+  }
+
+  output$download_trend_xlsx <- downloadHandler(
+    filename = function() .trend_filename("xlsx"),
+    content = function(file) {
+      validate(need(!is.null(rv_trend$results),
+                    "Run a trend simulation on Tab 7 before downloading."))
+      n_iter_val <- if (!is.null(input$trend_n_iter)) input$trend_n_iter else 2000
+      export_trend_xlsx(
+        results_table        = rv_trend$results,
+        slope                = rv_trend$slope,
+        delta_total          = rv_trend$delta_total,
+        sensitivity_per_year = trend_sens_per_year(),
+        sensitivity_delta    = trend_sens_delta(),
+        year_corr            = rv_trend$year_corr,
+        n_iter               = n_iter_val,
+        filepath             = file
+      )
+    }
+  )
+
+  output$download_trend_csv <- downloadHandler(
+    filename = function() .trend_filename("csv"),
+    content = function(file) {
+      validate(need(!is.null(rv_trend$results),
+                    "Run a trend simulation on Tab 7 before downloading."))
+      write.csv(rv_trend$results, file, row.names = FALSE)
+    }
+  )
+
+  output$download_trend_docx <- downloadHandler(
+    filename = function() .trend_filename("docx"),
+    content = function(file) {
+      validate(need(!is.null(rv_trend$results),
+                    "Run a trend simulation on Tab 7 before downloading."))
+      n_iter_val <- if (!is.null(input$trend_n_iter)) input$trend_n_iter else 2000
+      build_trend_summary_docx(
+        path                 = file,
+        trend_results        = rv_trend$results,
+        slope                = rv_trend$slope,
+        delta_total          = rv_trend$delta_total,
+        sensitivity_per_year = trend_sens_per_year(),
+        sensitivity_delta    = trend_sens_delta(),
+        year_corr            = rv_trend$year_corr,
+        years                = rv_trend$years,
+        n_iter               = n_iter_val,
+        ipcc_meta            = rv$inv_metadata,
+        param_specs          = rv$param_specs
+      )
+    }
+  )
+
+  # Round 8 — Contact / Feedback. The form is rendered as raw HTML+JS in
+  # R/utils_contact.R via contact_form_html(); submission happens browser-side
+  # (Web3Forms free tier blocks server-side POSTs). No Shiny observer needed.
 }

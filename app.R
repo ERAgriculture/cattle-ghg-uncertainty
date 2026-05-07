@@ -22,6 +22,7 @@ library(promises)
 # Round 6b: Word run-summary export
 library(officer)
 library(flextable)
+# Round 8 contact form posts client-side to Web3Forms (no server-side libs needed)
 
 # Launch app
 shinyApp(ui = app_ui(), server = app_server)

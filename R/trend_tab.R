@@ -148,7 +148,12 @@ run_trend_analysis <- function(trend_df, base_specs, n_iter = 2000,
     }
   }
 
-  rows <- list()
+  # Round 8: cache per-year MC samples + co2e vectors so the trend tab can
+  # compute sensitivity (per-year + delta-driven) and richer metrics later.
+  rows            <- list()
+  samples_by_year <- list()
+  co2e_by_year    <- list()
+
   for (yi in seq_along(years)) {
     y <- years[yi]
     year_slice <- trend_df[trend_df$year == y, , drop = FALSE]
@@ -183,15 +188,21 @@ run_trend_analysis <- function(trend_df, base_specs, n_iter = 2000,
     )
     co2e <- sim$inventory$total_co2e
     m    <- mean(co2e)
+    s    <- sd(co2e)
     lo   <- quantile(co2e, 0.025, names = FALSE)
     hi   <- quantile(co2e, 0.975, names = FALSE)
     moe  <- if (m > 0) ((hi - lo) / 2) / m * 100 else NA_real_
+    cv   <- if (m > 0) s / m * 100 else NA_real_
+
+    samples_by_year[[as.character(y)]] <- sim$by_system$year_run$samples
+    co2e_by_year[[as.character(y)]]    <- co2e
 
     rows[[length(rows) + 1]] <- data.frame(
       Year         = y,
       Mean_t_CO2eq = round(m, 2),
       CI_Lower_t   = round(lo, 2),
       CI_Upper_t   = round(hi, 2),
+      CV_pct       = round(cv, 2),
       MoE_95_pct   = round(moe, 1)
     )
   }
@@ -199,6 +210,46 @@ run_trend_analysis <- function(trend_df, base_specs, n_iter = 2000,
   out <- do.call(rbind, rows)
   base_mean <- out$Mean_t_CO2eq[1]
   out$Delta_vs_base_pct <- round((out$Mean_t_CO2eq - base_mean) / base_mean * 100, 1)
+  # Round 8: year-over-year % change column for IPCC-style stepwise reporting
+  out$YoY_pct <- c(NA_real_, round(diff(out$Mean_t_CO2eq) /
+                                    out$Mean_t_CO2eq[-nrow(out)] * 100, 1))
   attr(out, "year_corr") <- year_corr
-  out
+
+  # Round 8: per-iteration trend metrics — slope (kt CO2eq/yr) via lm() per
+  # iteration, and Delta total (Y_N - Y_1) per iteration. Both are returned
+  # with their own MC distribution + 95% CI per IPCC Vol 1 Ch 3 §3.7.
+  yr_vec <- as.numeric(years)
+  co2e_mat <- do.call(cbind, co2e_by_year)  # n_iter x n_years
+  # Slope per iteration via least-squares closed form (faster than lm() per row)
+  yr_centered <- yr_vec - mean(yr_vec)
+  denom <- sum(yr_centered ^ 2)
+  slope_per_iter <- as.numeric(co2e_mat %*% yr_centered) / denom
+  delta_per_iter <- co2e_mat[, ncol(co2e_mat)] - co2e_mat[, 1]
+  base_co2e_per_iter <- co2e_mat[, 1]
+  delta_pct_per_iter <- ifelse(base_co2e_per_iter > 0,
+                                delta_per_iter / base_co2e_per_iter * 100,
+                                NA_real_)
+  q025 <- function(x) stats::quantile(x, 0.025, names = FALSE, na.rm = TRUE)
+  q975 <- function(x) stats::quantile(x, 0.975, names = FALSE, na.rm = TRUE)
+
+  list(
+    table = out,
+    samples_by_year = samples_by_year,
+    co2e_by_year    = co2e_by_year,
+    slope = list(
+      per_iter = slope_per_iter,
+      mean     = mean(slope_per_iter, na.rm = TRUE),
+      ci       = c(q025(slope_per_iter), q975(slope_per_iter))
+    ),
+    delta_total = list(
+      per_iter   = delta_per_iter,
+      mean       = mean(delta_per_iter, na.rm = TRUE),
+      ci         = c(q025(delta_per_iter), q975(delta_per_iter)),
+      pct_per_iter = delta_pct_per_iter,
+      pct_mean   = mean(delta_pct_per_iter, na.rm = TRUE),
+      pct_ci     = c(q025(delta_pct_per_iter), q975(delta_pct_per_iter))
+    ),
+    year_corr = year_corr,
+    years     = years
+  )
 }

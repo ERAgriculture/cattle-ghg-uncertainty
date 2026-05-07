@@ -52,3 +52,52 @@ export_results_xlsx <- function(results, uncertainty, sensitivity, ipcc_table, f
   )
   writexl::write_xlsx(sheets, path = filepath)
 }
+
+# Round 8: trend export — multi-sheet Excel for the Trend tab.
+# Sheets: Trend_summary (year x metrics), Slope_and_delta (per-iter MC summary),
+# Sensitivity_per_year_*, Sensitivity_delta_*, Methodology.
+export_trend_xlsx <- function(results_table, slope, delta_total,
+                               sensitivity_per_year, sensitivity_delta,
+                               year_corr, n_iter, filepath) {
+  slope_delta_summary <- data.frame(
+    Metric = c("Trend slope (t CO2eq / yr)",
+               "Trend slope 95% CI lower",
+               "Trend slope 95% CI upper",
+               "Delta total (Y_N - Y_1, t CO2eq)",
+               "Delta total 95% CI lower",
+               "Delta total 95% CI upper",
+               "Delta percent (vs Y_1)",
+               "Delta percent 95% CI lower",
+               "Delta percent 95% CI upper"),
+    Value  = c(slope$mean, slope$ci[1], slope$ci[2],
+               delta_total$mean, delta_total$ci[1], delta_total$ci[2],
+               delta_total$pct_mean, delta_total$pct_ci[1], delta_total$pct_ci[2]),
+    stringsAsFactors = FALSE
+  )
+  methodology <- data.frame(
+    Field = c("Generated", "Tool", "Iterations per year",
+              "Year-to-year correlation mode",
+              "IPCC reference"),
+    Value = c(as.character(Sys.time()),
+              "IPCC Tier 2 Uncertainty Calculator — Trend",
+              n_iter, year_corr,
+              "IPCC 2019 Refinement Vol 1 Ch 3 §3.2.2.4 (year correlation) + §3.7 (trend reporting)"),
+    stringsAsFactors = FALSE
+  )
+
+  pull_df <- function(sens, key) {
+    if (is.null(sens) || is.null(sens[[key]])) return(data.frame())
+    sens[[key]]
+  }
+
+  sheets <- list(
+    Trend_summary    = results_table,
+    Slope_and_delta  = slope_delta_summary,
+    Sensitivity_per_year_SRC  = pull_df(sensitivity_per_year, "src"),
+    Sensitivity_per_year_PRCC = pull_df(sensitivity_per_year, "prcc"),
+    Sensitivity_delta_SRC     = pull_df(sensitivity_delta, "src"),
+    Sensitivity_delta_PRCC    = pull_df(sensitivity_delta, "prcc"),
+    Methodology      = methodology
+  )
+  writexl::write_xlsx(sheets, path = filepath)
+}

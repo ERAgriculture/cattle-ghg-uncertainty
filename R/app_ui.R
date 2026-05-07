@@ -673,9 +673,9 @@ app_ui <- function() {
       # R1.5: placeholder removed — settings panel itself shows when sim_view is settings
     ),
 
-    # ==================== TAB 7: SENSITIVITY ====================
+    # ==================== TAB 6: SENSITIVITY ====================
     bslib::nav_panel(
-      title = "7. Sensitivity",
+      title = "6. Sensitivity",
       icon = icon("bullseye"),
       div(class = "info-panel", style = "margin: 16px;",
           tags$strong("What to do: "),
@@ -725,7 +725,114 @@ app_ui <- function() {
       )
     ),
 
-    # ==================== TAB 8: IPCC REPORT ====================
+    # ==================== TAB 7: TREND (F: build-out) ====================
+    # Round 8: Trend moved before IPCC Report so IPCC Report is the last tab.
+    bslib::nav_panel(
+      title = "7. Trend",
+      icon = icon("chart-line"),
+      div(class = "info-panel", style = "margin: 16px;",
+          tags$strong("What to do: "),
+          "Year-by-year inventory uncertainty: quantify how total emissions change between years and how much of that change is uncertain. ",
+          tags$br(), tags$br(),
+          # R2.3: template-first flow — same Parameter_TimeSeries sheet that
+          # feeds Tab 4's auto-correlation now also drives this tab.
+          tags$strong("Where the data comes from: "),
+          "this tab reads the ", tags$code("Parameter_TimeSeries"),
+          " sheet that you already filled in your main inventory template ",
+          "(or loaded via Country X / Country Y). ",
+          "There is no separate upload step in the normal workflow — just click ",
+          tags$strong("Run Trend Analysis"), ". ",
+          "If you want to run the trend on a different dataset without changing your inventory, ",
+          "use the optional CSV override below (long-format: ",
+          tags$code("year, parameter, mean, uncertainty_pct"), ")."),
+      bslib::layout_columns(
+        col_widths = c(4, 8),
+        bslib::card(
+          bslib::card_header("Trend input"),
+          bslib::card_body(
+            sliderInput("trend_n_iter", "Iterations per year",
+                        min = 500, max = 10000, value = 2000, step = 500),
+            # Round 7 R1.14: year-to-year correlation per IPCC 2019 Vol 1
+            # Ch 3 §3.2.2.4. Default = full (coefficients reused across years,
+            # AD redrawn). Three-way override available.
+            radioButtons("year_corr", "Year-to-year correlation",
+                          choices = c(
+                            "Fully correlated coefficients (IPCC 2019 default)" = "full",
+                            "Partial (AR(1), ρ=0.7)"                      = "partial",
+                            "Independent (no year-to-year correlation)"          = "none"),
+                          selected = "full"),
+            div(style = "font-size:0.78rem; color:#666; margin-top:-6px; margin-bottom:8px;",
+                tags$em("IPCC 2019 §3.2.2.4: emission factor uncertainties tend to be fully correlated across years, while activity data are usually re-estimated annually. The default reuses the same coefficient draws every year so the trend reflects AD changes only.")),
+            actionButton("run_trend", "Run Trend Analysis",
+                         class = "run-btn w-100", icon = icon("play")),
+            hr(),
+            uiOutput("trend_status"),
+            hr(),
+            tags$details(
+              tags$summary(tags$strong("Optional: override with separate CSV")),
+              div(style = "padding: 6px 0;",
+                  fileInput("trend_upload",
+                    "Upload multi-year CSV (year, parameter, mean, uncertainty_pct)",
+                    accept = c(".csv")),
+                  div(style = "font-size:0.78rem; color:#666;",
+                      tags$em("If a CSV is uploaded here, it takes precedence over the template's Parameter_TimeSeries sheet for this run."))
+              )
+            )
+          )
+        ),
+        bslib::card(
+          bslib::card_header("Trend chart — Total CO2eq with 95% CI band"),
+          bslib::card_body(plotly::plotlyOutput("trend_plot", height = "400px"))
+        )
+      ),
+      bslib::card(
+        bslib::card_header("Trend table"),
+        bslib::card_body(
+          p(tags$em("Year-by-year mean, 95% CI bounds, and 95% margin of error. ",
+                    "The 'Δ vs. base year' column shows the percent change from the earliest year — ",
+                    "use this for trend reporting per IPCC Vol.1 §3.2.")),
+          DT::DTOutput("trend_table")
+        )
+      ),
+      # Round 8: trend exports (Excel/CSV/Word) + sensitivity panel.
+      bslib::card(
+        bslib::card_header("Trend report downloads"),
+        bslib::card_body(
+          p(tags$em("Available after a successful trend run. The Word summary mirrors the design of the IPCC response document and includes the trend table, trend chart, slope, sensitivity drivers, and a methodological note on the year-correlation mode you chose.")),
+          fluidRow(
+            column(3, downloadButton("download_trend_xlsx", "Download Excel Report",
+                                      class = "btn-success")),
+            column(3, downloadButton("download_trend_csv", "Download CSV",
+                                      class = "btn-outline-success")),
+            column(3, downloadButton("download_trend_docx", "Download Word summary",
+                                      class = "btn-primary"))
+          )
+        )
+      ),
+      # Round 8: trend sensitivity (two tornado panels)
+      bslib::card(
+        bslib::card_header("Sensitivity drivers"),
+        bslib::card_body(
+          p(tags$em("Two views: ", tags$strong("Per-year"), " shows what dominates uncertainty in the latest year; ",
+                    tags$strong("Trend driver (Δ across years)"), " shows what drives the change between the first and last year (per IPCC Vol 1 Ch 3 §3.7).")),
+          bslib::layout_columns(
+            col_widths = c(6, 6),
+            div(
+              h6("Per-year (latest)", style = "color:#1B4332;"),
+              plotly::plotlyOutput("trend_tornado_per_year", height = "320px")
+            ),
+            div(
+              h6("Trend driver (Δ Y_N − Y_1)", style = "color:#1B4332;"),
+              plotly::plotlyOutput("trend_tornado_delta", height = "320px")
+            )
+          )
+        )
+      )
+    ),
+
+    # ==================== TAB 8: IPCC REPORT (last) ====================
+    # Round 8: moved to last position so the IPCC-facing report is the
+    # natural endpoint of the workflow.
     bslib::nav_panel(
       title = "8. IPCC Report",
       icon = icon("file-alt"),
@@ -797,72 +904,48 @@ app_ui <- function() {
       )
     ),
 
-    # ==================== TAB 9: TREND (F: build-out) ====================
+    # ==================== TAB 9: CONTACT / FEEDBACK ====================
+    # Round 8: client-side Web3Forms submission. The form HTML below posts
+    # directly from the visitor's browser to https://api.web3forms.com/submit
+    # — Web3Forms restrict server-side POST on the free tier, so we use their
+    # recommended client-side fetch() pattern. The Shiny server is bypassed
+    # for the actual relay; the access key (which is public-facing by design,
+    # see R/utils_contact.R) is embedded in the form.
     bslib::nav_panel(
-      title = "9. Trend",
-      icon = icon("chart-line"),
+      title = "Contact / Feedback",
+      icon = icon("envelope"),
       div(class = "info-panel", style = "margin: 16px;",
-          tags$strong("What to do: "),
-          "Year-by-year inventory uncertainty: quantify how total emissions change between years and how much of that change is uncertain. ",
+          tags$strong("We welcome feedback, bug reports, feature suggestions, and methodology questions."),
           tags$br(), tags$br(),
-          # R2.3: template-first flow — same Parameter_TimeSeries sheet that
-          # feeds Tab 4's auto-correlation now also drives this tab.
-          tags$strong("Where the data comes from: "),
-          "this tab reads the ", tags$code("Parameter_TimeSeries"),
-          " sheet that you already filled in your main inventory template ",
-          "(or loaded via Country X / Country Y). ",
-          "There is no separate upload step in the normal workflow — just click ",
-          tags$strong("Run Trend Analysis"), ". ",
-          "If you want to run the trend on a different dataset without changing your inventory, ",
-          "use the optional CSV override below (long-format: ",
-          tags$code("year, parameter, mean, uncertainty_pct"), ")."),
+          "Your message goes directly to Lolita's CGIAR Alliance inbox — no third party stores it. ",
+          "We reply when we can. If your question is urgent, you can also email ",
+          tags$a(href = "mailto:m.lolita@cgiar.org", "m.lolita@cgiar.org"),
+          " directly."),
       bslib::layout_columns(
-        col_widths = c(4, 8),
+        col_widths = c(6, 6),
         bslib::card(
-          bslib::card_header("Trend input"),
+          bslib::card_header("Send us a message"),
           bslib::card_body(
-            sliderInput("trend_n_iter", "Iterations per year",
-                        min = 500, max = 10000, value = 2000, step = 500),
-            # Round 7 R1.14: year-to-year correlation per IPCC 2019 Vol 1
-            # Ch 3 §3.2.2.4. Default = full (coefficients reused across years,
-            # AD redrawn). Three-way override available.
-            radioButtons("year_corr", "Year-to-year correlation",
-                          choices = c(
-                            "Fully correlated coefficients (IPCC 2019 default)" = "full",
-                            "Partial (AR(1), ρ=0.7)"                      = "partial",
-                            "Independent (no year-to-year correlation)"          = "none"),
-                          selected = "full"),
-            div(style = "font-size:0.78rem; color:#666; margin-top:-6px; margin-bottom:8px;",
-                tags$em("IPCC 2019 §3.2.2.4: emission factor uncertainties tend to be fully correlated across years, while activity data are usually re-estimated annually. The default reuses the same coefficient draws every year so the trend reflects AD changes only.")),
-            actionButton("run_trend", "Run Trend Analysis",
-                         class = "run-btn w-100", icon = icon("play")),
-            hr(),
-            uiOutput("trend_status"),
-            hr(),
-            tags$details(
-              tags$summary(tags$strong("Optional: override with separate CSV")),
-              div(style = "padding: 6px 0;",
-                  fileInput("trend_upload",
-                    "Upload multi-year CSV (year, parameter, mean, uncertainty_pct)",
-                    accept = c(".csv")),
-                  div(style = "font-size:0.78rem; color:#666;",
-                      tags$em("If a CSV is uploaded here, it takes precedence over the template's Parameter_TimeSeries sheet for this run."))
-              )
-            )
+            HTML(contact_form_html())
           )
         ),
         bslib::card(
-          bslib::card_header("Trend chart — Total CO2eq with 95% CI band"),
-          bslib::card_body(plotly::plotlyOutput("trend_plot", height = "400px"))
-        )
-      ),
-      bslib::card(
-        bslib::card_header("Trend table"),
-        bslib::card_body(
-          p(tags$em("Year-by-year mean, 95% CI bounds, and 95% margin of error. ",
-                    "The 'Δ vs. base year' column shows the percent change from the earliest year — ",
-                    "use this for trend reporting per IPCC Vol.1 §3.2.")),
-          DT::DTOutput("trend_table")
+          bslib::card_header("What kind of feedback helps most"),
+          bslib::card_body(
+            tags$ul(
+              tags$li(tags$strong("Bug reports"),
+                      " — with steps to reproduce, the example dataset or your upload, and the error message."),
+              tags$li(tags$strong("Methodology questions"),
+                      " — e.g. how a particular IPCC equation is implemented, or whether your country's data fits the assumptions."),
+              tags$li(tags$strong("Feature requests"),
+                      " — missing parameters, additional emission sources, integration with national inventory tools."),
+              tags$li(tags$strong("Documentation gaps"),
+                      " — if a tab or label was confusing, tell us where you got stuck.")
+            ),
+            hr(),
+            div(style = "font-size:0.8rem; color:#666;",
+                tags$em("Privacy note: messages are relayed via Web3Forms, an HTTPS form-relay service. We don't store your message anywhere except in Lolita's inbox; we don't share your email."))
+          )
         )
       )
     ),
