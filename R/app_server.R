@@ -1457,8 +1457,17 @@ app_server <- function(input, output, session) {
     if (is.null(rv$sensitivity) || length(rv$sensitivity) == 0)
       return(placeholder("Sensitivity analysis not yet run. Run a simulation on Tab 5 first."))
 
-    sens <- rv$sensitivity$src %||% rv$sensitivity$prcc
-    if (is.null(sens) || !is.data.frame(sens) || nrow(sens) == 0)
+    # Hotfix: custom %||% is unsafe on data.frames (it does is.na(a[1])
+    # which on a frame returns a vector, breaking the `||` chain). Use
+    # explicit checks instead so the tornado renderer doesn't throw.
+    sens <- if (!is.null(rv$sensitivity$src) &&
+                is.data.frame(rv$sensitivity$src) && nrow(rv$sensitivity$src) > 0) {
+      rv$sensitivity$src
+    } else if (!is.null(rv$sensitivity$prcc) &&
+               is.data.frame(rv$sensitivity$prcc) && nrow(rv$sensitivity$prcc) > 0) {
+      rv$sensitivity$prcc
+    } else NULL
+    if (is.null(sens) || nrow(sens) == 0)
       return(placeholder("No input parameters had variance — tornado chart cannot be built."))
 
     val_col <- if ("src" %in% names(sens)) "src"
