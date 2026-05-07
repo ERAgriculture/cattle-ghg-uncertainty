@@ -1383,13 +1383,27 @@ parse_uploaded_template <- function(path) {
     stop("Parameters sheet is missing the required 'parameter' column. ",
          "Found columns: ", paste(names(params), collapse = ", "))
 
-  # Remove instruction/separator rows (rows where parameter is not in catalogue)
+  # Drop blank/instruction rows first (no parameter name).
   raw_n <- nrow(params)
   params <- params[
     !is.na(params$parameter) &
-    nzchar(as.character(params$parameter)) &
-    params$parameter %in% PARAM_CATALOGUE$parameter, ,
+    nzchar(as.character(params$parameter)), ,
     drop = FALSE]
+
+  # C1 / R1.6 hotfix (Round 7.1): apply legacy-name aliases BEFORE the
+  # catalogue filter, otherwise rows whose parameter still uses the pre-rename
+  # spelling (cattle_pop, live_weight, milk_yield, DE_pct, ...) get dropped
+  # silently. Then ensure_completeness() reports the renamed parameter as
+  # missing — and N has no IPCC default, so the run fails with a confusing
+  # "missing N" error instead of the legacy template just working.
+  if ("parameter" %in% names(params) && exists("PARAM_ALIASES")) {
+    aliased <- params$parameter %in% names(PARAM_ALIASES)
+    if (any(aliased))
+      params$parameter[aliased] <- PARAM_ALIASES[params$parameter[aliased]]
+  }
+
+  # Now filter to rows whose (translated) parameter name is in the catalogue.
+  params <- params[params$parameter %in% PARAM_CATALOGUE$parameter, , drop = FALSE]
 
   if (nrow(params) == 0) {
     # Surface what we did find so the user can fix names. params still has its
@@ -1411,13 +1425,6 @@ parse_uploaded_template <- function(path) {
   # D1: backwards-compat alias — coerce legacy "emission_factor" param_type to "coefficient"
   if ("param_type" %in% names(params))
     params$param_type[params$param_type == "emission_factor"] <- "coefficient"
-
-  # C1: backwards-compat aliases for renamed parameters (old user templates)
-  if ("parameter" %in% names(params) && exists("PARAM_ALIASES")) {
-    aliased <- params$parameter %in% names(PARAM_ALIASES)
-    if (any(aliased))
-      params$parameter[aliased] <- PARAM_ALIASES[params$parameter[aliased]]
-  }
 
   # Ensure numeric
   for (nm in c("mean","uncertainty_pct","lower","upper","lower_bound","upper_bound")) {
