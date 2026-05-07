@@ -325,6 +325,18 @@ app_ui <- function() {
           h5("Custom Data Upload"),
           fileInput("data_upload", "Upload Excel Template (.xlsx)",
                     accept = ".xlsx"),
+          # Round 7.1 (Andreas Template #3 follow-up): IPCC version picker so
+          # the downloaded template's MMS dropdown filters to the systems
+          # valid for that version (and the Inventory_Metadata `ipcc_version`
+          # cell is pre-set to match). Previously a single template shipped
+          # with all 12 MMS entries regardless of version, deferring the
+          # mismatch to upload-time validation only.
+          radioButtons("template_version", "IPCC Guidelines version for template",
+                        choices = c("IPCC 2006" = "2006",
+                                    "IPCC 2019 Refinement" = "2019_refinement"),
+                        selected = "2006", inline = TRUE),
+          div(style = "font-size:0.78rem; color:#666; margin-top:-6px; margin-bottom:8px;",
+              tags$em("The MMS dropdown in the downloaded template will be filtered to manure systems valid for the version you pick here.")),
           downloadButton("download_template", "Download Blank Template",
                          class = "btn-outline-success btn-sm"),
           downloadButton("download_template_example", "Download Template with Example",

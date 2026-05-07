@@ -513,14 +513,34 @@ app_server <- function(input, output, session) {
     rv$param_specs <- ps
   })
 
-  # Template downloads
+  # Template downloads. Round 7.1: filename and MMS dropdown reflect the
+  # IPCC version picked via input$template_version (default = "2006").
+  .selected_ipcc_version <- function() {
+    v <- input$template_version
+    if (is.null(v) || !nzchar(v)) "2006" else v
+  }
+  .version_suffix <- function(v) {
+    if (identical(v, "2019_refinement")) "ipcc2019" else "ipcc2006"
+  }
   output$download_template <- downloadHandler(
-    filename = "uncertainty_template.xlsx",
-    content = function(file) generate_template(file, include_example = FALSE)
+    filename = function() {
+      v <- .selected_ipcc_version()
+      paste0("uncertainty_template_", .version_suffix(v), ".xlsx")
+    },
+    content = function(file) {
+      generate_template(file, include_example = FALSE,
+                         ipcc_version = .selected_ipcc_version())
+    }
   )
   output$download_template_example <- downloadHandler(
-    filename = "uncertainty_template_example.xlsx",
-    content = function(file) generate_template(file, include_example = TRUE)
+    filename = function() {
+      v <- .selected_ipcc_version()
+      paste0("uncertainty_template_example_", .version_suffix(v), ".xlsx")
+    },
+    content = function(file) {
+      generate_template(file, include_example = TRUE,
+                         ipcc_version = .selected_ipcc_version())
+    }
   )
 
   # --- CORRELATIONS ---

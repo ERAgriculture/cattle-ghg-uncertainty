@@ -209,9 +209,10 @@ PARAM_CATALOGUE <- data.frame(
 # ---------------------------------------------------------------------------
 # MAIN ENTRY POINT
 # ---------------------------------------------------------------------------
-generate_template <- function(filepath, include_example = FALSE) {
+generate_template <- function(filepath, include_example = FALSE,
+                                ipcc_version = "2006") {
   if (requireNamespace("openxlsx", quietly = TRUE)) {
-    generate_template_openxlsx(filepath, include_example)
+    generate_template_openxlsx(filepath, include_example, ipcc_version = ipcc_version)
   } else {
     message("Package 'openxlsx' not found — install it for dropdown menus:\n",
             "  install.packages('openxlsx')\n",
@@ -225,7 +226,8 @@ generate_template <- function(filepath, include_example = FALSE) {
 # ===========================================================================
 # OPENXLSX VERSION — full dropdowns, formulas, colour-coding
 # ===========================================================================
-generate_template_openxlsx <- function(filepath, include_example) {
+generate_template_openxlsx <- function(filepath, include_example,
+                                         ipcc_version = "2006") {
 
   wb <- openxlsx::createWorkbook()
   openxlsx::modifyBaseFont(wb, fontName = "Calibri", fontSize = 10)
@@ -302,8 +304,16 @@ generate_template_openxlsx <- function(filepath, include_example) {
   V_PTYPE     <- c("activity_data","coefficient")
   V_QUALITY   <- c("measured","country_specific","regional_default",
                    "ipcc_default","expert_judgement")
-  # TT.3: MMS list now sourced from MMS_DEFAULTS (covers IPCC 2006 + 2019)
-  V_MMS       <- MMS_DEFAULTS$id
+  # TT.3: MMS list sourced from MMS_DEFAULTS (covers IPCC 2006 + 2019).
+  # Round 7.1 (Andreas Template #3 follow-up): the MMS dropdown now filters to
+  # the systems valid for the chosen IPCC version, instead of always showing
+  # all 12 entries. Two separate template downloads (2006 / 2019) are exposed
+  # on Tab 1; each generates its own filtered dropdown list. The previous
+  # behaviour deferred the version mismatch to upload-time validation only —
+  # this change matches the dropdown to the user's selected version up-front.
+  V_MMS       <- if (exists("get_mms_for_version"))
+                   get_mms_for_version(ipcc_version)$id
+                 else MMS_DEFAULTS$id
 
   # Kept for Vocab reference tables (informational, no longer used as dropdowns)
   V_SUBSYS    <- c("dairy_cows","other_cows","bulls","oxen",
@@ -468,7 +478,7 @@ generate_template_openxlsx <- function(filepath, include_example) {
 
   example_vals <- list(
     country="Country X", inventory_year=2021, species="cattle_non_dairy",
-    ipcc_version="2006",
+    ipcc_version=ipcc_version,
     prepared_by="National GHG Inventory Team",
     notes="Hypothetical example inventory — replace with your country's data.")
 
@@ -481,7 +491,14 @@ generate_template_openxlsx <- function(filepath, include_example) {
     apply_style("Inventory_Metadata", s_lbl, rows=row_i, cols=2)
 
     # Column C: value (required=yellow, optional=white)
-    val <- if (include_example) example_vals[[f$col]] else ""
+    # Round 7.1: even on the blank template, pre-set ipcc_version so the
+    # downloaded file's MMS dropdown lines up with the version the user
+    # picked at download time.
+    val <- if (include_example) {
+      example_vals[[f$col]]
+    } else if (identical(f$col, "ipcc_version")) {
+      ipcc_version
+    } else ""
     openxlsx::writeData(wb, "Inventory_Metadata",
                         val, startRow=row_i, startCol=3, colNames=FALSE)
     apply_style("Inventory_Metadata",
