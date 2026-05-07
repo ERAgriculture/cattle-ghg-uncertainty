@@ -2,7 +2,18 @@
 app_ui <- function() {
   bslib::page_navbar(
     id = "nav",
-    title = "IPCC Tier 2 Livestock GHG Uncertainty Calculator",
+    # Round 9 follow-up: stacked header — big centered title row above the
+    # tabs row. Title + subtitle live inside a flex column; CSS in
+    # www/custom.css turns the navbar into vertical layout (title above
+    # tabs) and centers both rows. The bg=transparent on .app-title keeps
+    # the navbar's existing background.
+    title = tags$div(
+      class = "app-title-block",
+      tags$div(class = "app-title",
+                "IPCC Tier 2 Livestock GHG Uncertainty Calculator"),
+      tags$div(class = "app-subtitle",
+                "Approach 2 Monte Carlo · CGIAR Alliance / Bioversity-CIAT · funded by the Global Methane Hub")
+    ),
     theme = bslib::bs_theme(
       version = 5,
       primary = "#2D6A4F",
@@ -735,78 +746,96 @@ app_ui <- function() {
               DT::DTOutput("trend_table")
             )
           ),
-          bslib::card(
-            bslib::card_header("Sensitivity drivers"),
-            bslib::card_body(
-              p(tags$em("Two views: ", tags$strong("Per-year"), " shows what dominates uncertainty in the latest year; ",
-                        tags$strong("Trend driver (Δ across years)"), " shows what drives the change between the first and last year (per IPCC Vol 1 Ch 3 §3.7).")),
-              bslib::layout_columns(
-                col_widths = c(6, 6),
-                div(
-                  h6("Per-year (latest)", style = "color:#1B4332;"),
-                  plotly::plotlyOutput("trend_tornado_per_year", height = "320px")
-                ),
-                div(
-                  h6("Trend driver (Δ Y_N − Y_1)", style = "color:#1B4332;"),
-                  plotly::plotlyOutput("trend_tornado_delta", height = "320px")
-                )
-              )
-            )
-          ),
           div(style = "margin: 8px 16px; font-size:0.85rem; color:#555;",
-              tags$em("The Word / Excel / CSV trend reports are on the IPCC Report tab."))
+              tags$em("Sensitivity drivers (per-year + Δ Y_N − Y_1) are on Tab 6 (Sensitivity). Word / Excel / CSV trend reports are on Tab 7 (IPCC Report)."))
         )
       ),
       # R1.5: placeholder removed — settings panel itself shows when sim_view is settings
     ),
 
     # ==================== TAB 6: SENSITIVITY ====================
+    # Round 9 follow-up: branches by analysis_mode like Tab 5 / Tab 7.
+    # Single mode shows the existing single-year sensitivity (tornado +
+    # rankings table); trend mode shows the per-year + Δ tornadoes
+    # previously displayed inside Tab 5's results panel.
     bslib::nav_panel(
       title = "6. Sensitivity",
       icon = icon("bullseye"),
-      div(class = "info-panel", style = "margin: 16px;",
-          tags$strong("What to do: "),
-          "This page shows which input parameters contribute most to the overall emission uncertainty. ",
-          "The ", tags$strong("tornado chart"), " on the left ranks parameters by their influence -- ",
-          "longer bars mean more influential parameters. Green bars indicate a positive relationship ",
-          "(higher value = higher emissions) and red bars indicate a negative relationship. ",
-          "Use the dropdown on the right to switch between SRC (linear influence) and PRCC (rank-based, more robust). ",
-          # T7.1: clarify what the rankings mean
-          tags$br(), tags$br(),
-          tags$strong("Note: "),
-          tags$em("These rankings show which parameters drive the "),
-          tags$em(tags$strong("uncertainty")),
-          tags$em(" of total emissions, not the absolute emission level."),
-          tags$br(),
-          tags$strong("Action item: "), "Focus your data improvement efforts on the top 3-5 parameters ",
-          "to get the biggest reduction in overall inventory uncertainty."),
-      uiOutput("sens_view_toggle"),
-      # T7.2: per-emission-source sensitivity selector
-      div(style = "margin: 0 16px 12px 16px;",
-          selectInput("sens_source", "Output variable",
-                      choices = c(
-                        "Total CO2eq (all sources)"             = "total_co2e",
-                        "Enteric fermentation CH4"              = "enteric_ch4_total",
-                        "Manure management CH4"                 = "manure_ch4_total",
-                        "Manure management N2O direct"          = "direct_n2o_mm_total",
-                        "Manure management N2O indirect"        = "indirect_n2o_mm_total",
-                        "Pasture deposition N2O direct"         = "direct_n2o_prp_total",
-                        "Pasture deposition N2O indirect"       = "indirect_n2o_prp_total"
-                      ),
-                      selected = "total_co2e", width = "360px")),
-      bslib::layout_columns(
-        col_widths = c(6, 6),
-        bslib::card(
-          bslib::card_header("Tornado Chart - Top Parameters"),
-          bslib::card_body(plotly::plotlyOutput("tornado_chart"))
-        ),
-        bslib::card(
-          bslib::card_header("Sensitivity Rankings"),
-          bslib::card_body(
-            selectInput("sens_method", "Method",
-                        choices = c("Standardized Regression (SRC)" = "src",
-                                    "Partial Rank Correlation (PRCC)" = "prcc")),
-            DT::DTOutput("sensitivity_table")
+
+      # ---------- Single-year sensitivity ----------
+      conditionalPanel(
+        condition = "input.analysis_mode != 'trend'",
+        div(class = "info-panel", style = "margin: 16px;",
+            tags$strong("What to do: "),
+            "This page shows which input parameters contribute most to the overall emission uncertainty. ",
+            "The ", tags$strong("tornado chart"), " on the left ranks parameters by their influence -- ",
+            "longer bars mean more influential parameters. Green bars indicate a positive relationship ",
+            "(higher value = higher emissions) and red bars indicate a negative relationship. ",
+            "Use the dropdown on the right to switch between SRC (linear influence) and PRCC (rank-based, more robust). ",
+            tags$br(), tags$br(),
+            tags$strong("Note: "),
+            tags$em("These rankings show which parameters drive the "),
+            tags$em(tags$strong("uncertainty")),
+            tags$em(" of total emissions, not the absolute emission level."),
+            tags$br(),
+            tags$strong("Action item: "), "Focus your data improvement efforts on the top 3-5 parameters ",
+            "to get the biggest reduction in overall inventory uncertainty."),
+        uiOutput("sens_view_toggle"),
+        div(style = "margin: 0 16px 12px 16px;",
+            selectInput("sens_source", "Output variable",
+                        choices = c(
+                          "Total CO2eq (all sources)"             = "total_co2e",
+                          "Enteric fermentation CH4"              = "enteric_ch4_total",
+                          "Manure management CH4"                 = "manure_ch4_total",
+                          "Manure management N2O direct"          = "direct_n2o_mm_total",
+                          "Manure management N2O indirect"        = "indirect_n2o_mm_total",
+                          "Pasture deposition N2O direct"         = "direct_n2o_prp_total",
+                          "Pasture deposition N2O indirect"       = "indirect_n2o_prp_total"
+                        ),
+                        selected = "total_co2e", width = "360px")),
+        bslib::layout_columns(
+          col_widths = c(6, 6),
+          bslib::card(
+            bslib::card_header("Tornado Chart - Top Parameters"),
+            bslib::card_body(plotly::plotlyOutput("tornado_chart"))
+          ),
+          bslib::card(
+            bslib::card_header("Sensitivity Rankings"),
+            bslib::card_body(
+              selectInput("sens_method", "Method",
+                          choices = c("Standardized Regression (SRC)" = "src",
+                                      "Partial Rank Correlation (PRCC)" = "prcc")),
+              DT::DTOutput("sensitivity_table")
+            )
+          )
+        )
+      ),
+
+      # ---------- Trend sensitivity ----------
+      conditionalPanel(
+        condition = "input.analysis_mode == 'trend'",
+        div(class = "info-panel", style = "margin: 16px;",
+            tags$strong("What to do: "),
+            "Trend sensitivity has two complementary views. ",
+            tags$strong("Per-year (latest)"),
+            " — which parameters dominate the uncertainty in the most recent year. ",
+            tags$strong("Trend driver (Δ Y_N − Y_1)"),
+            " — which parameters drive the change between the first and last year (per IPCC Vol 1 Ch 3 §3.7). ",
+            "Both ranked by absolute SRC; bar colour indicates sign of the influence (green = positive, red = negative). ",
+            tags$br(), tags$br(),
+            tags$strong("Action item: "),
+            "If the per-year drivers and trend drivers are the same, you can prioritise data work on the top 3-5 parameters confidently. If they differ, the trend uncertainty has its own structure — focus on whichever parameter dominates the driver you care about."),
+        bslib::layout_columns(
+          col_widths = c(6, 6),
+          bslib::card(
+            bslib::card_header("Per-year drivers (latest year)"),
+            bslib::card_body(plotly::plotlyOutput("trend_tornado_per_year_sens",
+                                                   height = "420px"))
+          ),
+          bslib::card(
+            bslib::card_header("Trend driver (Δ Y_N − Y_1)"),
+            bslib::card_body(plotly::plotlyOutput("trend_tornado_delta_sens",
+                                                   height = "420px"))
           )
         )
       )
@@ -952,17 +981,15 @@ app_ui <- function() {
       div(class = "info-panel", style = "margin: 16px;",
           tags$strong("We welcome feedback, bug reports, feature suggestions, and methodology questions."),
           tags$br(), tags$br(),
-          "Your message goes directly to Lolita's CGIAR Alliance inbox — no third party stores it. ",
-          "We reply when we can. If your question is urgent, you can also email ",
-          tags$a(href = "mailto:m.lolita@cgiar.org", "m.lolita@cgiar.org"),
-          " directly."),
+          "Submissions are sent to the development team. We aim to reply within a few working days."),
       bslib::layout_columns(
         col_widths = c(6, 6),
         bslib::card(
           bslib::card_header("Send us a message"),
-          bslib::card_body(
-            HTML(contact_form_html())
-          )
+          # Round 9 follow-up: contact_form_html() returns a tagList (form HTML
+          # + <style> + <script>). Pass it directly — wrapping in HTML() would
+          # re-stringify the script and break the submit handler again.
+          bslib::card_body(contact_form_html())
         ),
         bslib::card(
           bslib::card_header("What kind of feedback helps most"),
@@ -979,7 +1006,7 @@ app_ui <- function() {
             ),
             hr(),
             div(style = "font-size:0.8rem; color:#666;",
-                tags$em("Privacy note: messages are relayed via Web3Forms, an HTTPS form-relay service. We don't store your message anywhere except in Lolita's inbox; we don't share your email."))
+                tags$em("Privacy note: messages are relayed via Web3Forms, an HTTPS form-relay service. We don't store your message; we don't share your email."))
           )
         )
       )

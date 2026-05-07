@@ -15,7 +15,90 @@
 
 body { background: var(--bg); color: var(--text); }
 
-.navbar { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+/* =====================================================================
+   Round 9 follow-up — stacked header layout.
+   The page_navbar's title is a div with .app-title + .app-subtitle.
+   Override Bootstrap's horizontal navbar so the title sits as a banner
+   row above a centered tab row.
+   ===================================================================== */
+.navbar {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  flex-direction: column !important;
+  padding: 0 !important;
+  background: linear-gradient(135deg, #1B4332 0%, #2D6A4F 100%) !important;
+}
+.navbar > .container,
+.navbar > .container-fluid,
+.navbar > .container-sm,
+.navbar > .container-md,
+.navbar > .container-lg,
+.navbar > .container-xl,
+.navbar > .container-xxl {
+  flex-direction: column !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+
+.navbar-brand {
+  width: 100%;
+  margin: 0 !important;
+  padding: 0 !important;
+  text-align: center;
+}
+.app-title-block {
+  width: 100%;
+  padding: 22px 16px 10px;
+  text-align: center;
+}
+.app-title {
+  color: #FFFFFF;
+  font-size: 1.65rem;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+}
+.app-subtitle {
+  color: rgba(255,255,255,0.82);
+  font-size: 0.82rem;
+  font-weight: 400;
+  margin-top: 4px;
+  letter-spacing: 0.15px;
+}
+
+/* Tabs row — centered, lighter background, clean separators */
+.navbar-collapse,
+.navbar-nav {
+  width: 100% !important;
+  justify-content: center !important;
+  background: rgba(0,0,0,0.18);
+  flex-wrap: wrap;
+}
+.navbar-nav {
+  padding: 0 !important;
+}
+.navbar-nav .nav-link {
+  color: rgba(255,255,255,0.85) !important;
+  font-size: 0.92rem;
+  font-weight: 500;
+  padding: 11px 18px !important;
+  border-bottom: 3px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.navbar-nav .nav-link:hover {
+  color: #FFFFFF !important;
+  background: rgba(255,255,255,0.06);
+}
+.navbar-nav .nav-link.active {
+  color: #FFFFFF !important;
+  background: rgba(255,255,255,0.08);
+  border-bottom-color: #95D5B2;
+}
+
+/* Hide the default toggler in column layout — user can still scroll the
+   tabs row horizontally on narrow screens via flex-wrap above. */
+.navbar-toggler { display: none !important; }
+
 
 .card {
   border: 1px solid var(--border);

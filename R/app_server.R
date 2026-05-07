@@ -1856,6 +1856,17 @@ app_server <- function(input, output, session) {
     .trend_tornado_plot(trend_sens_delta(),
                          "Top 10 drivers — Δ Y_N − Y_1")
   })
+  # Round 9 follow-up: third copy of the trend tornadoes for Tab 6 (Sensitivity)
+  # since each Shiny output ID can render in only one UI element. All three
+  # copies (Tab 5 results, Tab 6, Tab 7 report) read from the same reactives.
+  output$trend_tornado_per_year_sens <- plotly::renderPlotly({
+    .trend_tornado_plot(trend_sens_per_year(),
+                         "Top 10 drivers — latest year")
+  })
+  output$trend_tornado_delta_sens <- plotly::renderPlotly({
+    .trend_tornado_plot(trend_sens_delta(),
+                         "Top 10 drivers — Δ Y_N − Y_1")
+  })
 
   # Round 8 — Trend downloads (Excel / CSV / Word)
 
