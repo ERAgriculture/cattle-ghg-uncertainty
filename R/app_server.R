@@ -1707,6 +1707,134 @@ app_server <- function(input, output, session) {
     }
   })
 
+  # Round 9 follow-up: trend headline value boxes + Δ histogram + YoY bar
+  # chart. These mirror the single-year value-box layout (vb_ch4 / vb_n2o /
+  # vb_moe / vb_cv) but answer trend-specific questions: how much did
+  # emissions change, how fast per year, what's the latest level, how
+  # bumpy is the trajectory.
+
+  # Helper: format a signed percent with sign (+1.2% / -1.2%)
+  .fmt_signed_pct <- function(x, digits = 1) {
+    if (is.null(x) || length(x) == 0 || is.na(x)) return("—")
+    s <- formatC(x, digits = digits, format = "f")
+    if (x > 0) paste0("+", s, "%") else paste0(s, "%")
+  }
+
+  output$vb_trend_delta <- renderText({
+    req(rv_trend$delta_total)
+    .fmt_signed_pct(rv_trend$delta_total$pct_mean, 1)
+  })
+  output$vb_trend_delta_sub <- renderText({
+    req(rv_trend$delta_total)
+    sprintf("95%% CI %s to %s",
+            .fmt_signed_pct(rv_trend$delta_total$pct_ci[1], 1),
+            .fmt_signed_pct(rv_trend$delta_total$pct_ci[2], 1))
+  })
+
+  output$vb_trend_slope <- renderText({
+    req(rv_trend$slope)
+    s <- rv_trend$slope$mean
+    if (is.null(s) || is.na(s)) return("—")
+    sign_str <- if (s > 0) "+" else ""
+    paste0(sign_str, format(round(s, 0), big.mark = ","), " t/yr")
+  })
+  output$vb_trend_slope_sub <- renderText({
+    req(rv_trend$slope)
+    sprintf("95%% CI %s to %s t CO₂eq/yr",
+            format(round(rv_trend$slope$ci[1], 0), big.mark = ","),
+            format(round(rv_trend$slope$ci[2], 0), big.mark = ","))
+  })
+
+  output$vb_trend_latest <- renderText({
+    req(rv_trend$results)
+    df <- rv_trend$results
+    last <- df[nrow(df), ]
+    paste0(format(round(last$Mean_t_CO2eq, 0), big.mark = ","), " t")
+  })
+  output$vb_trend_latest_sub <- renderText({
+    req(rv_trend$results)
+    df <- rv_trend$results
+    last <- df[nrow(df), ]
+    sprintf("Year %d  ·  CV%% %.1f", last$Year, last$CV_pct)
+  })
+
+  output$vb_trend_yoy <- renderText({
+    req(rv_trend$results)
+    yoy <- rv_trend$results$YoY_pct[!is.na(rv_trend$results$YoY_pct)]
+    if (length(yoy) == 0) return("—")
+    biggest <- yoy[which.max(abs(yoy))]
+    .fmt_signed_pct(biggest, 1)
+  })
+  output$vb_trend_yoy_sub <- renderText({
+    req(rv_trend$results)
+    df <- rv_trend$results
+    yoy <- df$YoY_pct[!is.na(df$YoY_pct)]
+    if (length(yoy) == 0) return("—")
+    idx <- which.max(abs(yoy))
+    yr  <- df$Year[!is.na(df$YoY_pct)][idx]
+    sprintf("Largest year-over-year change (%d)", yr)
+  })
+
+  # Inline summary line below the value boxes — mirrors the single-year
+  # output$vb_co2e_inline pattern.
+  output$vb_trend_inline <- renderText({
+    req(rv_trend$results, rv_trend$year_corr)
+    df <- rv_trend$results
+    yc_label <- switch(rv_trend$year_corr,
+                        full    = "fully correlated coefficients (IPCC 2019 default)",
+                        partial = "partial year-correlation (AR(1), ρ=0.7)",
+                        none    = "independent years")
+    sprintf("Year range: %d – %d  ·  %d years analysed  ·  %s",
+            min(df$Year), max(df$Year), nrow(df), yc_label)
+  })
+
+  # Δ Y_N − Y_1 distribution histogram — visualises the uncertainty on the
+  # trend itself (the per-iteration distribution of the absolute change).
+  # Mirrors the single-year output$results_histogram.
+  output$trend_delta_histogram <- plotly::renderPlotly({
+    req(rv_trend$delta_total)
+    x <- rv_trend$delta_total$per_iter
+    if (is.null(x) || length(x) == 0) return(plotly::plot_ly())
+    ci <- stats::quantile(x, c(0.025, 0.975), names = FALSE, na.rm = TRUE)
+    fill_above <- if (mean(x, na.rm = TRUE) > 0) "#2D6A4F" else "#C1121F"
+    plotly::plot_ly(x = x, type = "histogram", nbinsx = 50,
+                    marker = list(color = fill_above,
+                                   line = list(color = "#1B4332", width = 1))) %>%
+      plotly::layout(
+        title = list(text = "Distribution of Δ Y_N − Y_1 (t CO₂eq) — uncertainty on the trend itself",
+                     font = list(size = 12)),
+        xaxis = list(title = "ΔCO₂eq (t)"),
+        yaxis = list(title = "Frequency"),
+        shapes = list(
+          list(type = "line", x0 = ci[1], x1 = ci[1], y0 = 0, y1 = 1,
+               yref = "paper", line = list(color = "#C1121F", dash = "dash", width = 1.5)),
+          list(type = "line", x0 = ci[2], x1 = ci[2], y0 = 0, y1 = 1,
+               yref = "paper", line = list(color = "#C1121F", dash = "dash", width = 1.5)),
+          list(type = "line", x0 = 0, x1 = 0, y0 = 0, y1 = 1,
+               yref = "paper", line = list(color = "#555", dash = "dot", width = 1))
+        )
+      )
+  })
+
+  # Year-over-year % change bar chart — quick visual of the per-year
+  # bumpiness; complements the trend chart which shows levels.
+  output$trend_yoy_chart <- plotly::renderPlotly({
+    req(rv_trend$results)
+    df <- rv_trend$results
+    yrs <- df$Year[-1]
+    yoy <- df$YoY_pct[-1]
+    bar_col <- ifelse(yoy >= 0, "#2D6A4F", "#C1121F")
+    plotly::plot_ly(x = yrs, y = yoy, type = "bar",
+                    marker = list(color = bar_col)) %>%
+      plotly::layout(
+        title = list(text = "Year-over-year % change",
+                     font = list(size = 12)),
+        xaxis = list(title = "Year", dtick = 1),
+        yaxis = list(title = "Δ vs prior year (%)", zeroline = TRUE,
+                     zerolinecolor = "#555", zerolinewidth = 1.5)
+      )
+  })
+
   output$trend_table <- DT::renderDT({
     req(rv_trend$results)
     DT::datatable(rv_trend$results, rownames = FALSE,

@@ -732,12 +732,48 @@ app_ui <- function() {
           uiOutput("comparison_card")
         ),
 
-        # Round 9: trend results layout (visible when mode == trend)
+        # Round 9 follow-up: trend results layout — mirrors single-year's
+        # value-boxes-then-charts pattern but with trend-specific metrics.
         conditionalPanel(
           condition = "input.analysis_mode == 'trend'",
+          bslib::layout_columns(
+            col_widths = c(3, 3, 3, 3),
+            bslib::value_box(title = "Δ vs base year",
+                              value = textOutput("vb_trend_delta"),
+                              p(textOutput("vb_trend_delta_sub", inline = TRUE)),
+                              showcase = icon("arrow-trend-up"), theme = "primary"),
+            bslib::value_box(title = "Trend slope",
+                              value = textOutput("vb_trend_slope"),
+                              p(textOutput("vb_trend_slope_sub", inline = TRUE)),
+                              showcase = icon("chart-line"), theme = "success"),
+            bslib::value_box(title = "Latest year",
+                              value = textOutput("vb_trend_latest"),
+                              p(textOutput("vb_trend_latest_sub", inline = TRUE)),
+                              showcase = icon("calendar-days"), theme = "info"),
+            bslib::value_box(title = "Largest YoY change",
+                              value = textOutput("vb_trend_yoy"),
+                              p(textOutput("vb_trend_yoy_sub", inline = TRUE)),
+                              showcase = icon("bolt"), theme = "warning")
+          ),
+          div(style = "padding: 0 12px 8px; color: #555; font-size: 0.85rem;",
+              tags$em(textOutput("vb_trend_inline", inline = TRUE))),
+          bslib::layout_columns(
+            col_widths = c(7, 5),
+            bslib::card(
+              bslib::card_header("Trend chart — Total CO2eq with 95% CI band"),
+              bslib::card_body(plotly::plotlyOutput("trend_plot", height = "360px"))
+            ),
+            bslib::card(
+              bslib::card_header("Year-over-year % change"),
+              bslib::card_body(plotly::plotlyOutput("trend_yoy_chart", height = "360px"))
+            )
+          ),
           bslib::card(
-            bslib::card_header("Trend chart — Total CO2eq with 95% CI band"),
-            bslib::card_body(plotly::plotlyOutput("trend_plot", height = "400px"))
+            bslib::card_header("Distribution of Δ Y_N − Y_1 — uncertainty on the trend itself"),
+            bslib::card_body(
+              p(tags$em("This histogram shows the Monte Carlo distribution of the absolute change in CO2eq between the first and last year. The dashed red lines mark the 95% CI; the dotted line marks zero. If zero falls inside the CI, the trend is not statistically distinguishable from no change at this confidence level.")),
+              plotly::plotlyOutput("trend_delta_histogram", height = "300px")
+            )
           ),
           bslib::card(
             bslib::card_header("Trend table"),
