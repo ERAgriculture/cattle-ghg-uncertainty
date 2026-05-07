@@ -113,7 +113,12 @@ run_trend_analysis <- function(trend_df, base_specs, n_iter = 2000,
                                 # 5 keys) = include every source. Used to align the
                                 # trend output with the user's source-checkbox
                                 # selection on Tab 5.
-                                emission_sources = NULL) {
+                                emission_sources = NULL,
+                                # Round 9 follow-up: optional per-year progress
+                                # callback so the Shiny observer can advance a
+                                # withProgress bar. Called as progress_fn(yi,
+                                # n_years, year_label) after each year completes.
+                                progress_fn = NULL) {
   year_corr <- match.arg(year_corr)
 
   # Required columns
@@ -229,6 +234,9 @@ run_trend_analysis <- function(trend_df, base_specs, n_iter = 2000,
     cv   <- if (m > 0) s / m * 100 else NA_real_
 
     samples_by_year[[as.character(y)]] <- sim$by_system$year_run$samples
+    if (is.function(progress_fn)) {
+      try(progress_fn(yi, length(years), as.character(y)), silent = TRUE)
+    }
     co2e_by_year[[as.character(y)]]    <- co2e
 
     rows[[length(rows) + 1]] <- data.frame(

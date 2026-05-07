@@ -1605,56 +1605,80 @@ app_server <- function(input, output, session) {
 
   observeEvent(input$run_trend, {
     req(rv$param_specs)
-    tryCatch({
-      # R2.3: prefer the Parameter_TimeSeries already parsed from the main
-      # template (rv$population) so the user does not have to upload a
-      # separate CSV. The CSV input remains as an explicit override for
-      # users who want to bring different trend data.
-      df <- if (!is.null(input$trend_upload) &&
-                !is.null(input$trend_upload$datapath) &&
-                nzchar(input$trend_upload$datapath)) {
-        read.csv(input$trend_upload$datapath, stringsAsFactors = FALSE)
-      } else if (!is.null(rv$population) && ncol(rv$population) >= 2) {
-        trend_df_from_population(rv$population, rv$param_specs)
-      } else {
-        stop("No time-series data available. Either load a template that ",
-             "includes a Parameter_TimeSeries sheet (or one of the built-in ",
-             "examples), or upload a long-format CSV here.")
+    n_iter <- if (!is.null(input$n_iter)) input$n_iter else 10000
+    n_iter_fmt <- format(n_iter, big.mark = ",")
+    # Round 9 follow-up: withProgress bar mirrors the single-year handler so
+    # the user gets feedback during the per-year MC loop (which can take ~1
+    # minute at 10k iter × 5 years on shinyapps.io).
+    withProgress(
+      message = sprintf("Trend Monte Carlo (%s iter / year)", n_iter_fmt),
+      value = 0,
+      {
+        tryCatch({
+          setProgress(0.03, detail = "Preparing trend data...")
+          # R2.3: prefer the Parameter_TimeSeries already parsed from the main
+          # template (rv$population) so the user does not have to upload a
+          # separate CSV. The CSV input remains as an explicit override for
+          # users who want to bring different trend data.
+          df <- if (!is.null(input$trend_upload) &&
+                    !is.null(input$trend_upload$datapath) &&
+                    nzchar(input$trend_upload$datapath)) {
+            read.csv(input$trend_upload$datapath, stringsAsFactors = FALSE)
+          } else if (!is.null(rv$population) && ncol(rv$population) >= 2) {
+            trend_df_from_population(rv$population, rv$param_specs)
+          } else {
+            stop("No time-series data available. Either load a template that ",
+                 "includes a Parameter_TimeSeries sheet (or one of the built-in ",
+                 "examples), or upload a long-format CSV here.")
+          }
+          # Round 9: trend uses the same n_iter slider as single-year. Source
+          # selection from Tab 5 also applies — trend now honours
+          # input$emission_sources just like the single-year flow.
+          yc <- if (!is.null(input$year_corr) && nzchar(input$year_corr)) input$year_corr else "full"
+          gv <- if (!is.null(input$gwp_version) && nzchar(input$gwp_version)) input$gwp_version else "AR5"
+          sd_ <- if (!is.null(input$seed)) input$seed else 42
+
+          # Per-year progress callback: fan out the [0.05, 0.95] band across
+          # the years so the bar advances as each per-year sim completes.
+          prog_fn <- function(yi, n_years, year_label) {
+            frac <- 0.05 + 0.90 * (yi / max(n_years, 1L))
+            setProgress(frac, detail = sprintf("Year %s (%d / %d)",
+                                                year_label, yi, n_years))
+          }
+          setProgress(0.05, detail = "Starting per-year simulations...")
+
+          res <- run_trend_analysis(df, base_specs = rv$param_specs, n_iter = n_iter,
+                                     gwp = gv, seed = sd_, year_corr = yc,
+                                     emission_sources = input$emission_sources,
+                                     progress_fn = prog_fn)
+
+          setProgress(0.97, detail = "Computing slope and Δ...")
+          # Round 8: res is now a list, not a data frame
+          rv_trend$results         <- res$table
+          rv_trend$samples_by_year <- res$samples_by_year
+          rv_trend$co2e_by_year    <- res$co2e_by_year
+          rv_trend$slope           <- res$slope
+          rv_trend$delta_total     <- res$delta_total
+          rv_trend$year_corr       <- res$year_corr
+          rv_trend$years           <- res$years
+          rv_trend$message <- list(type = "success",
+            text = sprintf("Trend computed for %d years (%d–%d). Δ vs base: %.1f%% [95%% CI %.1f%%, %.1f%%]; slope: %.0f t CO₂eq/yr.",
+                           nrow(res$table), min(res$table$Year), max(res$table$Year),
+                           res$delta_total$pct_mean,
+                           res$delta_total$pct_ci[1], res$delta_total$pct_ci[2],
+                           res$slope$mean))
+          # Round 9: flip Tab 5 to results-view so trend chart/table/sensitivity
+          # show in place (mirrors the single-year Run handler's sim_view flip).
+          rv$sim_view <- "results"
+          setProgress(1.00, detail = "Done.")
+          showNotification(rv_trend$message$text, type = "message", duration = 7)
+        }, error = function(e) {
+          rv_trend$message <- list(type = "error",
+            text = paste("Trend run failed:", e$message))
+          showNotification(rv_trend$message$text, type = "error", duration = 10)
+        })
       }
-      # Round 9: trend uses the same n_iter slider as single-year (collapsed
-      # away the separate trend_n_iter). Source selection from Tab 5 also
-      # applies — trend now honours input$emission_sources just like the
-      # single-year flow.
-      n_iter <- if (!is.null(input$n_iter)) input$n_iter else 10000
-      yc <- if (!is.null(input$year_corr) && nzchar(input$year_corr)) input$year_corr else "full"
-      gv <- if (!is.null(input$gwp_version) && nzchar(input$gwp_version)) input$gwp_version else "AR5"
-      sd_ <- if (!is.null(input$seed)) input$seed else 42
-      res <- run_trend_analysis(df, base_specs = rv$param_specs, n_iter = n_iter,
-                                 gwp = gv, seed = sd_, year_corr = yc,
-                                 emission_sources = input$emission_sources)
-      # Round 8: res is now a list, not a data frame
-      rv_trend$results         <- res$table
-      rv_trend$samples_by_year <- res$samples_by_year
-      rv_trend$co2e_by_year    <- res$co2e_by_year
-      rv_trend$slope           <- res$slope
-      rv_trend$delta_total     <- res$delta_total
-      rv_trend$year_corr       <- res$year_corr
-      rv_trend$years           <- res$years
-      rv_trend$message <- list(type = "success",
-        text = sprintf("Trend computed for %d years (%d–%d). Δ vs base: %.1f%% [95%% CI %.1f%%, %.1f%%]; slope: %.0f t CO₂eq/yr.",
-                       nrow(res$table), min(res$table$Year), max(res$table$Year),
-                       res$delta_total$pct_mean,
-                       res$delta_total$pct_ci[1], res$delta_total$pct_ci[2],
-                       res$slope$mean))
-      # Round 9: flip Tab 5 to results-view so trend chart/table/sensitivity
-      # show in place (mirrors the single-year Run handler's sim_view flip).
-      rv$sim_view <- "results"
-      showNotification(rv_trend$message$text, type = "message", duration = 7)
-    }, error = function(e) {
-      rv_trend$message <- list(type = "error",
-        text = paste("Trend run failed:", e$message))
-      showNotification(rv_trend$message$text, type = "error", duration = 10)
-    })
+    )
   })
 
   output$trend_status <- renderUI({
