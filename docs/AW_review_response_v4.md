@@ -173,12 +173,21 @@ This document mirrors the structure of Andreas's PDF: every comment from every s
 | **T2.1 expansion** Region-aware completeness defaults. | Done. `ensure_completeness()` accepts a `region` argument; before falling back to the global `PARAM_CATALOGUE$ipcc_default`, it consults the existing `IPCC_DEFAULTS_BY_REGION` lookup (5 parameters: W, Milk, DE, Ym, Bo across 5 regions) via `get_regional_default()`. The completeness call site in `app_server.R` passes `rv$inv_metadata$region`. Auto-fill message now reports "Region 'Africa' applied for: W, Milk, …" so the user sees the regional path was used. The `get_regional_default()` helper has existed since Round 3 G2 — Round 7 is just wiring it. (R/utils_validation.R, R/app_server.R) |
 | **T0.1** Cosmetic wording pass. | Done. Tab 4 modal label `From template (auto)` → `From template (auto, time-series)` (matches Andreas's vocabulary). Tab 9 description rewritten to "Year-by-year inventory uncertainty: …". (R/app_ui.R) |
 
+## Post-Round-7 hotfixes (May 2026)
+
+| Issue | How it was fixed |
+|---|---|
+| **Legacy template upload reported "missing N" with no IPCC default.** Beta tester re-uploaded a pre-Round-4 example template (label still read "Eastern Uganda – pastoral", parameter names still `cattle_pop` / `live_weight` / etc.). Run failed with `"Cannot run: 1 core parameter(s) have no IPCC default and are missing: dairy / Eastern Uganda – pastoral / cows — N"`. | Done (commit `15668de`). Root cause: `parse_uploaded_template()` filtered rows by `params$parameter %in% PARAM_CATALOGUE$parameter` BEFORE applying `PARAM_ALIASES`. After the R1.6 rename the catalogue holds `N` / `W` / `Milk` / `DE`, so any row using the pre-rename spelling (`cattle_pop`, `live_weight`, `milk_yield`, `DE_pct`, …) got silently dropped on parse. The renamed `N` then looked missing to `ensure_completeness()`, which has no IPCC default for population, so the run failed with the confusing "missing N" error. Fix: swap the order — alias-translate first, then filter against the catalogue. Smoke test on a synthetic legacy template (5 rows, all old names) confirms all 5 rows survive parsing and translate to `N` / `W` / `Milk` / `DE` / `Cfi`; `ensure_completeness` returns valid with `N$mean = 500000` from the upload. (R/utils_template.R) |
+| **IPCC Report tab "Sensitivity drivers" panel showed `An error has occurred. Check your logs or contact the app author for clarification.`** | Done (commit `a017e28`). Same bug pattern that landed in the Round 6b Word-export module. The tornado renderer used `sens <- rv$sensitivity$src %||% rv$sensitivity$prcc`. The custom `%||%` operator (R/utils_template.R:16) does `is.na(a[1])`, which on a data.frame returns a vector over the first column — that vector then can't be coerced to scalar logical inside the `||` chain, so the operator itself throws. Fix: replace `%||%` with explicit `if/else` checks for both data frames. Round 6a #8 had added defensive guards for empty / missing-column / zero-rows cases but missed this one. Grepped the rest of the codebase for the same `rv$<frame> %||% rv$<frame>` pattern — no other instances. (R/app_server.R) |
+
 ---
 
 ## Summary
 
-- **Done:** every comment in Andreas's review — Round 7 closed the previously-awaiting and v4.0-deferred items.
+- **Done:** every comment in Andreas's review — Round 7 closed the previously-awaiting and v4.0-deferred items, plus two beta-tester hotfixes shipped on top.
 - **Awaiting your input:** *(none)*.
 - **Deferred to v4.x:** *(none in Andreas's scope)*. Future user-experience refinements that haven't been requested yet — surfacing the AR(1) ρ in trend partial mode as a UI slider; per-row MMS Dirichlet concentration override in the Manure_Management sheet; expert-elicitation correlation upload — would be reactive to feedback rather than driven by Andreas's review.
 
-Round 7 deployed live: https://mlolita26.shinyapps.io/cattle-ghg-uncertainty/.
+**Verification pass (May 2026):** every "Done" claim in this document was checked against the codebase. All 57 implementation claims verified TRUE — file paths, function names, line references, and behavioural details all match the live code. No silent omissions. Two post-Round-7 hotfixes (legacy template parser order, tornado `%||%` data-frame crash) added to the doc above as their own section.
+
+Round 7 + hotfixes deployed live: https://mlolita26.shinyapps.io/cattle-ghg-uncertainty/.
