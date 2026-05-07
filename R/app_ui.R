@@ -596,15 +596,61 @@ app_ui <- function() {
               )
             ),
             hr(),
-            checkboxInput("run_decomposition", "Run uncertainty decomposition (AD/EF/Combined)",
-                          value = TRUE),
-            # Round 6a #5: rendered server-side so we can grey it out when no
-            # correlations are selected on Tab 4 (the comparison would be
-            # identical, so the toggle is meaningless).
-            uiOutput("run_comparison_ui"),
+            # Round 9: single-year-only options (decomposition + comparison).
+            # Trend mode doesn't use these — the trend's IPCC-§3.7 framework
+            # already separates AD vs coefficient via the year_corr radio.
+            conditionalPanel(
+              condition = "input.analysis_mode != 'trend'",
+              checkboxInput("run_decomposition", "Run uncertainty decomposition (AD/EF/Combined)",
+                            value = TRUE),
+              # Round 6a #5: rendered server-side so we can grey it out when no
+              # correlations are selected on Tab 4 (the comparison would be
+              # identical, so the toggle is meaningless).
+              uiOutput("run_comparison_ui")
+            ),
+            # Round 9: trend-only settings (year-correlation mode + optional
+            # CSV override). Visible only when 'trend' is picked on Home.
+            conditionalPanel(
+              condition = "input.analysis_mode == 'trend'",
+              hr(),
+              radioButtons("year_corr", "Year-to-year correlation",
+                            choices = c(
+                              "Fully correlated coefficients (IPCC 2019 default)" = "full",
+                              "Partial (AR(1), ρ=0.7)"                       = "partial",
+                              "Independent (no year-to-year correlation)"         = "none"),
+                            selected = "full"),
+              div(style = "font-size:0.78rem; color:#666; margin-top:-6px; margin-bottom:8px;",
+                  tags$em("IPCC 2019 §3.2.2.4: emission factor uncertainties tend to be fully correlated across years, while activity data are usually re-estimated annually. The default reuses the same coefficient draws every year so the trend reflects AD changes only.")),
+              div(style = "font-size:0.78rem; color:#92400E; background:#FEF3C7; padding:6px 10px; border-radius:4px; margin-bottom:8px;",
+                  icon("info-circle"),
+                  tags$em(" Trend mode runs n_iter simulations ", tags$strong("per year"),
+                          " — total compute = n_iter × number of years.")),
+              tags$details(
+                tags$summary(tags$strong("Optional: override with separate CSV")),
+                div(style = "padding: 6px 0;",
+                    fileInput("trend_upload",
+                      "Upload multi-year CSV (year, parameter, mean, uncertainty_pct)",
+                      accept = c(".csv")),
+                    div(style = "font-size:0.78rem; color:#666;",
+                        tags$em("If a CSV is uploaded here, it takes precedence over the template's Parameter_TimeSeries sheet for this run.")))
+              )
+            ),
             hr(),
-            actionButton("run_sim", "Run Monte Carlo Simulation",
-                         class = "run-btn w-100", icon = icon("play")),
+            # Round 9: route the Run button by mode. Single-year shows the
+            # MC button (existing handler), trend shows Run Trend (existing
+            # observeEvent(input$run_trend) handler).
+            conditionalPanel(
+              condition = "input.analysis_mode != 'trend'",
+              actionButton("run_sim", "Run Monte Carlo Simulation",
+                           class = "run-btn w-100", icon = icon("play"))
+            ),
+            conditionalPanel(
+              condition = "input.analysis_mode == 'trend'",
+              actionButton("run_trend", "Run Trend Analysis",
+                           class = "run-btn w-100", icon = icon("play")),
+              hr(),
+              uiOutput("trend_status")
+            ),
             hr(),
             uiOutput("sim_status")
           )
@@ -626,49 +672,90 @@ app_ui <- function() {
                          class = "btn-outline-secondary",
                          icon = icon("arrow-left"))),
         h3("Simulation results", style = "margin: 8px 16px;"),
-        bslib::layout_columns(
-          col_widths = c(3, 3, 3, 3),
-          bslib::value_box(title = "Total CH4", value = textOutput("vb_ch4"),
-                            showcase = icon("fire"), theme = "success"),
-          bslib::value_box(title = "Total N2O", value = textOutput("vb_n2o"),
-                            showcase = icon("cloud"), theme = "primary"),
-          bslib::value_box(title = "95% Margin of Error",
-                            value = textOutput("vb_moe"),
-                            p("IPCC-aligned uncertainty metric"),
-                            showcase = icon("ruler-horizontal"), theme = "warning"),
-          bslib::value_box(title = "CV (%)", value = textOutput("vb_cv"),
-                            p("Coefficient of variation"),
-                            showcase = icon("percent"), theme = "info")
-        ),
-        div(style = "padding: 0 12px 8px; color: #555; font-size: 0.85rem;",
-            tags$em("Total CO₂eq: "), textOutput("vb_co2e_inline", inline = TRUE),
-            tags$em(" · retained for sensitivity analysis across sources.")),
-        bslib::layout_columns(
-          col_widths = c(6, 6),
-          bslib::card(
-            bslib::card_header("Emission Distribution (Total CO2eq)"),
-            bslib::card_body(plotly::plotlyOutput("results_histogram"))
+
+        # Round 9: single-year results layout (visible when mode != trend)
+        conditionalPanel(
+          condition = "input.analysis_mode != 'trend'",
+          bslib::layout_columns(
+            col_widths = c(3, 3, 3, 3),
+            bslib::value_box(title = "Total CH4", value = textOutput("vb_ch4"),
+                              showcase = icon("fire"), theme = "success"),
+            bslib::value_box(title = "Total N2O", value = textOutput("vb_n2o"),
+                              showcase = icon("cloud"), theme = "primary"),
+            bslib::value_box(title = "95% Margin of Error",
+                              value = textOutput("vb_moe"),
+                              p("IPCC-aligned uncertainty metric"),
+                              showcase = icon("ruler-horizontal"), theme = "warning"),
+            bslib::value_box(title = "CV (%)", value = textOutput("vb_cv"),
+                              p("Coefficient of variation"),
+                              showcase = icon("percent"), theme = "info")
+          ),
+          div(style = "padding: 0 12px 8px; color: #555; font-size: 0.85rem;",
+              tags$em("Total CO₂eq: "), textOutput("vb_co2e_inline", inline = TRUE),
+              tags$em(" · retained for sensitivity analysis across sources.")),
+          bslib::layout_columns(
+            col_widths = c(6, 6),
+            bslib::card(
+              bslib::card_header("Emission Distribution (Total CO2eq)"),
+              bslib::card_body(plotly::plotlyOutput("results_histogram"))
+            ),
+            bslib::card(
+              bslib::card_header("Uncertainty Decomposition"),
+              bslib::card_body(
+                plotly::plotlyOutput("decomposition_plot")
+              )
+            )
           ),
           bslib::card(
-            bslib::card_header("Uncertainty Decomposition"),
+            bslib::card_header("By-System Breakdown"),
+            bslib::card_body(DT::DTOutput("results_by_system"))
+          ),
+          bslib::card(
+            bslib::card_header("By Reporting Category (IPCC Table 3.3 layout)"),
             bslib::card_body(
-              plotly::plotlyOutput("decomposition_plot")
+              p("Each row is one IPCC inventory reporting line (system × source). ",
+                "Rows match the granularity used in IPCC Volume 1 Chapter 3 uncertainty reporting."),
+              DT::DTOutput("results_by_category")
             )
-          )
+          ),
+          uiOutput("comparison_card")
         ),
-        bslib::card(
-          bslib::card_header("By-System Breakdown"),
-          bslib::card_body(DT::DTOutput("results_by_system"))
-        ),
-        bslib::card(
-          bslib::card_header("By Reporting Category (IPCC Table 3.3 layout)"),
-          bslib::card_body(
-            p("Each row is one IPCC inventory reporting line (system × source). ",
-              "Rows match the granularity used in IPCC Volume 1 Chapter 3 uncertainty reporting."),
-            DT::DTOutput("results_by_category")
-          )
-        ),
-        uiOutput("comparison_card")
+
+        # Round 9: trend results layout (visible when mode == trend)
+        conditionalPanel(
+          condition = "input.analysis_mode == 'trend'",
+          bslib::card(
+            bslib::card_header("Trend chart — Total CO2eq with 95% CI band"),
+            bslib::card_body(plotly::plotlyOutput("trend_plot", height = "400px"))
+          ),
+          bslib::card(
+            bslib::card_header("Trend table"),
+            bslib::card_body(
+              p(tags$em("Year-by-year mean, 95% CI bounds, CV%, MoE%, Δ vs. base year, and year-over-year change.")),
+              DT::DTOutput("trend_table")
+            )
+          ),
+          bslib::card(
+            bslib::card_header("Sensitivity drivers"),
+            bslib::card_body(
+              p(tags$em("Two views: ", tags$strong("Per-year"), " shows what dominates uncertainty in the latest year; ",
+                        tags$strong("Trend driver (Δ across years)"), " shows what drives the change between the first and last year (per IPCC Vol 1 Ch 3 §3.7).")),
+              bslib::layout_columns(
+                col_widths = c(6, 6),
+                div(
+                  h6("Per-year (latest)", style = "color:#1B4332;"),
+                  plotly::plotlyOutput("trend_tornado_per_year", height = "320px")
+                ),
+                div(
+                  h6("Trend driver (Δ Y_N − Y_1)", style = "color:#1B4332;"),
+                  plotly::plotlyOutput("trend_tornado_delta", height = "320px")
+                )
+              )
+            )
+          ),
+          div(style = "margin: 8px 16px; font-size:0.85rem; color:#555;",
+              tags$em("The Word / Excel / CSV trend reports are on the IPCC Report tab."))
+        )
       ),
       # R1.5: placeholder removed — settings panel itself shows when sim_view is settings
     ),
@@ -725,181 +812,129 @@ app_ui <- function() {
       )
     ),
 
-    # ==================== TAB 7: TREND (F: build-out) ====================
-    # Round 8: Trend moved before IPCC Report so IPCC Report is the last tab.
+    # ==================== TAB 7: IPCC REPORT (last app tab) ====================
+    # Round 8 moved this to last position. Round 9 collapses the standalone
+    # Trend tab into here: content swaps based on input$analysis_mode, so the
+    # report a user sees matches the route they picked on Home (single year vs
+    # trend). The downloads on each side are mode-specific too.
     bslib::nav_panel(
-      title = "7. Trend",
-      icon = icon("chart-line"),
-      div(class = "info-panel", style = "margin: 16px;",
-          tags$strong("What to do: "),
-          "Year-by-year inventory uncertainty: quantify how total emissions change between years and how much of that change is uncertain. ",
-          tags$br(), tags$br(),
-          # R2.3: template-first flow — same Parameter_TimeSeries sheet that
-          # feeds Tab 4's auto-correlation now also drives this tab.
-          tags$strong("Where the data comes from: "),
-          "this tab reads the ", tags$code("Parameter_TimeSeries"),
-          " sheet that you already filled in your main inventory template ",
-          "(or loaded via Country X / Country Y). ",
-          "There is no separate upload step in the normal workflow — just click ",
-          tags$strong("Run Trend Analysis"), ". ",
-          "If you want to run the trend on a different dataset without changing your inventory, ",
-          "use the optional CSV override below (long-format: ",
-          tags$code("year, parameter, mean, uncertainty_pct"), ")."),
-      bslib::layout_columns(
-        col_widths = c(4, 8),
+      title = "7. IPCC Report",
+      icon = icon("file-alt"),
+
+      # ---------- Single-year report layout ----------
+      conditionalPanel(
+        condition = "input.analysis_mode != 'trend'",
+        div(class = "info-panel", style = "margin: 16px;",
+            tags$strong("What to do: "),
+            "This page shows your uncertainty results formatted as IPCC Table 3.3, ready for your national ",
+            "inventory submission. The table shows uncertainty (CV%) decomposed by activity data, emission factors, ",
+            "and combined, for each emission source category. ",
+            "Click ", tags$strong("'Download Excel Report'"), " to get a complete workbook with all results, ",
+            "sensitivity rankings, and metadata. Click ", tags$strong("'Download CSV'"), " for a simpler file ",
+            "with uncertainty metrics only."),
+        div(style = "margin: 0 16px 12px; font-size:0.82rem; color:#1B4332; background:#D8F3DC; border-left:3px solid #2D6A4F; padding:10px 12px; border-radius:4px;",
+            tags$strong("AD vs EF column convention: "),
+            "in this version, ", tags$em("AD"),
+            " = population uncertainty only (N), and ", tags$em("EF"),
+            " = the per-head emission factor uncertainty driven by the 23 coefficients (live weight, feed quality, ",
+            "Ym, Bo, Frac_GASMS, etc.). This matches IPCC Volume 1 Chapter 3 reporting conventions."),
         bslib::card(
-          bslib::card_header("Trend input"),
+          bslib::card_header("IPCC Table 3.3 - Uncertainty Report"),
           bslib::card_body(
-            sliderInput("trend_n_iter", "Iterations per year",
-                        min = 500, max = 10000, value = 2000, step = 500),
-            # Round 7 R1.14: year-to-year correlation per IPCC 2019 Vol 1
-            # Ch 3 §3.2.2.4. Default = full (coefficients reused across years,
-            # AD redrawn). Three-way override available.
-            radioButtons("year_corr", "Year-to-year correlation",
-                          choices = c(
-                            "Fully correlated coefficients (IPCC 2019 default)" = "full",
-                            "Partial (AR(1), ρ=0.7)"                      = "partial",
-                            "Independent (no year-to-year correlation)"          = "none"),
-                          selected = "full"),
-            div(style = "font-size:0.78rem; color:#666; margin-top:-6px; margin-bottom:8px;",
-                tags$em("IPCC 2019 §3.2.2.4: emission factor uncertainties tend to be fully correlated across years, while activity data are usually re-estimated annually. The default reuses the same coefficient draws every year so the trend reflects AD changes only.")),
-            actionButton("run_trend", "Run Trend Analysis",
-                         class = "run-btn w-100", icon = icon("play")),
+            DT::DTOutput("ipcc_table"),
             hr(),
-            uiOutput("trend_status"),
-            hr(),
-            tags$details(
-              tags$summary(tags$strong("Optional: override with separate CSV")),
-              div(style = "padding: 6px 0;",
-                  fileInput("trend_upload",
-                    "Upload multi-year CSV (year, parameter, mean, uncertainty_pct)",
-                    accept = c(".csv")),
-                  div(style = "font-size:0.78rem; color:#666;",
-                      tags$em("If a CSV is uploaded here, it takes precedence over the template's Parameter_TimeSeries sheet for this run."))
-              )
+            fluidRow(
+              column(3, downloadButton("download_xlsx", "Download Excel Report",
+                                        class = "btn-success")),
+              column(3, downloadButton("download_csv", "Download CSV",
+                                        class = "btn-outline-success")),
+              column(3, downloadButton("download_docx", "Download Word summary",
+                                        class = "btn-primary"))
+            )
+          )
+        ),
+        bslib::card(
+          bslib::card_header("Uncertainty distributions per emission source"),
+          bslib::card_body(
+            p("Histograms of the Monte Carlo output for each emission source. ",
+              "Useful for third-party QA review of which sources contribute the most variance."),
+            plotly::plotlyOutput("report_source_histograms", height = "420px")
+          )
+        ),
+        bslib::card(
+          bslib::card_header("Top sensitivity drivers (Total CO₂eq)"),
+          bslib::card_body(
+            p("Standardised regression coefficients for the top 10 input parameters driving total uncertainty."),
+            plotly::plotlyOutput("report_tornado", height = "380px")
+          )
+        ),
+        bslib::card(
+          bslib::card_header("Input distributions used"),
+          bslib::card_body(
+            p("Density plots of each input parameter's fitted distribution — confirms each ",
+              "parameter was sampled with the marginal distribution specified in the input table."),
+            plotly::plotlyOutput("report_input_densities", height = "520px")
+          )
+        ),
+        bslib::card(
+          bslib::card_header("Input parameters used in this run"),
+          bslib::card_body(
+            p("Full record of every parameter value, distribution, and bounds ",
+              "used in the simulation — included for inventory documentation and ",
+              "third-party QA review."),
+            DT::DTOutput("inputs_doc_table")
+          )
+        )
+      ),
+
+      # ---------- Trend report layout ----------
+      conditionalPanel(
+        condition = "input.analysis_mode == 'trend'",
+        div(class = "info-panel", style = "margin: 16px;",
+            tags$strong("What to do: "),
+            "This page presents the trend results — year-by-year totals, the trend slope and Δ across years with their own 95% CIs, and the sensitivity drivers per IPCC Vol 1 Ch 3 §3.7. ",
+            "Use the downloads below to export the trend report as Excel (multi-sheet workbook), CSV (table only), or Word (full IPCC-style narrative report including the executive summary and methodological notes on the year-correlation mode you chose)."),
+        bslib::card(
+          bslib::card_header("Trend report — downloads"),
+          bslib::card_body(
+            p(tags$em("Available after a successful trend run on the Simulate tab. Filename includes the year-correlation mode you picked.")),
+            fluidRow(
+              column(3, downloadButton("download_trend_xlsx", "Download Excel Report",
+                                        class = "btn-success")),
+              column(3, downloadButton("download_trend_csv", "Download CSV",
+                                        class = "btn-outline-success")),
+              column(3, downloadButton("download_trend_docx", "Download Word summary",
+                                        class = "btn-primary"))
             )
           )
         ),
         bslib::card(
           bslib::card_header("Trend chart — Total CO2eq with 95% CI band"),
-          bslib::card_body(plotly::plotlyOutput("trend_plot", height = "400px"))
-        )
-      ),
-      bslib::card(
-        bslib::card_header("Trend table"),
-        bslib::card_body(
-          p(tags$em("Year-by-year mean, 95% CI bounds, and 95% margin of error. ",
-                    "The 'Δ vs. base year' column shows the percent change from the earliest year — ",
-                    "use this for trend reporting per IPCC Vol.1 §3.2.")),
-          DT::DTOutput("trend_table")
-        )
-      ),
-      # Round 8: trend exports (Excel/CSV/Word) + sensitivity panel.
-      bslib::card(
-        bslib::card_header("Trend report downloads"),
-        bslib::card_body(
-          p(tags$em("Available after a successful trend run. The Word summary mirrors the design of the IPCC response document and includes the trend table, trend chart, slope, sensitivity drivers, and a methodological note on the year-correlation mode you chose.")),
-          fluidRow(
-            column(3, downloadButton("download_trend_xlsx", "Download Excel Report",
-                                      class = "btn-success")),
-            column(3, downloadButton("download_trend_csv", "Download CSV",
-                                      class = "btn-outline-success")),
-            column(3, downloadButton("download_trend_docx", "Download Word summary",
-                                      class = "btn-primary"))
+          bslib::card_body(plotly::plotlyOutput("trend_plot_report", height = "400px"))
+        ),
+        bslib::card(
+          bslib::card_header("Trend table"),
+          bslib::card_body(
+            p(tags$em("Year-by-year mean, 95% CI bounds, CV%, MoE%, Δ vs. base year, and year-over-year change.")),
+            DT::DTOutput("trend_table_report")
           )
-        )
-      ),
-      # Round 8: trend sensitivity (two tornado panels)
-      bslib::card(
-        bslib::card_header("Sensitivity drivers"),
-        bslib::card_body(
-          p(tags$em("Two views: ", tags$strong("Per-year"), " shows what dominates uncertainty in the latest year; ",
-                    tags$strong("Trend driver (Δ across years)"), " shows what drives the change between the first and last year (per IPCC Vol 1 Ch 3 §3.7).")),
-          bslib::layout_columns(
-            col_widths = c(6, 6),
-            div(
-              h6("Per-year (latest)", style = "color:#1B4332;"),
-              plotly::plotlyOutput("trend_tornado_per_year", height = "320px")
-            ),
-            div(
-              h6("Trend driver (Δ Y_N − Y_1)", style = "color:#1B4332;"),
-              plotly::plotlyOutput("trend_tornado_delta", height = "320px")
+        ),
+        bslib::card(
+          bslib::card_header("Sensitivity drivers (per-year + trend)"),
+          bslib::card_body(
+            p(tags$em("Per-year tornado shows drivers of the latest year; Δ Y_N − Y_1 tornado shows what drives the change between the first and last year (per IPCC Vol 1 Ch 3 §3.7).")),
+            bslib::layout_columns(
+              col_widths = c(6, 6),
+              div(
+                h6("Per-year (latest)", style = "color:#1B4332;"),
+                plotly::plotlyOutput("trend_tornado_per_year_report", height = "320px")
+              ),
+              div(
+                h6("Trend driver (Δ Y_N − Y_1)", style = "color:#1B4332;"),
+                plotly::plotlyOutput("trend_tornado_delta_report", height = "320px")
+              )
             )
           )
-        )
-      )
-    ),
-
-    # ==================== TAB 8: IPCC REPORT (last) ====================
-    # Round 8: moved to last position so the IPCC-facing report is the
-    # natural endpoint of the workflow.
-    bslib::nav_panel(
-      title = "8. IPCC Report",
-      icon = icon("file-alt"),
-      div(class = "info-panel", style = "margin: 16px;",
-          tags$strong("What to do: "),
-          "This page shows your uncertainty results formatted as IPCC Table 3.3, ready for your national ",
-          "inventory submission. The table shows uncertainty (CV%) decomposed by activity data, emission factors, ",
-          "and combined, for each emission source category. ",
-          "Click ", tags$strong("'Download Excel Report'"), " to get a complete workbook with all results, ",
-          "sensitivity rankings, and metadata. Click ", tags$strong("'Download CSV'"), " for a simpler file ",
-          "with uncertainty metrics only."),
-      # D1 done — IPCC AD/EF restructure complete; old callout removed.
-      div(style = "margin: 0 16px 12px; font-size:0.82rem; color:#1B4332; background:#D8F3DC; border-left:3px solid #2D6A4F; padding:10px 12px; border-radius:4px;",
-          tags$strong("AD vs EF column convention: "),
-          "in this version, ", tags$em("AD"),
-          " = population uncertainty only (N), and ", tags$em("EF"),
-          " = the per-head emission factor uncertainty driven by the 23 coefficients (live weight, feed quality, ",
-          "Ym, Bo, Frac_GASMS, etc.). This matches IPCC Volume 1 Chapter 3 reporting conventions."),
-      bslib::card(
-        bslib::card_header("IPCC Table 3.3 - Uncertainty Report"),
-        bslib::card_body(
-          DT::DTOutput("ipcc_table"),
-          hr(),
-          fluidRow(
-            column(3, downloadButton("download_xlsx", "Download Excel Report",
-                                      class = "btn-success")),
-            column(3, downloadButton("download_csv", "Download CSV",
-                                      class = "btn-outline-success")),
-            column(3, downloadButton("download_docx", "Download Word summary",
-                                      class = "btn-primary"))
-          )
-        )
-      ),
-      # T8.4: per-source uncertainty distribution histograms
-      bslib::card(
-        bslib::card_header("Uncertainty distributions per emission source"),
-        bslib::card_body(
-          p("Histograms of the Monte Carlo output for each emission source. ",
-            "Useful for third-party QA review of which sources contribute the most variance."),
-          plotly::plotlyOutput("report_source_histograms", height = "420px")
-        )
-      ),
-      # T8.4: per-source tornado embedded
-      bslib::card(
-        bslib::card_header("Top sensitivity drivers (Total CO₂eq)"),
-        bslib::card_body(
-          p("Standardised regression coefficients for the top 10 input parameters driving total uncertainty."),
-          plotly::plotlyOutput("report_tornado", height = "380px")
-        )
-      ),
-      # Tx.1: distribution-shape viz for QA verification
-      bslib::card(
-        bslib::card_header("Input distributions used"),
-        bslib::card_body(
-          p("Density plots of each input parameter's fitted distribution — confirms each ",
-            "parameter was sampled with the marginal distribution specified in the input table."),
-          plotly::plotlyOutput("report_input_densities", height = "520px")
-        )
-      ),
-      # T8.3: full input documentation for the run
-      bslib::card(
-        bslib::card_header("Input parameters used in this run"),
-        bslib::card_body(
-          p("Full record of every parameter value, distribution, and bounds ",
-            "used in the simulation — included for inventory documentation and ",
-            "third-party QA review."),
-          DT::DTOutput("inputs_doc_table")
         )
       )
     ),

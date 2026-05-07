@@ -10,7 +10,7 @@ sys.path.insert(0, str(HERE))
 from _build_docs import parse_md, build_docx
 
 SRC = HERE / "docs" / "AW_review_response_v4.md"
-DST = HERE / "AW_review_response_v4f.docx"
+DST = HERE / "AW_review_response_v4g.docx"
 
 md = SRC.read_text(encoding="utf-8")
 blocks = parse_md(md)

@@ -706,12 +706,14 @@ app_server <- function(input, output, session) {
       return()
     }
 
-    # R1.11: redirect trend-mode runs to Tab 9
+    # Round 9: defensive no-op. Trend mode shows a different Run button
+    # ('run_trend') via conditionalPanel, so clicking the single-year button
+    # in trend mode shouldn't be possible — but if it is, we bail with a
+    # message rather than running a single-year sim against trend settings.
     if (input$analysis_mode == "trend") {
       showNotification(
-        "Trend mode selected on the Home page. Go to Tab 9 (Trend) and upload a multi-year CSV to run a trend analysis. The single-year run on this tab is for analysis_mode = 'single'.",
-        type = "warning", duration = 12)
-      bslib::nav_select(id = "nav", selected = "7. Trend", session = session)
+        "Trend mode is selected on the Home page. Click 'Run Trend Analysis' on this tab instead — the single-year Run is only used for analysis_mode = 'single'.",
+        type = "warning", duration = 8)
       return()
     }
 
@@ -1619,10 +1621,17 @@ app_server <- function(input, output, session) {
              "includes a Parameter_TimeSeries sheet (or one of the built-in ",
              "examples), or upload a long-format CSV here.")
       }
-      n_iter <- if (!is.null(input$trend_n_iter)) input$trend_n_iter else 2000
+      # Round 9: trend uses the same n_iter slider as single-year (collapsed
+      # away the separate trend_n_iter). Source selection from Tab 5 also
+      # applies — trend now honours input$emission_sources just like the
+      # single-year flow.
+      n_iter <- if (!is.null(input$n_iter)) input$n_iter else 10000
       yc <- if (!is.null(input$year_corr) && nzchar(input$year_corr)) input$year_corr else "full"
+      gv <- if (!is.null(input$gwp_version) && nzchar(input$gwp_version)) input$gwp_version else "AR5"
+      sd_ <- if (!is.null(input$seed)) input$seed else 42
       res <- run_trend_analysis(df, base_specs = rv$param_specs, n_iter = n_iter,
-                                 year_corr = yc)
+                                 gwp = gv, seed = sd_, year_corr = yc,
+                                 emission_sources = input$emission_sources)
       # Round 8: res is now a list, not a data frame
       rv_trend$results         <- res$table
       rv_trend$samples_by_year <- res$samples_by_year
@@ -1637,6 +1646,9 @@ app_server <- function(input, output, session) {
                        res$delta_total$pct_mean,
                        res$delta_total$pct_ci[1], res$delta_total$pct_ci[2],
                        res$slope$mean))
+      # Round 9: flip Tab 5 to results-view so trend chart/table/sensitivity
+      # show in place (mirrors the single-year Run handler's sim_view flip).
+      rv$sim_view <- "results"
       showNotification(rv_trend$message$text, type = "message", duration = 7)
     }, error = function(e) {
       rv_trend$message <- list(type = "error",
@@ -1778,6 +1790,49 @@ app_server <- function(input, output, session) {
                          "Top 10 drivers — Δ Y_N − Y_1")
   })
 
+  # Round 9: mirror outputs for the IPCC Report tab. Shiny requires unique
+  # output IDs per UI element, so the same chart shown in two places needs two
+  # render calls. Both delegate to the same reactive sources.
+  output$trend_table_report <- DT::renderDT({
+    req(rv_trend$results)
+    DT::datatable(rv_trend$results, rownames = FALSE,
+                  options = list(pageLength = 25, dom = "t"))
+  })
+  output$trend_plot_report <- plotly::renderPlotly({
+    req(rv_trend$results)
+    df <- rv_trend$results
+    sub <- if (!is.null(rv_trend$slope) && !is.null(rv_trend$delta_total)) {
+      sprintf("Δ vs base: %.1f%% (95%% CI %.1f%%, %.1f%%)  •  Slope: %.0f t CO₂eq/yr (95%% CI %.0f, %.0f)",
+              rv_trend$delta_total$pct_mean,
+              rv_trend$delta_total$pct_ci[1], rv_trend$delta_total$pct_ci[2],
+              rv_trend$slope$mean,
+              rv_trend$slope$ci[1], rv_trend$slope$ci[2])
+    } else NULL
+    plotly::plot_ly() |>
+      plotly::add_ribbons(x = df$Year, ymin = df$CI_Lower_t, ymax = df$CI_Upper_t,
+                          name = "95% CI", line = list(color = "transparent"),
+                          fillcolor = "rgba(45,106,79,0.25)") |>
+      plotly::add_trace(x = df$Year, y = df$Mean_t_CO2eq,
+                        type = "scatter", mode = "lines+markers",
+                        name = "Mean", line = list(color = "#1B4332", width = 3),
+                        marker = list(size = 8, color = "#1B4332")) |>
+      plotly::layout(
+        title = list(text = paste0("Trend in total CO₂eq emissions (95% CI)",
+                                    if (!is.null(sub)) paste0("<br><sub>", sub, "</sub>") else "")),
+        xaxis = list(title = "Inventory year"),
+        yaxis = list(title = "Total CO₂eq (tonnes)"),
+        hovermode = "x unified"
+      )
+  })
+  output$trend_tornado_per_year_report <- plotly::renderPlotly({
+    .trend_tornado_plot(trend_sens_per_year(),
+                         "Top 10 drivers — latest year")
+  })
+  output$trend_tornado_delta_report <- plotly::renderPlotly({
+    .trend_tornado_plot(trend_sens_delta(),
+                         "Top 10 drivers — Δ Y_N − Y_1")
+  })
+
   # Round 8 — Trend downloads (Excel / CSV / Word)
 
   .trend_filename <- function(ext) {
@@ -1790,7 +1845,7 @@ app_server <- function(input, output, session) {
     content = function(file) {
       validate(need(!is.null(rv_trend$results),
                     "Run a trend simulation on Tab 7 before downloading."))
-      n_iter_val <- if (!is.null(input$trend_n_iter)) input$trend_n_iter else 2000
+      n_iter_val <- if (!is.null(input$n_iter)) input$n_iter else 10000
       export_trend_xlsx(
         results_table        = rv_trend$results,
         slope                = rv_trend$slope,
@@ -1818,7 +1873,7 @@ app_server <- function(input, output, session) {
     content = function(file) {
       validate(need(!is.null(rv_trend$results),
                     "Run a trend simulation on Tab 7 before downloading."))
-      n_iter_val <- if (!is.null(input$trend_n_iter)) input$trend_n_iter else 2000
+      n_iter_val <- if (!is.null(input$n_iter)) input$n_iter else 10000
       build_trend_summary_docx(
         path                 = file,
         trend_results        = rv_trend$results,

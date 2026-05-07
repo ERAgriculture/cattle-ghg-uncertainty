@@ -106,7 +106,14 @@ run_trend_analysis <- function(trend_df, base_specs, n_iter = 2000,
                                 #   "none"    = independent per year (pre-Round-7
                                 #               behaviour).
                                 year_corr = c("full", "partial", "none"),
-                                ar1_rho   = 0.7) {
+                                ar1_rho   = 0.7,
+                                # Round 9: filter the per-year total_co2e by the
+                                # selected emission sources (mirrors the single-year
+                                # handler at app_server.R ~line 927). NULL (or all
+                                # 5 keys) = include every source. Used to align the
+                                # trend output with the user's source-checkbox
+                                # selection on Tab 5.
+                                emission_sources = NULL) {
   year_corr <- match.arg(year_corr)
 
   # Required columns
@@ -154,6 +161,28 @@ run_trend_analysis <- function(trend_df, base_specs, n_iter = 2000,
   samples_by_year <- list()
   co2e_by_year    <- list()
 
+  # Round 9: emission-source filter — applied per year to recompute total_co2e
+  # from the per-source columns of sim$inventory. Mirrors the single-year
+  # post-filter at app_server.R ~line 927. NULL or all 5 keys = include all.
+  all_src_keys <- c("enteric_ch4", "manure_ch4", "manure_n2o_direct",
+                     "manure_n2o_indirect", "pasture_n2o")
+  srcs <- if (is.null(emission_sources) || length(emission_sources) == 0L)
+            all_src_keys else emission_sources
+  apply_source_filter <- length(srcs) > 0L && length(srcs) < length(all_src_keys)
+  gwp_vals <- if (!is.null(GWP_VALUES[[gwp]])) GWP_VALUES[[gwp]]
+              else GWP_VALUES[["AR5"]]
+
+  filter_co2e <- function(df) {
+    if (!apply_source_filter) return(df$total_co2e)
+    ch4 <- (if ("enteric_ch4" %in% srcs) df$enteric_ch4_total else 0) +
+           (if ("manure_ch4"  %in% srcs) df$manure_ch4_total  else 0)
+    n2o <- (if ("manure_n2o_direct"   %in% srcs) df$direct_n2o_mm_total   else 0) +
+           (if ("manure_n2o_indirect" %in% srcs) df$indirect_n2o_mm_total else 0) +
+           (if ("pasture_n2o" %in% srcs)
+              df$direct_n2o_prp_total + df$indirect_n2o_prp_total else 0)
+    ch4 * gwp_vals$CH4 + n2o * gwp_vals$N2O
+  }
+
   for (yi in seq_along(years)) {
     y <- years[yi]
     year_slice <- trend_df[trend_df$year == y, , drop = FALSE]
@@ -186,7 +215,12 @@ run_trend_analysis <- function(trend_df, base_specs, n_iter = 2000,
       # reproducible across re-runs but don't accidentally redraw coefficients.
       seed = if (!is.null(pre_coef)) seed + yi else seed
     )
-    co2e <- sim$inventory$total_co2e
+    # Round 9: apply emission-source filter to total_co2e. The per-source
+    # columns (enteric_ch4_total, manure_ch4_total, etc.) live on
+    # sim$by_system$year_run$results, not on sim$inventory which only carries
+    # the cross-system total_* aggregates. Same gotcha as Round 6a #8.
+    per_source_df <- sim$by_system$year_run$results
+    co2e <- filter_co2e(per_source_df)
     m    <- mean(co2e)
     s    <- sd(co2e)
     lo   <- quantile(co2e, 0.025, names = FALSE)
