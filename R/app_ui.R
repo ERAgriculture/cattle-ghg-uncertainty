@@ -269,37 +269,7 @@ app_ui <- function() {
           "Select an example country dataset from the dropdown, or upload your own data using the Excel template. ",
           "The parameter table on the right shows the loaded data -- ",
           "you can click on any cell to edit values directly. Check the validation panel at the bottom left to ",
-          "ensure your data is complete and valid before proceeding to the next tab.",
-          tags$br(), tags$br(),
-          tags$strong("IPCC guidelines version: "),
-          "this is read directly from the ",
-          tags$code("ipcc_version"), " field in the ",
-          tags$code("Inventory_Metadata"),
-          " sheet of your uploaded template (allowed values: ",
-          tags$code("2006"), " or ", tags$code("2019_refinement"),
-          "). The example datasets ship with this set; you do not need to choose anything in the app.",
-          tags$br(), tags$br(),
-          # R1.9: MMS sub-category broadcast guidance prominent in the app
-          tags$strong("Manure Management Systems (MMS) — sub-category broadcast: "),
-          tags$em("if all sub-categories of the same cattle_type+aggregation_level use the same MMS allocation, "),
-          tags$em("you can leave the "), tags$code("sub_category"),
-          tags$em(" column blank in the Manure_Management sheet — values will apply to every sub-category in that group. "),
-          tags$em("Otherwise, fill in one block per sub-category."),
-          tags$br(),
-          # R1.10: MMS dropdown by IPCC version
-          tags$strong("MMS list and IPCC version: "),
-          tags$em("the template ships with all 12 MMS types from IPCC 2006 + 2019 Refinement combined. "),
-          tags$em("Validation enforces version-appropriate options based on your "),
-          tags$code("ipcc_version"),
-          tags$em(" choice in Inventory_Metadata. Entries marked '(2019)' (anaerobic_digester, aerobic_treatment, burned_for_fuel, solid_storage_covered) are only valid when ipcc_version = 2019_refinement."),
-          tags$br(), tags$br(),
-          # T1.6: clarify the data model
-          tags$strong("How values, uncertainty and bounds relate: "),
-          tags$code("mean"), " is the central estimate. ",
-          tags$code("uncertainty_pct"), " is the symmetric ±% half-width of the 95% confidence interval. ",
-          tags$code("lower"), " and ", tags$code("upper"),
-          " are the absolute 95% CI bounds in the same units as the parameter. ",
-          "Editing any of these auto-updates the others to keep them consistent (asymmetric distributions can override the bounds directly)."),
+          "ensure your data is complete and valid before proceeding to the next tab."),
       bslib::layout_sidebar(
         sidebar = bslib::sidebar(
           width = 320,
@@ -317,10 +287,6 @@ app_ui <- function() {
                 " Custom mode selected. Use the file uploader below to load your own template. ",
                 "The data preview will appear once your file uploads successfully.")
           ),
-          hr(),
-          div(class = "info-panel",
-              style = "font-size: 0.82rem; padding: 8px 10px; margin-top: 4px;",
-              icon("info-circle"), " MCF values are entered in the Manure_Management sheet of the Excel template — see the Vocab sheet for IPCC Table 10.17 reference values by climate zone."),
           hr(),
           h5("Custom Data Upload"),
           fileInput("data_upload", "Upload Excel Template (.xlsx)",
@@ -409,11 +375,7 @@ app_ui <- function() {
             "Review and adjust each parameter's probability distribution and uncertainty range. ",
             "Click any cell in the table below to edit the distribution type ",
             "(normal, lognormal, beta, triangular, pert, uniform, constant), ",
-            "the uncertainty percentage, or the lower/upper bounds. ",
-            tags$strong("Activity data"),
-            " parameters support correlated sampling on the Correlations tab. ",
-            tags$strong("Coefficients"),
-            " (the IPCC equation parameters previously labelled 'emission factor') are sampled independently."
+            "the uncertainty percentage, or the lower/upper bounds."
           ),
           tags$p(
             tags$strong("Note on triangular distributions: "),

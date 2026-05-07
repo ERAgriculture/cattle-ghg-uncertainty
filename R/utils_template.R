@@ -462,8 +462,13 @@ generate_template_openxlsx <- function(filepath, include_example,
          hint="Integer year, e.g. 2021",                          dropdown=NULL),
     list(label="Livestock species",        col="species",       req=TRUE,
          hint="Select from dropdown",                             dropdown="species"),
+    # Round 7.2: ipcc_version is no longer a dropdown — the user picks the
+    # version at download time on Tab 1, and this cell is pre-set to match.
+    # Hint reminds them not to change it without downloading the matching
+    # template (otherwise the MMS dropdown won't line up).
     list(label="IPCC Guidelines version", col="ipcc_version",  req=FALSE,
-         hint="Select from dropdown — defaults to 2006",          dropdown="ipccver"),
+         hint="Pre-set from your template download choice. Re-download from Tab 1 if you need to switch IPCC versions (the MMS dropdown is filtered to the version you pick).",
+         dropdown=NULL),
     list(label="Prepared by",             col="prepared_by",   req=FALSE,
          hint="Agency / author name",                             dropdown=NULL),
     list(label="Notes",                   col="notes",         req=FALSE,
