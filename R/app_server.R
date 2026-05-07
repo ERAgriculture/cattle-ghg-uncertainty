@@ -1767,6 +1767,11 @@ app_server <- function(input, output, session) {
     )
   })
 
+  # Round 9 follow-up: trend tornado now matches the single-year tornado
+  # (output$tornado_chart) — coloured by user_reducible × sign, with a hover
+  # text and a bottom-right legend annotation explaining the colour scheme.
+  # The bare-parameter strip in the trend-driver case (e.g. "W_y1" / "W_yN")
+  # is split on the suffix so reducibility lookup hits PARAM_CATALOGUE.
   .trend_tornado_plot <- function(sens, title_text) {
     placeholder <- function(msg) {
       plotly::plot_ly() |>
@@ -1794,14 +1799,98 @@ app_server <- function(input, output, session) {
       return(placeholder("Sensitivity result missing expected columns."))
     top10 <- utils::head(base[order(-abs(base[[val_col]])), , drop = FALSE], 10)
     top10 <- top10[order(top10[[val_col]]), , drop = FALSE]
+
+    # Map parameter -> user_reducible. For trend-driver names like "W_y1" or
+    # "Cfi_yN" strip the year suffix before the catalogue lookup.
+    bare_name <- gsub("_(y1|yN)$", "", top10$parameter)
+    reducible_lut <- setNames(PARAM_CATALOGUE$user_reducible,
+                                PARAM_CATALOGUE$parameter)
+    top10$reducible <- reducible_lut[bare_name]
+    top10$reducible[is.na(top10$reducible)] <- TRUE
+
+    bar_colours <- ifelse(top10[[val_col]] > 0,
+      ifelse(top10$reducible, "#2D6A4F", "#78909C"),
+      ifelse(top10$reducible, "#C1121F", "#90A4AE")
+    )
+    hover_txt <- ifelse(top10$reducible, "User-reducible", "IPCC coefficient")
+
     plotly::plot_ly(y = factor(top10$parameter, levels = top10$parameter),
                     x = top10[[val_col]], type = "bar", orientation = "h",
-                    marker = list(color = ifelse(top10[[val_col]] > 0,
-                                                 "#2D6A4F", "#C1121F"))) |>
-      plotly::layout(title = list(text = title_text, font = list(size = 12)),
-                     xaxis = list(title = toupper(val_col)),
-                     yaxis = list(title = ""),
-                     margin = list(l = 130))
+                    marker = list(color = bar_colours),
+                    text = hover_txt, hoverinfo = "x+y+text") |>
+      plotly::layout(
+        title = list(text = title_text, font = list(size = 12)),
+        xaxis = list(title = toupper(val_col)),
+        yaxis = list(title = ""),
+        margin = list(l = 130, b = 40),
+        annotations = list(list(
+          x = 0.99, y = -0.18, xref = "paper", yref = "paper",
+          showarrow = FALSE, align = "right",
+          text = "<span style='color:#2D6A4F'>■</span> User-reducible &nbsp; <span style='color:#78909C'>■</span> IPCC coefficient",
+          font = list(size = 10)
+        ))
+      )
+  }
+
+  # Round 9 follow-up: trend rankings table (per-year + Δ). Mirrors the
+  # single-year output$sensitivity_table but shows both SRC and PRCC columns
+  # (and the user_reducible flag as a coloured Class column) so the user
+  # doesn't have to flip a method toggle. Used by Tab 6 (Sensitivity) under
+  # the trend mode conditional.
+  .trend_sens_table <- function(sens) {
+    if (is.null(sens) || length(sens) == 0) {
+      return(DT::datatable(data.frame(Note = "Run a trend simulation first."),
+                            rownames = FALSE, options = list(dom = "t")))
+    }
+    src  <- sens$src
+    prcc <- sens$prcc
+    base <- if (!is.null(src) && nrow(src) > 0) src
+            else if (!is.null(prcc) && nrow(prcc) > 0) prcc
+            else NULL
+    if (is.null(base) || nrow(base) == 0) {
+      return(DT::datatable(
+        data.frame(Note = "No input parameters had variance."),
+        rownames = FALSE, options = list(dom = "t")))
+    }
+    val_col <- if ("src" %in% names(base)) "src"
+               else if ("prcc" %in% names(base)) "prcc"
+               else names(base)[2]
+    base <- base[order(-abs(base[[val_col]])), , drop = FALSE]
+    base <- utils::head(base, 15)
+
+    bare_name <- gsub("_(y1|yN)$", "", base$parameter)
+    reducible_lut <- setNames(PARAM_CATALOGUE$user_reducible,
+                                PARAM_CATALOGUE$parameter)
+    reducible <- reducible_lut[bare_name]
+    reducible[is.na(reducible)] <- TRUE
+
+    src_disp  <- if ("src" %in% names(base))
+                   formatC(base$src,  digits = 3, format = "f") else NA_character_
+    prcc_disp <- if (!is.null(prcc) && "prcc" %in% names(prcc))
+                   formatC(prcc$prcc[match(base$parameter, prcc$parameter)],
+                           digits = 3, format = "f") else NA_character_
+
+    df <- data.frame(
+      Parameter = base$parameter,
+      Class     = ifelse(reducible, "User-reducible", "IPCC coefficient"),
+      SRC       = src_disp,
+      PRCC      = prcc_disp,
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+    if (all(is.na(df$PRCC))) df$PRCC <- NULL
+    if (all(is.na(df$SRC)))  df$SRC  <- NULL
+
+    dt <- DT::datatable(df, rownames = FALSE,
+                         options = list(pageLength = 15, dom = "t"))
+    DT::formatStyle(dt, "Class",
+      backgroundColor = DT::styleEqual(
+        c("User-reducible", "IPCC coefficient"),
+        c("#D8F3DC", "#ECEFF1")),
+      color = DT::styleEqual(
+        c("User-reducible", "IPCC coefficient"),
+        c("#1B4332", "#37474F")),
+      fontWeight = "600")
   }
 
   output$trend_tornado_per_year <- plotly::renderPlotly({
@@ -1866,6 +1955,16 @@ app_server <- function(input, output, session) {
   output$trend_tornado_delta_sens <- plotly::renderPlotly({
     .trend_tornado_plot(trend_sens_delta(),
                          "Top 10 drivers — Δ Y_N − Y_1")
+  })
+  # Round 9 follow-up: rankings tables (Top 15) for trend mode, mirroring
+  # the single-year output$sensitivity_table. Both SRC and PRCC columns
+  # surfaced together; Class column is colour-coded (green = user-reducible,
+  # grey = IPCC coefficient) to match the tornado bar palette.
+  output$trend_sens_per_year_table <- DT::renderDT({
+    .trend_sens_table(trend_sens_per_year())
+  })
+  output$trend_sens_delta_table <- DT::renderDT({
+    .trend_sens_table(trend_sens_delta())
   })
 
   # Round 8 — Trend downloads (Excel / CSV / Word)

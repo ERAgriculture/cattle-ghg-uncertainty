@@ -821,21 +821,43 @@ app_ui <- function() {
             " — which parameters dominate the uncertainty in the most recent year. ",
             tags$strong("Trend driver (Δ Y_N − Y_1)"),
             " — which parameters drive the change between the first and last year (per IPCC Vol 1 Ch 3 §3.7). ",
-            "Both ranked by absolute SRC; bar colour indicates sign of the influence (green = positive, red = negative). ",
+            "Bars are coloured by ", tags$strong("user-reducibility"),
+            " (same scheme as the single-year tornado): ",
+            tags$span(style = "color:#2D6A4F;font-weight:bold;", "■ green"),
+            " = the user can improve uncertainty on this parameter with better local data; ",
+            tags$span(style = "color:#78909C;font-weight:bold;", "■ grey"),
+            " = IPCC coefficient (requires dedicated measurement research to improve). ",
             tags$br(), tags$br(),
             tags$strong("Action item: "),
-            "If the per-year drivers and trend drivers are the same, you can prioritise data work on the top 3-5 parameters confidently. If they differ, the trend uncertainty has its own structure — focus on whichever parameter dominates the driver you care about."),
+            "Focus your data improvement efforts on green-coloured parameters in the top 5 — those give you the biggest uncertainty reduction with locally-collectible data."),
+        h4("Per-year drivers (latest year)",
+            style = "color:#1B4332; margin: 8px 16px 4px;"),
         bslib::layout_columns(
-          col_widths = c(6, 6),
+          col_widths = c(7, 5),
           bslib::card(
-            bslib::card_header("Per-year drivers (latest year)"),
+            bslib::card_header("Tornado — top 10"),
             bslib::card_body(plotly::plotlyOutput("trend_tornado_per_year_sens",
                                                    height = "420px"))
           ),
           bslib::card(
-            bslib::card_header("Trend driver (Δ Y_N − Y_1)"),
+            bslib::card_header("Rankings — top 15 (SRC + PRCC)"),
+            bslib::card_body(DT::DTOutput("trend_sens_per_year_table"))
+          )
+        ),
+        h4("Trend driver (Δ Y_N − Y_1)",
+            style = "color:#1B4332; margin: 16px 16px 4px;"),
+        div(style = "margin: 0 16px 8px; font-size:0.82rem; color:#666;",
+            tags$em("Combined Y_1 + Y_N inputs are sensitivity-tested against the per-iteration ΔCO2eq. Suffixes _y1 / _yN distinguish the same parameter at different years.")),
+        bslib::layout_columns(
+          col_widths = c(7, 5),
+          bslib::card(
+            bslib::card_header("Tornado — top 10"),
             bslib::card_body(plotly::plotlyOutput("trend_tornado_delta_sens",
                                                    height = "420px"))
+          ),
+          bslib::card(
+            bslib::card_header("Rankings — top 15 (SRC + PRCC)"),
+            bslib::card_body(DT::DTOutput("trend_sens_delta_table"))
           )
         )
       )
