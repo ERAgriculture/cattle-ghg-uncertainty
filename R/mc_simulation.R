@@ -70,6 +70,10 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     # provide them (most existing templates won't yet).
     Frac_GASM_PRP  = get_param("Frac_GASM_PRP",  0.21),
     Frac_LEACH_PRP = get_param("Frac_LEACH_PRP", 0.30),
+    # Andreas 2026-05 follow-up: MilkPR (milk protein %) is now passed through
+    # from samples instead of being hardcoded in calc_n_excretion. Catalogue
+    # default is 3.3 (IPCC 2006 Table 10.11 African-dairy mid-point).
+    MilkPR         = get_param_alt("MilkPR", "protein_milk", 3.3),
     gwp = gwp,
     Tw = Tw, pct_calving = pct_calving,
     frac_gas_values   = frac_gas_values,

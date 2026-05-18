@@ -1,16 +1,26 @@
 # IPCC Tier 2 Manure Management N2O Emissions
 # Source: IPCC 2006 Guidelines, Volume 4, Chapter 10 (Eq 10.25-10.34) & Chapter 11
 
-# Nitrogen excretion rate - kg N/head/year (simplified from Eq 10.31-10.34)
-# C1: DE (was DE_pct), CP (was CP_pct) — IPCC software-aligned names
-calc_n_excretion <- function(ge, DE, CP, milk_yield = 0, pct_lactating = 0, weight_gain = 0) {
+# Nitrogen excretion rate - kg N/head/year (simplified from Eq 10.31-10.34).
+# C1: DE (was DE_pct), CP (was CP_pct) — IPCC software-aligned names.
+# Andreas 2026-05 follow-up: `MilkPR` (milk protein %) is now a function
+# argument instead of a hardcoded 3.3 constant. Users can override it
+# per sub-category via the Parameters template (catalogue default 3.3
+# is the IPCC 2006 Table 10.11 mid-point for African dairy).
+# Weight-gain N retention uses the simplified coefficient 0.032 (Monni
+# 2007 / IPCC software approximation of Eq 10.33; the full Eq 10.33A
+# requires protein-content data not in the standard input set).
+calc_n_excretion <- function(ge, DE, CP, milk_yield = 0, pct_lactating = 0,
+                              weight_gain = 0, MilkPR = 3.3) {
   DMI <- (ge * DE / 100) / 18.45
   N_intake <- DMI * (CP / 100) / 6.25
 
   N_retained <- 0
   if (milk_yield > 0 && pct_lactating > 0) {
-    milk_protein <- 3.3
-    N_retained <- milk_yield * pct_lactating * milk_protein / 100 / 6.38
+    # Eq 10.32A: milk_yield is daily kg per LACTATING animal; pct_lactating
+    # averages across the sub-category. MilkPR is in % (e.g. 3.3); /6.38
+    # converts kg protein → kg N.
+    N_retained <- milk_yield * pct_lactating * MilkPR / 100 / 6.38
   }
   if (weight_gain > 0) {
     N_retained <- N_retained + weight_gain * 0.032

@@ -24,7 +24,11 @@ ghg_emissions <- function(
   # to Table 11.3 defaults for back-compat with callers that don't yet pass
   # PRP-specific values.
   Frac_GASM_PRP  = NULL,
-  Frac_LEACH_PRP = NULL
+  Frac_LEACH_PRP = NULL,
+  # Andreas 2026-05 follow-up: MilkPR (milk protein %) is now threaded
+  # through here from the sampled parameters instead of being hardcoded
+  # in calc_n_excretion. Default 3.3 matches IPCC 2006 Table 10.11.
+  MilkPR = 3.3
 ) {
   # E1: cold-climate Cfi adjustment via Tw
   nem <- calc_nem(live_weight, Cfi, Tw = Tw)
@@ -48,7 +52,8 @@ ghg_emissions <- function(
   manure_ch4_total <- (manure_ch4_head * cattle_pop) / 1000
 
   # N excretion and N2O
-  Nex <- calc_n_excretion(ge, DE, CP, milk_yield, pct_lactating, weight_gain)
+  Nex <- calc_n_excretion(ge, DE, CP, milk_yield, pct_lactating, weight_gain,
+                           MilkPR = MilkPR)
   pct_pasture <- ifelse("pasture" %in% names(mms_fractions),
                         mms_fractions["pasture"], 0)
 
@@ -116,7 +121,10 @@ ghg_emissions_vec <- function(
   # Andreas 2026-05 #10: PRP-specific volatilization/leaching fractions
   # (IPCC 2019 Table 11.3). NULL = broadcast a constant from IPCC defaults.
   Frac_GASM_PRP  = NULL,
-  Frac_LEACH_PRP = NULL
+  Frac_LEACH_PRP = NULL,
+  # Andreas 2026-05 follow-up: MilkPR (milk protein %, IPCC 2006 Table 10.11)
+  # threaded through to calc_n_excretion. NULL/scalar/vector all supported.
+  MilkPR = NULL
 ) {
   n <- length(cattle_pop)
   results <- data.frame(
@@ -139,6 +147,8 @@ ghg_emissions_vec <- function(
                 if (length(Frac_GASM_PRP)  == 1) rep(Frac_GASM_PRP,  n) else Frac_GASM_PRP
   prp_fl_vec <- if (is.null(Frac_LEACH_PRP)) rep(0.30, n) else
                 if (length(Frac_LEACH_PRP) == 1) rep(Frac_LEACH_PRP, n) else Frac_LEACH_PRP
+  milkpr_vec <- if (is.null(MilkPR)) rep(3.3, n) else
+                if (length(MilkPR) == 1) rep(MilkPR, n) else MilkPR
 
   for (i in seq_len(n)) {
     r <- ghg_emissions(
@@ -153,7 +163,8 @@ ghg_emissions_vec <- function(
       frac_gas_values   = frac_gas_values,
       frac_leach_values = frac_leach_values,
       Frac_GASM_PRP  = prp_fg_vec[i],
-      Frac_LEACH_PRP = prp_fl_vec[i]
+      Frac_LEACH_PRP = prp_fl_vec[i],
+      MilkPR         = milkpr_vec[i]
     )
     results$enteric_ch4_total[i] <- r$enteric_ch4_total
     results$manure_ch4_total[i] <- r$manure_ch4_total

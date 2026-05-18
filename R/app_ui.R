@@ -619,7 +619,7 @@ app_ui <- function() {
             selectInput("gwp_version", "GWP Assessment Report",
                         choices = c("AR4 (CH₄=25)" = "AR4",
                                     "AR5 (CH₄=28, N₂O=265)" = "AR5",
-                                    "AR6 (CH₄=27.9, N₂O=273)" = "AR6"),
+                                    "AR6 (CH₄=27, N₂O=273)" = "AR6"),
                         selected = "AR5"),
             # T1.12 / R1.4: emission source selector — none ticked by default,
             # forcing the user to make an explicit choice before running.

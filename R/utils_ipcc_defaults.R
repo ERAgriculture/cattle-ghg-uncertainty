@@ -130,9 +130,13 @@ mms_frac_defaults_2019 <- function(mms_type) {
 }
 
 GWP_VALUES <- list(
-  AR4 = list(CH4 = 25, N2O = 298),
-  AR5 = list(CH4 = 28, N2O = 265),
-  AR6 = list(CH4 = 27.9, N2O = 273)
+  AR4 = list(CH4 = 25,   N2O = 298),
+  AR5 = list(CH4 = 28,   N2O = 265),
+  # Andreas 2026-05 follow-up: AR6 CH4 corrected from 27.9 (not an IPCC value)
+  # to 27.0 — IPCC AR6 WG1 Table 7.15 gives CH4-fossil = 29.8 and
+  # CH4-non-fossil = 27.0. Cattle CH4 (enteric and manure) is biogenic /
+  # non-fossil, so 27.0 is the correct value. N2O = 273 unchanged.
+  AR6 = list(CH4 = 27.0, N2O = 273)
 )
 
 SUBCATS <- c("cows", "heifers", "adult_males", "growing_males", "calves")
