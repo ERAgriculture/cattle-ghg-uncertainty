@@ -514,32 +514,42 @@ app_server <- function(input, output, session) {
   })
 
   # Template downloads. Round 7.1: filename and MMS dropdown reflect the
-  # IPCC version picked via input$template_version (default = "2006").
-  .selected_ipcc_version <- function() {
-    v <- input$template_version
-    if (is.null(v) || !nzchar(v)) "2006" else v
-  }
+  # IPCC version picked via input$template_version. Andreas 2026-05 follow-up:
+  # no default — user must pick a version explicitly. If they click a Download
+  # button without choosing, surface a Shiny notification and abort the
+  # download.
+  .selected_ipcc_version <- function() input$template_version
   .version_suffix <- function(v) {
     if (identical(v, "2019_refinement")) "ipcc2019" else "ipcc2006"
   }
+  .require_ipcc_version <- function() {
+    v <- .selected_ipcc_version()
+    if (is.null(v) || !nzchar(v)) {
+      showNotification(
+        "Please select an IPCC Guidelines version (IPCC 2006 or IPCC 2019 Refinement) before downloading a template.",
+        type = "error", duration = 6)
+      shiny::validate(shiny::need(FALSE, "IPCC version not selected"))
+    }
+    v
+  }
   output$download_template <- downloadHandler(
     filename = function() {
-      v <- .selected_ipcc_version()
+      v <- .require_ipcc_version()
       paste0("uncertainty_template_", .version_suffix(v), ".xlsx")
     },
     content = function(file) {
-      generate_template(file, include_example = FALSE,
-                         ipcc_version = .selected_ipcc_version())
+      v <- .require_ipcc_version()
+      generate_template(file, include_example = FALSE, ipcc_version = v)
     }
   )
   output$download_template_example <- downloadHandler(
     filename = function() {
-      v <- .selected_ipcc_version()
+      v <- .require_ipcc_version()
       paste0("uncertainty_template_example_", .version_suffix(v), ".xlsx")
     },
     content = function(file) {
-      generate_template(file, include_example = TRUE,
-                         ipcc_version = .selected_ipcc_version())
+      v <- .require_ipcc_version()
+      generate_template(file, include_example = TRUE, ipcc_version = v)
     }
   )
 
