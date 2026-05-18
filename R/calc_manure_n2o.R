@@ -12,7 +12,16 @@
 # requires protein-content data not in the standard input set).
 calc_n_excretion <- function(ge, DE, CP, milk_yield = 0, pct_lactating = 0,
                               weight_gain = 0, MilkPR = 3.3) {
-  DMI <- (ge * DE / 100) / 18.45
+  # IPCC 2006 Eq 10.32 / IPCC 2019 Refinement Eq 10.32A:
+  #   N_intake = (GE / 18.45) × (CP% / 100) / 6.25
+  # i.e. dry-matter feed mass (GE / 18.45) × protein fraction (CP% / 100) /
+  # protein-to-N ratio (6.25). NO `DE` factor — that belongs in the volatile-
+  # solids equation (Eq 10.24), where we want the UN-digested fraction.
+  # Earlier code wrote N_intake = (GE × DE / 100) / 18.45 × ... which mixed
+  # the DE factor in here and under-estimated N intake by ~25-30%, causing
+  # downstream Nex / direct N2O MM / indirect N2O MM to be similarly low
+  # (Andreas's A1/A2 finding, 2026-05-15 review).
+  DMI <- ge / 18.45
   N_intake <- DMI * (CP / 100) / 6.25
 
   N_retained <- 0

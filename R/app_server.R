@@ -800,6 +800,33 @@ app_server <- function(input, output, session) {
 
           group_key  <- make_group_key(specs)
           sys_groups <- unique(group_key)
+
+          # Andreas 2026-05 follow-up: warn when a Parameters group has no
+          # matching Manure_Management rows (e.g. cattle_type or sub_category
+          # spelt differently between sheets — "DINT_heif" vs "DINT_heifer"
+          # was the case in the Zimbabwe pilot, silently making the heifer
+          # group fall back to the default pasture allocation). The warning
+          # surfaces in the simulation log on Tab 5 so the user catches the
+          # mismatch instead of getting wrong N2O numbers.
+          if (!is.null(manure) && nrow(manure) > 0 &&
+              all(c("cattle_type","aggregation_level","sub_category") %in%
+                  names(manure))) {
+            manure_keys <- unique(make_group_key(manure))
+            mismatched  <- setdiff(sys_groups, manure_keys)
+            if (length(mismatched) > 0) {
+              msg <- paste0(
+                "WARNING: ", length(mismatched), " Parameters group(s) have no ",
+                "matching Manure_Management rows. These groups fall back to ",
+                "the default pasture allocation, which will under-count their ",
+                "manure CH4 and direct/indirect MM N2O. Check spelling of ",
+                "cattle_type / aggregation_level / sub_category across both ",
+                "sheets. Mismatched: ",
+                paste(head(mismatched, 5), collapse = "; "),
+                if (length(mismatched) > 5) ", ..." else "", "\n")
+              rv$sim_log <- paste0(rv$sim_log, msg)
+            }
+          }
+
           systems_data <- list()
 
           default_mms_fracs <- c(pasture = 0.70, solid_storage = 0.30)
