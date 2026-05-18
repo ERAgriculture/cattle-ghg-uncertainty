@@ -2,18 +2,34 @@
 # Gaussian copula approach: MASS::mvrnorm for correlations + probability integral transform
 
 # Build an n x n uniform correlation matrix (all off-diagonal entries = rho).
+# Andreas 2026-05 audit follow-up: warn when nearPD has to make a large
+# adjustment to the user-supplied correlation matrix, instead of silently
+# changing the correlations to enforce positive-definiteness.
+.repair_corr <- function(m, label = "correlation matrix", tol = 0.05) {
+  fixed <- as.matrix(Matrix::nearPD(m, corr = TRUE)$mat)
+  if (is.matrix(m) && all(dim(m) == dim(fixed))) {
+    delta <- max(abs(fixed - m), na.rm = TRUE)
+    if (is.finite(delta) && delta > tol) {
+      warning(sprintf(
+        "Supplied %s was not positive-definite; nearPD adjusted correlations by up to %.3f.",
+        label, delta), call. = FALSE)
+    }
+  }
+  fixed
+}
+
 # Used for the "uniform EF correlation" option where a single rho represents
 # shared systematic bias across all emission factors.
 make_uniform_corr <- function(n, rho) {
   if (n <= 1) return(diag(max(n, 1L)))
   m <- matrix(rho, n, n)
   diag(m) <- 1.0
-  as.matrix(Matrix::nearPD(m, corr = TRUE)$mat)
+  .repair_corr(m, "uniform-rho correlation matrix")
 }
 
 # Gaussian copula sampling for one block of parameters (shared helper)
 .copula_sample <- function(n_iter, params, corr_mat) {
-  corr_mat <- as.matrix(Matrix::nearPD(corr_mat, corr = TRUE)$mat)
+  corr_mat <- .repair_corr(corr_mat, "block correlation matrix")
   z <- MASS::mvrnorm(n_iter, mu = rep(0, nrow(corr_mat)), Sigma = corr_mat)
   u <- pnorm(z)
   samp <- matrix(NA, nrow = n_iter, ncol = nrow(params))
@@ -73,7 +89,7 @@ generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     common <- intersect(rownames(unified_corr_matrix), nm)
     if (length(common) >= 2) {
       M[common, common] <- unified_corr_matrix[common, common]
-      M <- as.matrix(Matrix::nearPD(M, corr = TRUE)$mat)
+      M <- .repair_corr(M, "unified AD+coefficient correlation matrix")
       rownames(M) <- colnames(M) <- nm
       samp <- .copula_sample(n_iter, all_params, M)
       out  <- as.data.frame(samp)
@@ -202,7 +218,7 @@ build_ipcc_preset_corr <- function(all_param_names) {
     }
   }
   if (applied == 0L) return(NULL)
-  as.matrix(Matrix::nearPD(m, corr = TRUE)$mat)
+  .repair_corr(m, "IPCC-guidance preset correlation matrix")
 }
 
 # Expand a partial (named) correlation matrix to the full set of AD parameters.
@@ -218,5 +234,5 @@ expand_corr_matrix <- function(partial_corr, all_param_names) {
   if (length(common) < 2) return(NULL)
 
   full[common, common] <- partial_corr[common, common]
-  as.matrix(Matrix::nearPD(full, corr = TRUE)$mat)
+  .repair_corr(full, "expanded partial correlation matrix")
 }

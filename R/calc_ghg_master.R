@@ -51,8 +51,8 @@ ghg_emissions <- function(
   manure_ch4_head <- calc_manure_ch4(VS, Bo, mms_fractions, mcf_values)
   manure_ch4_total <- (manure_ch4_head * cattle_pop) / 1000
 
-  # N excretion and N2O
-  Nex <- calc_n_excretion(ge, DE, CP, milk_yield, pct_lactating, weight_gain,
+  # N excretion and N2O. DE no longer passed — see calc_n_excretion comments.
+  Nex <- calc_n_excretion(ge, CP, milk_yield, pct_lactating, weight_gain,
                            MilkPR = MilkPR)
   pct_pasture <- ifelse("pasture" %in% names(mms_fractions),
                         mms_fractions["pasture"], 0)

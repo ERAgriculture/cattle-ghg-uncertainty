@@ -1,5 +1,17 @@
 # Distribution Sampling Utilities
 # Supports: normal, lognormal, beta, triangular, PERT, uniform, constant
+#
+# NOTE on lognormal interpretation (verified empirically 2026-05-18):
+#   For lognormal, `mean_val` is treated as the MEDIAN of the distribution
+#   (mu_log = log(mean_val)), not the arithmetic mean. This matches IPCC
+#   GPG 2000 Annex 1 / Penman et al. 2000 / Monni et al. 2007 convention
+#   for skewed emission factor parameters, where the "central value" is
+#   the geometric mean / median rather than the arithmetic mean.
+#   Consequence: the realised arithmetic mean of the MC samples will be
+#   `mean_val × exp(sd_log² / 2)`, which is above mean_val by ≈10-25%
+#   for the IPCC asymmetric defaults (EF3_PRP, EF4, EF5, Frac_LEACH_H).
+#   Users who want mean_val to be the arithmetic mean should pick a
+#   different distribution (normal, beta, or pert) instead of lognormal.
 
 sample_distribution <- function(n, type, mean_val, lower, upper) {
   type <- tolower(type)

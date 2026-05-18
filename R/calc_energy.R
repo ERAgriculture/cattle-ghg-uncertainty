@@ -4,7 +4,13 @@
 # Net Energy for Maintenance (Eq 10.3) - MJ/head/day
 # E1: Tw cold-climate adjustment per IPCC software v2.95.
 # Cfi(in_cold) = Cfi + 0.0048 * (20 - Tw) when Tw < 20°C; otherwise no adjustment.
+# Andreas 2026-05 audit follow-up: warn on extreme Tw values which would
+# inflate Cfi by >50%. IPCC software uses the linear adjustment in roughly
+# -50°C ≤ Tw < 20°C; outside that range the linear model isn't validated.
 calc_nem <- function(live_weight, Cfi, Tw = 20) {
+  if (!is.na(Tw) && Tw < -50)
+    warning("Tw = ", Tw, "°C is extremely cold; cold-climate Cfi adjustment ",
+            "(IPCC Eq 10.2 / software v2.95) is only validated for Tw ≥ -50°C.")
   Cfi_adj <- if (!is.na(Tw) && Tw < 20) Cfi + 0.0048 * (20 - Tw) else Cfi
   Cfi_adj * (live_weight ^ 0.75)
 }

@@ -10,7 +10,7 @@
 # Weight-gain N retention uses the simplified coefficient 0.032 (Monni
 # 2007 / IPCC software approximation of Eq 10.33; the full Eq 10.33A
 # requires protein-content data not in the standard input set).
-calc_n_excretion <- function(ge, DE, CP, milk_yield = 0, pct_lactating = 0,
+calc_n_excretion <- function(ge, CP, milk_yield = 0, pct_lactating = 0,
                               weight_gain = 0, MilkPR = 3.3) {
   # IPCC 2006 Eq 10.32 / IPCC 2019 Refinement Eq 10.32A:
   #   N_intake = (GE / 18.45) × (CP% / 100) / 6.25
@@ -20,7 +20,12 @@ calc_n_excretion <- function(ge, DE, CP, milk_yield = 0, pct_lactating = 0,
   # Earlier code wrote N_intake = (GE × DE / 100) / 18.45 × ... which mixed
   # the DE factor in here and under-estimated N intake by ~25-30%, causing
   # downstream Nex / direct N2O MM / indirect N2O MM to be similarly low
-  # (Andreas's A1/A2 finding, 2026-05-15 review).
+  # (Andreas's A1/A2 finding, 2026-05-15 review). The `DE` argument was
+  # removed from the signature after the fix; callers should pass only ge.
+  # Defensive bounds check on MilkPR (IPCC Table 10.11 range 2.8-3.8%).
+  if (!is.na(MilkPR) && (MilkPR < 0 || MilkPR > 10))
+    warning("MilkPR = ", MilkPR, " is outside the IPCC Table 10.11 typical ",
+            "range (2.8-3.8%). Verify the value.")
   DMI <- ge / 18.45
   N_intake <- DMI * (CP / 100) / 6.25
 

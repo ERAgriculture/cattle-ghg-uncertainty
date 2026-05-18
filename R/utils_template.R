@@ -1488,6 +1488,29 @@ parse_uploaded_template <- function(path) {
     nzchar(as.character(params$parameter)), ,
     drop = FALSE]
 
+  # Andreas 2026-05 audit follow-up: defensive whitespace + case normalisation
+  # on grouping and lookup columns so a stray trailing space ("N " instead of
+  # "N") or inconsistent case ("Dairy" vs "dairy") doesn't silently drop rows
+  # or split a group across two systems_data entries.
+  if ("parameter" %in% names(params))
+    params$parameter <- trimws(as.character(params$parameter))
+  if ("cattle_type" %in% names(params))
+    params$cattle_type <- tolower(trimws(as.character(params$cattle_type)))
+  if ("aggregation_level" %in% names(params))
+    params$aggregation_level <- trimws(as.character(params$aggregation_level))
+  if ("sub_category" %in% names(params))
+    params$sub_category <- trimws(as.character(params$sub_category))
+  if ("distribution" %in% names(params))
+    params$distribution <- tolower(trimws(as.character(params$distribution)))
+  if (!is.null(manure)) {
+    for (col in c("cattle_type", "aggregation_level", "sub_category", "mms_type")) {
+      if (col %in% names(manure))
+        manure[[col]] <- trimws(as.character(manure[[col]]))
+    }
+    if ("cattle_type" %in% names(manure))
+      manure$cattle_type <- tolower(manure$cattle_type)
+  }
+
   # C1 / R1.6 hotfix (Round 7.1): apply legacy-name aliases BEFORE the
   # catalogue filter, otherwise rows whose parameter still uses the pre-rename
   # spelling (cattle_pop, live_weight, milk_yield, DE_pct, ...) get dropped
