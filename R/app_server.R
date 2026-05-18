@@ -1133,6 +1133,15 @@ app_server <- function(input, output, session) {
             rv$sim_log <- paste0(rv$sim_log, "Uncertainty decomposition complete.\n")
             setProgress(0.90, detail = "Decomposition complete.")
           } else {
+            skip_reason <- if (!input$run_decomposition) {
+              "Uncertainty decomposition skipped (checkbox unchecked)."
+            } else {
+              sprintf(
+                "Uncertainty decomposition skipped: your data has %d cattle groups. AD/EF decomposition requires a single-group inventory. To generate the IPCC Table 3.3 report, run each cattle group separately.",
+                length(systems_data))
+            }
+            rv$sim_log <- paste0(rv$sim_log, skip_reason, "\n")
+            rv$ipcc_table <- NULL
             setProgress(0.90, detail = "Decomposition skipped.")
           }
 
@@ -1609,6 +1618,18 @@ app_server <- function(input, output, session) {
   })
 
   # --- IPCC REPORT ---
+
+  output$ipcc_table_notice <- renderUI({
+    if (!is.null(rv$mc_results) && is.null(rv$ipcc_table)) {
+      div(class = "alert alert-warning", role = "alert",
+          style = "margin-bottom:12px;",
+          icon("triangle-exclamation"), " ",
+          tags$strong("IPCC Table 3.3 not available for this run. "),
+          "AD/EF uncertainty decomposition requires a single-group inventory. ",
+          "If your data has multiple cattle groups, run each group separately to obtain the decomposed table. ",
+          "Check the Simulation Log on Tab 5 for details.")
+    }
+  })
 
   output$ipcc_table <- DT::renderDT({
     req(rv$ipcc_table)

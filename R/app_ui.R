@@ -624,11 +624,10 @@ app_ui <- function() {
           "Tab 7 (Sensitivity) and Tab 8 (IPCC Report) provide deeper drill-downs.",
           tags$br(), tags$br(),
           tags$strong("How many iterations to use: "),
-          "For a typical Tier 2 cattle inventory with 2–5 sub-categories and 15–30 parameters, ",
-          tags$strong("5,000 iterations"), " is usually sufficient for stable CV estimates. ",
-          "Use ", tags$strong("10,000"), " when correlations are enabled, when you have more sub-categories, ",
-          "or for final reporting. Use ", tags$strong("1,000 only for quick testing"),
-          " — convergence is not guaranteed below 5,000 iterations. ",
+          "Use ", tags$strong("1,000 only for a quick test run"),
+          " to check that the model runs. Use a ", tags$strong("minimum of 10,000 iterations"),
+          " for any result you intend to use — convergence is not guaranteed below 10,000. ",
+          "Higher is always better: 25,000–50,000 is recommended for final reporting, especially when correlations are enabled or you have many sub-categories. ",
           "To verify convergence, re-run with a different random seed: if the CV% changes by more than 1–2 percentage points, increase the number of iterations."),
       # R1.5: view toggle — output.sim_view is "settings" or "results"
       conditionalPanel(
@@ -1046,6 +1045,7 @@ app_ui <- function() {
         bslib::card(
           bslib::card_header("IPCC Table 3.3 - Uncertainty Report"),
           bslib::card_body(
+            uiOutput("ipcc_table_notice"),
             DT::DTOutput("ipcc_table"),
             hr(),
             fluidRow(
