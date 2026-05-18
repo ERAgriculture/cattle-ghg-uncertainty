@@ -771,7 +771,7 @@ app_ui <- function() {
         conditionalPanel(
           condition = "input.analysis_mode != 'trend'",
           bslib::layout_columns(
-            col_widths = c(3, 3, 3, 3),
+            col_widths = c(NA, NA, NA, NA, NA),
             bslib::value_box(title = "Enteric CH₄ (t)",
                               value = textOutput("vb_enteric_ch4"),
                               showcase = icon("fire"), theme = "success"),
@@ -785,12 +785,15 @@ app_ui <- function() {
             bslib::value_box(title = "Pasture N₂O (t)",
                               value = textOutput("vb_pasture_n2o"),
                               p("Direct + indirect"),
-                              showcase = icon("seedling"), theme = "primary")
+                              showcase = icon("seedling"), theme = "primary"),
+            bslib::value_box(title = "Total CV (%)",
+                              value = textOutput("vb_cv"),
+                              p("Coefficient of variation"),
+                              showcase = icon("percent"), theme = "warning")
           ),
           div(style = "padding: 0 12px 8px; color: #555; font-size: 0.85rem;",
               tags$em("Total CO₂eq: "), textOutput("vb_co2e_inline", inline = TRUE),
               tags$em(" · 95% MoE: "), textOutput("vb_moe", inline = TRUE),
-              tags$em(" · CV: "), textOutput("vb_cv", inline = TRUE),
               tags$em(" · Total CH₄: "), textOutput("vb_ch4", inline = TRUE),
               tags$em(" · Total N₂O: "), textOutput("vb_n2o", inline = TRUE)),
           bslib::layout_columns(
