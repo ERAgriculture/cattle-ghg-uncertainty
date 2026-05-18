@@ -75,15 +75,15 @@ app_ui <- function() {
             p("When a country reports cattle greenhouse gas emissions under the Paris Agreement, every input parameter
               (animal populations, body weights, feed quality, emission factors) has some uncertainty. This tool:"),
             tags$ol(
-              tags$li("Takes your country-specific Tier 2 input data with uncertainty ranges"),
+              tags$li("Takes your country-specific input data aligned with the IPCC Tier 2 equations, with uncertainty ranges"),
               tags$li("Runs thousands of Monte Carlo simulations, varying all parameters according to their probability distributions"),
               tags$li("Produces the uncertainty range for your total emission estimate (95% confidence interval)"),
               tags$li("Identifies which parameters contribute most to the uncertainty (sensitivity analysis)"),
-              tags$li("Formats results for IPCC inventory reporting (Table 3.3)")
+              tags$li("Formats results for IPCC inventory reporting (IPCC 2006 Vol. 1 Ch. 3, Table 3.3)")
             ),
             p(tags$strong("Emission sources covered:"),
-              " Enteric fermentation CH4, Manure management CH4, Manure management N2O (direct and indirect),
-              and N2O from dung/urine deposited on pasture.")
+              " Enteric fermentation CH₄, Manure management CH₄, Manure management N₂O (direct and indirect),
+              and N₂O (direct and indirect) from dung and urine deposited on pasture.")
           )
         ),
 
@@ -178,35 +178,15 @@ app_ui <- function() {
             tags$p(tags$strong("What this tool does NOT do:")),
             tags$ul(
               tags$li("It does not collect data or estimate input uncertainties — those must be supplied by the user."),
-              tags$li("It does not produce Tier 1 estimates — the IPCC Tier 2 equation chain is required."),
+              tags$li("It does not produce Tier 1 estimates and is not designed for uncertainty analysis of country-specific Tier 2 methods — the IPCC Tier 2 equation chain is required."),
               tags$li("It does not validate your country's IPCC categorisation choices — sub-category structure is the user's responsibility."),
               tags$li("Cross-block correlations between activity data and emission factors are not yet supported (planned for v3.0).")
             )
           )
         ),
-        # R1.11: single-year vs trend choice on the Home page
-        bslib::card(
-          bslib::card_header(h4("Choose your analysis mode", style = "margin: 0;")),
-          bslib::card_body(
-            radioButtons("analysis_mode",
-              label = NULL,
-              choices = c(
-                "Single year — quantify uncertainty in one inventory year" = "single",
-                "Trend — compare uncertainty across multiple years (uses Tab 9)"   = "trend"
-              ),
-              selected = character(0)),
-            div(id = "analysis_mode_warning",
-                style = "background:#FEF3C7; border-left:3px solid #F59E0B; padding:8px 10px; margin-top:8px; font-size:0.85rem; color:#92400E; border-radius:4px;",
-                icon("exclamation-triangle"),
-                tags$strong(" Selection required: "),
-                "pick Single year or Trend before moving on. The Run button on Tab 5 will block until a mode is chosen."),
-            tags$p(tags$em("IPCC Volume 1 Chapter 3 recommends running uncertainty analysis ",
-                           "for both the first and last year of an inventory and quantifying the ",
-                           "trend uncertainty. Use 'Trend' if you have multi-year data; use ",
-                           "'Single year' for a one-off uncertainty estimate."),
-                   style = "color:#555; font-size:0.85rem; margin-top:8px;")
-          )
-        )
+        # Andreas 2026-05 #3: analysis-mode toggle moved to top of Data Input
+        # tab (see below). Card removed from Home page so the workflow start
+        # is more visible.
       )
     ),
 
@@ -217,7 +197,7 @@ app_ui <- function() {
       div(class = "info-panel", style = "margin: 16px;",
           tags$strong("Parameter glossary. "),
           "All parameters used in the IPCC Tier 2 calculations, with their plain-language ",
-          "definition, unit, IPCC default value, suggested distribution, tier (core / technical), ",
+          "definition, unit, IPCC default value, suggested distribution, level (core / advanced), ",
           "IPCC framing (activity data vs coefficient), and IPCC reference table or equation. ",
           "Variable names match the ", tags$strong("IPCC Inventory Software"),
           " v2.95 nomenclature directly.")
@@ -234,6 +214,31 @@ app_ui <- function() {
       icon = icon("book-open"),
       div(style = "max-width: 960px; margin: 0 auto; padding: 24px;",
         bslib::card(
+          bslib::card_header(h4("Tool-specific resources", style = "margin: 0;")),
+          bslib::card_body(
+            p(tags$em("Drafts in progress for beta-testing. Sections below will be expanded with detailed content before partner rollout.")),
+            tags$h5("How this tool works"),
+            tags$ul(
+              tags$li("Equation chain: IPCC 2006 Vol 4 Ch 10 (Eq 10.1–10.34) and Ch 11 for the per-head emission factor; population × EF for the per-sub-category total."),
+              tags$li("Monte Carlo: Approach 2 from IPCC 2006 Vol 1 Ch 3, with optional Gaussian copula correlations across activity data and coefficients."),
+              tags$li("Sensitivity: Standardised regression coefficients (SRC) and partial rank correlation (PRCC) on the sampled inputs vs each output.")
+            ),
+            tags$h5("How to use the tool"),
+            tags$ul(
+              tags$li("If you are not accounting for uncertainty on a parameter, enter the parameter value and set uncertainty_pct = 0 (or distribution = constant)."),
+              tags$li("Set Milk = 0 for sub-categories that do not lactate; set WG = 0 for adult animals not gaining weight."),
+              tags$li("For asymmetric IPCC parameters (EF3_PRP, EF4, EF5, Frac_LEACH_H), supply explicit lower / upper bounds — the catalogue pre-fills Monni-2007 / Penman-2000 ranges if you leave them blank.")
+            ),
+            tags$h5("Preparing uncertainty inputs"),
+            tags$ul(
+              tags$li("Use the IPCC Approach 1 spreadsheet to combine survey CVs into a 95 % CI half-width, then enter as `uncertainty_pct` in the Parameters sheet."),
+              tags$li("For parameters with skewed empirical distributions (e.g. milk yield across smallholders), choose `lognormal` or `pert` instead of `normal`."),
+              tags$li("For correlations, upload a multi-year activity-data time-series in the Parameter_TimeSeries sheet and let the Correlations tab auto-compute Pearson coefficients.")
+            )
+          )
+        ),
+
+        bslib::card(
           bslib::card_header(h4("Useful resources", style = "margin: 0;")),
           bslib::card_body(
             tags$h5("Methodological foundations"),
@@ -246,25 +251,41 @@ app_ui <- function() {
                              "2019 Refinement to the 2006 IPCC Guidelines — Volume 4")),
               tags$li(tags$a(href = "https://www.ipcc-nggip.iges.or.jp/public/2006gl/vol1.html",
                              target = "_blank",
-                             "IPCC 2006 Guidelines — Volume 1, Chapter 3 (Uncertainties)"))
+                             "IPCC 2006 Guidelines — Volume 1, Chapter 3 (Uncertainties)")),
+              tags$li(tags$a(href = "https://www.ipcc-nggip.iges.or.jp/public/2019rf/vol1.html",
+                             target = "_blank",
+                             "2019 Refinement to the 2006 IPCC Guidelines — Volume 1, Chapter 3 (Uncertainties)"))
             ),
             tags$h5("Activity data guidance"),
             tags$ul(
               tags$li(tags$a(href = "https://www.fao.org/livestock-systems/global-distributions/en/",
                              target = "_blank",
-                             "FAO Livestock Activity Data Guidelines (L-ADG)")),
-              tags$li("Penman et al. (2000) — Good Practice Guidance and Uncertainty Management in National Greenhouse Gas Inventories"),
-              tags$li("Monni et al. (2007) — Uncertainty in agricultural CH4 and N2O emissions from Finland")
+                             "FAO Livestock Activity Data Guidance (L-ADG)")),
+              tags$li("Penman et al. (2000) — Good Practice Guidance and Uncertainty Management in National Greenhouse Gas Inventories")
             ),
             tags$h5("Distributions and Monte Carlo references"),
             tags$ul(
               tags$li("Frey & Rhodes (1998) — Characterizing, simulating, and analyzing variability and uncertainty"),
               tags$li("IPCC GPG 2000 §6 — Quantifying uncertainties in practice (Approach 1 vs Approach 2)")
             ),
+            tags$h5("Learning resources"),
+            tags$ul(
+              tags$li(tags$a(href = "https://elearning.fao.org/course/view.php?id=625",
+                             target = "_blank",
+                             "FAO e-learning — Assessing uncertainty in the land sector")),
+              tags$li(tags$a(href = "https://elearning.fao.org/course/view.php?id=531",
+                             target = "_blank",
+                             "FAO e-learning — Tier 2 inventory for livestock")),
+              tags$li(tags$a(href = "https://unfccc.int/topics/science/workstreams/methodological-issues-under-the-convention",
+                             target = "_blank",
+                             "UNFCCC webinar notes — Uncertainty analysis for GHG inventories"))
+            ),
             tags$h5("Case studies"),
             tags$ul(
+              tags$li("Monni et al. (2007) — Uncertainty in agricultural CH₄ and N₂O emissions from Finland"),
               tags$li("Karimi-Zindashty et al. (2012) — Sources of uncertainty in livestock emission inventories: Canadian case study"),
-              tags$li("Milne et al. (2014) — Estimating uncertainty in pasture-based dairy CH4 emissions")
+              tags$li("Milne et al. (2014) — Estimating uncertainty in pasture-based dairy CH₄ emissions"),
+              tags$li(tags$em("Additional national-inventory examples to be added (Andreas to compile)."))
             )
           )
         )
@@ -275,6 +296,30 @@ app_ui <- function() {
     bslib::nav_panel(
       title = "1. Data Input",
       icon = icon("upload"),
+      # Andreas 2026-05 #3: analysis-mode toggle moved here from Home page.
+      bslib::card(
+        style = "margin: 16px;",
+        bslib::card_header(h5("Choose your analysis mode", style = "margin: 0;")),
+        bslib::card_body(
+          radioButtons("analysis_mode",
+            label = NULL,
+            choices = c(
+              "Single year — quantify uncertainty in one inventory year" = "single",
+              "Trend — compare uncertainty across multiple years (uses Tab 9)" = "trend"
+            ),
+            selected = character(0)),
+          div(id = "analysis_mode_warning",
+              style = "background:#FEF3C7; border-left:3px solid #F59E0B; padding:8px 10px; margin-top:8px; font-size:0.85rem; color:#92400E; border-radius:4px;",
+              icon("exclamation-triangle"),
+              tags$strong(" Selection required: "),
+              "pick Single year or Trend before moving on. The Run button on Tab 5 will block until a mode is chosen."),
+          tags$p(tags$em("IPCC Volume 1 Chapter 3 recommends running uncertainty analysis ",
+                          "for both the first and last year of an inventory and quantifying the ",
+                          "trend uncertainty. Use 'Trend' if you have multi-year data; use ",
+                          "'Single year' for a one-off uncertainty estimate."),
+                  style = "color:#555; font-size:0.85rem; margin-top:8px;")
+        )
+      ),
       div(class = "info-panel", style = "margin: 16px;",
           tags$strong("What to do: "),
           "Select an example country dataset from the dropdown, or upload your own data using the Excel template. ",
@@ -540,9 +585,10 @@ app_ui <- function() {
       div(class = "info-panel", style = "margin: 16px;",
           tags$strong("What to do: "),
           "Configure simulation settings on the left, then click ",
-          tags$strong("'Run Monte Carlo Simulation'"), ". ",
+          tags$strong("'Run Monte Carlo Simulation'"),
+          " at the bottom of the left-hand panel. ",
           "The tool will sample all parameters from their distributions and run the IPCC equation chain ",
-          "thousands of times. Use 10,000 iterations for reliable results (1,000 for quick testing). ",
+          "thousands of times. 10,000+ iterations recommended; check convergence by re-running with a different seed (1,000 is fine for quick testing). ",
           tags$br(), tags$br(),
           tags$strong("Once the simulation completes, this tab switches to the results view automatically."),
           " Use the ", tags$em("Back to settings"), " button at the top of the results to change inputs and re-run — the next run will switch back to results when it finishes. ",
@@ -569,19 +615,20 @@ app_ui <- function() {
             div(style = "font-size:0.78rem; color:#666; margin-top:-6px; margin-bottom:8px;",
                 tags$em("0 = deterministic (no MMS uncertainty). 50 ≈ ±5pp on a 50/50 split. Higher = tighter around your stated percentages.")),
             selectInput("gwp_version", "GWP Assessment Report",
-                        choices = c("AR4 (CH4=25)" = "AR4",
-                                    "AR5 (CH4=28, N2O=265)" = "AR5",
-                                    "AR6 (CH4=27.9, N2O=273)" = "AR6"),
+                        choices = c("AR4 (CH₄=25)" = "AR4",
+                                    "AR5 (CH₄=28, N₂O=265)" = "AR5",
+                                    "AR6 (CH₄=27.9, N₂O=273)" = "AR6"),
                         selected = "AR5"),
             # T1.12 / R1.4: emission source selector — none ticked by default,
             # forcing the user to make an explicit choice before running.
             checkboxGroupInput("emission_sources", "Emission sources to include",
                                choices = c(
-                                 "Enteric fermentation CH4"      = "enteric_ch4",
-                                 "Manure management CH4"         = "manure_ch4",
-                                 "Manure management N2O direct"  = "manure_n2o_direct",
-                                 "Manure management N2O indirect"= "manure_n2o_indirect",
-                                 "Pasture deposition N2O"        = "pasture_n2o"
+                                 "Enteric fermentation CH₄"            = "enteric_ch4",
+                                 "Manure management CH₄"               = "manure_ch4",
+                                 "Manure management N₂O direct"        = "manure_n2o_direct",
+                                 "Manure management N₂O indirect"      = "manure_n2o_indirect",
+                                 "Pasture deposition N₂O direct"       = "pasture_n2o_direct",
+                                 "Pasture deposition N₂O indirect"     = "pasture_n2o_indirect"
                                ),
                                selected = character(0)),
             div(style = "font-size:0.78rem; color:#92400E; background:#FEF3C7; padding:8px 10px; border-radius:6px; margin-bottom:8px;",
@@ -685,29 +732,38 @@ app_ui <- function() {
         h3("Simulation results", style = "margin: 8px 16px;"),
 
         # Round 9: single-year results layout (visible when mode != trend)
+        # Andreas 2026-05 C1: headline value-boxes by IPCC source category
+        # instead of total CH₄ / N₂O. CV and Margin of Error moved into the
+        # inline footnote alongside Total CO₂eq.
         conditionalPanel(
           condition = "input.analysis_mode != 'trend'",
           bslib::layout_columns(
             col_widths = c(3, 3, 3, 3),
-            bslib::value_box(title = "Total CH4", value = textOutput("vb_ch4"),
+            bslib::value_box(title = "Enteric CH₄ (t)",
+                              value = textOutput("vb_enteric_ch4"),
                               showcase = icon("fire"), theme = "success"),
-            bslib::value_box(title = "Total N2O", value = textOutput("vb_n2o"),
+            bslib::value_box(title = "Manure CH₄ (t)",
+                              value = textOutput("vb_manure_ch4"),
+                              showcase = icon("recycle"), theme = "success"),
+            bslib::value_box(title = "Manure N₂O (t)",
+                              value = textOutput("vb_manure_n2o"),
+                              p("Direct + indirect"),
                               showcase = icon("cloud"), theme = "primary"),
-            bslib::value_box(title = "95% Margin of Error",
-                              value = textOutput("vb_moe"),
-                              p("IPCC-aligned uncertainty metric"),
-                              showcase = icon("ruler-horizontal"), theme = "warning"),
-            bslib::value_box(title = "CV (%)", value = textOutput("vb_cv"),
-                              p("Coefficient of variation"),
-                              showcase = icon("percent"), theme = "info")
+            bslib::value_box(title = "Pasture N₂O (t)",
+                              value = textOutput("vb_pasture_n2o"),
+                              p("Direct + indirect"),
+                              showcase = icon("seedling"), theme = "primary")
           ),
           div(style = "padding: 0 12px 8px; color: #555; font-size: 0.85rem;",
               tags$em("Total CO₂eq: "), textOutput("vb_co2e_inline", inline = TRUE),
-              tags$em(" · retained for sensitivity analysis across sources.")),
+              tags$em(" · 95% MoE: "), textOutput("vb_moe", inline = TRUE),
+              tags$em(" · CV: "), textOutput("vb_cv", inline = TRUE),
+              tags$em(" · Total CH₄: "), textOutput("vb_ch4", inline = TRUE),
+              tags$em(" · Total N₂O: "), textOutput("vb_n2o", inline = TRUE)),
           bslib::layout_columns(
             col_widths = c(6, 6),
             bslib::card(
-              bslib::card_header("Emission Distribution (Total CO2eq)"),
+              bslib::card_header("Emission Distribution (Total CO₂eq)"),
               bslib::card_body(plotly::plotlyOutput("results_histogram"))
             ),
             bslib::card(
@@ -717,6 +773,21 @@ app_ui <- function() {
               )
             )
           ),
+          # Andreas 2026-05 #32, C2: aggregation level selector — default to
+          # cattle_type (IPCC reporting convention: dairy / other cattle), with
+          # optional drill-down to aggregation_level (production system) or
+          # sub_category for advanced users.
+          div(style = "padding: 0 16px 8px; display: flex; align-items: center; gap: 12px;",
+              tags$strong("Aggregation level:"),
+              selectInput("results_aggregation_level", label = NULL,
+                          choices = c(
+                            "Cattle type (dairy / other)"  = "cattle_type",
+                            "Production system"            = "aggregation_level",
+                            "Sub-category"                 = "sub_category"),
+                          selected = "cattle_type",
+                          width = "260px"),
+              tags$em(style = "color:#666; font-size:0.85rem;",
+                      "Tables below aggregate per-iteration results at this level.")),
           bslib::card(
             bslib::card_header("By-System Breakdown"),
             bslib::card_body(DT::DTOutput("results_by_system"))
@@ -724,7 +795,7 @@ app_ui <- function() {
           bslib::card(
             bslib::card_header("By Reporting Category (IPCC Table 3.3 layout)"),
             bslib::card_body(
-              p("Each row is one IPCC inventory reporting line (system × source). ",
+              p("Each row is one IPCC inventory reporting line (group × source). ",
                 "Rows match the granularity used in IPCC Volume 1 Chapter 3 uncertainty reporting."),
               DT::DTOutput("results_by_category")
             )
@@ -760,7 +831,7 @@ app_ui <- function() {
           bslib::layout_columns(
             col_widths = c(7, 5),
             bslib::card(
-              bslib::card_header("Trend chart — Total CO2eq with 95% CI band"),
+              bslib::card_header("Trend chart — Total CO₂eq with 95% CI band"),
               bslib::card_body(plotly::plotlyOutput("trend_plot", height = "360px"))
             ),
             bslib::card(
@@ -771,7 +842,7 @@ app_ui <- function() {
           bslib::card(
             bslib::card_header("Distribution of Δ Y_N − Y_1 — uncertainty on the trend itself"),
             bslib::card_body(
-              p(tags$em("This histogram shows the Monte Carlo distribution of the absolute change in CO2eq between the first and last year. The dashed red lines mark the 95% CI; the dotted line marks zero. If zero falls inside the CI, the trend is not statistically distinguishable from no change at this confidence level.")),
+              p(tags$em("This histogram shows the Monte Carlo distribution of the absolute change in CO₂eq between the first and last year. The dashed red lines mark the 95% CI; the dotted line marks zero. If zero falls inside the CI, the trend is not statistically distinguishable from no change at this confidence level.")),
               plotly::plotlyOutput("trend_delta_histogram", height = "300px")
             )
           ),
@@ -820,13 +891,13 @@ app_ui <- function() {
         div(style = "margin: 0 16px 12px 16px;",
             selectInput("sens_source", "Output variable",
                         choices = c(
-                          "Total CO2eq (all sources)"             = "total_co2e",
-                          "Enteric fermentation CH4"              = "enteric_ch4_total",
-                          "Manure management CH4"                 = "manure_ch4_total",
-                          "Manure management N2O direct"          = "direct_n2o_mm_total",
-                          "Manure management N2O indirect"        = "indirect_n2o_mm_total",
-                          "Pasture deposition N2O direct"         = "direct_n2o_prp_total",
-                          "Pasture deposition N2O indirect"       = "indirect_n2o_prp_total"
+                          "Total CO₂eq (all sources)"             = "total_co2e",
+                          "Enteric fermentation CH₄"              = "enteric_ch4_total",
+                          "Manure management CH₄"                 = "manure_ch4_total",
+                          "Manure management N₂O direct"          = "direct_n2o_mm_total",
+                          "Manure management N₂O indirect"        = "indirect_n2o_mm_total",
+                          "Pasture deposition N₂O direct"         = "direct_n2o_prp_total",
+                          "Pasture deposition N₂O indirect"       = "indirect_n2o_prp_total"
                         ),
                         selected = "total_co2e", width = "360px")),
         bslib::layout_columns(
@@ -883,7 +954,7 @@ app_ui <- function() {
         h4("Trend driver (Δ Y_N − Y_1)",
             style = "color:#1B4332; margin: 16px 16px 4px;"),
         div(style = "margin: 0 16px 8px; font-size:0.82rem; color:#666;",
-            tags$em("Combined Y_1 + Y_N inputs are sensitivity-tested against the per-iteration ΔCO2eq. Suffixes _y1 / _yN distinguish the same parameter at different years.")),
+            tags$em("Combined Y_1 + Y_N inputs are sensitivity-tested against the per-iteration ΔCO₂eq. Suffixes _y1 / _yN distinguish the same parameter at different years.")),
         bslib::layout_columns(
           col_widths = c(7, 5),
           bslib::card(
@@ -996,7 +1067,7 @@ app_ui <- function() {
           )
         ),
         bslib::card(
-          bslib::card_header("Trend chart — Total CO2eq with 95% CI band"),
+          bslib::card_header("Trend chart — Total CO₂eq with 95% CI band"),
           bslib::card_body(plotly::plotlyOutput("trend_plot_report", height = "400px"))
         ),
         bslib::card(

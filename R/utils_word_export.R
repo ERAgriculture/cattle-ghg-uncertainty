@@ -135,18 +135,44 @@
 }
 
 .pretty_var <- function(v) {
+  # Andreas 2026-05 #37, #39: every IPCC emission source must appear as its
+  # own row in the Word Section 4 table — including pasture direct and
+  # indirect, which were missing.
   map <- c(
-    total_co2e            = "Total CO2eq",
-    total_ch4             = "Total CH4",
-    total_n2o             = "Total N2O",
-    enteric_ch4_total     = "Enteric CH4",
-    manure_ch4_total      = "Manure CH4",
-    direct_n2o_mm_total   = "Manure direct N2O",
-    indirect_n2o_mm_total = "Manure indirect N2O"
+    total_co2e             = "Total CO2eq",
+    total_ch4              = "Total CH4",
+    total_n2o              = "Total N2O",
+    enteric_ch4_total      = "Enteric fermentation CH4",
+    manure_ch4_total       = "Manure management CH4",
+    direct_n2o_mm_total    = "Manure management N2O direct",
+    indirect_n2o_mm_total  = "Manure management N2O indirect",
+    direct_n2o_prp_total   = "Pasture deposition N2O direct",
+    indirect_n2o_prp_total = "Pasture deposition N2O indirect",
+    total_enteric_ch4      = "Enteric fermentation CH4 (inventory)",
+    total_manure_ch4       = "Manure management CH4 (inventory)",
+    total_direct_n2o_mm    = "Manure management N2O direct (inventory)",
+    total_indirect_n2o_mm  = "Manure management N2O indirect (inventory)",
+    total_direct_n2o_prp   = "Pasture deposition N2O direct (inventory)",
+    total_indirect_n2o_prp = "Pasture deposition N2O indirect (inventory)"
   )
   out <- map[v]
   out[is.na(out)] <- v[is.na(out)]
   unname(out)
+}
+
+# Andreas 2026-05 #37, #39, C11: unit lookup for the Word Section 4 table
+# (and reusable elsewhere).
+.unit_for_var <- function(v) {
+  ch4_vars <- c("total_ch4","enteric_ch4_total","manure_ch4_total",
+                "total_enteric_ch4","total_manure_ch4")
+  n2o_vars <- c("total_n2o","direct_n2o_mm_total","indirect_n2o_mm_total",
+                "direct_n2o_prp_total","indirect_n2o_prp_total",
+                "total_direct_n2o_mm","total_indirect_n2o_mm",
+                "total_direct_n2o_prp","total_indirect_n2o_prp",
+                "total_direct_n2o","total_indirect_n2o")
+  ifelse(v %in% ch4_vars, "t CH4",
+         ifelse(v %in% n2o_vars, "t N2O",
+                ifelse(v == "total_co2e", "t CO2eq", "")))
 }
 
 # ============================================================================
@@ -537,24 +563,36 @@ build_trend_summary_docx <- function(path,
 }
 
 .results_flextable <- function(uncertainty) {
+  # Andreas 2026-05 #37, #39, C11: Section 4 must report every IPCC emission
+  # source as its own row (was previously gas-only) and every numeric column
+  # must carry its unit. Order matches IPCC Table 3.3 reporting flow.
   if (is.null(uncertainty) || !is.data.frame(uncertainty) || nrow(uncertainty) == 0) {
     return(flextable::flextable(data.frame(Note = "No uncertainty results available.")))
   }
-  display_vars <- c("total_co2e", "total_ch4", "total_n2o",
-                    "enteric_ch4_total", "manure_ch4_total",
-                    "direct_n2o_mm_total", "indirect_n2o_mm_total")
-  keep <- uncertainty[uncertainty$variable %in% display_vars, , drop = FALSE]
-  if (nrow(keep) == 0) keep <- uncertainty
-  keep <- keep[match(display_vars, keep$variable), , drop = FALSE]
+  # Prefer per-system (singular) columns when present (rv$mc_results$by_system),
+  # otherwise fall back to inventory totals (run_inventory_simulation output).
+  primary_vars <- c("enteric_ch4_total", "manure_ch4_total",
+                    "direct_n2o_mm_total", "indirect_n2o_mm_total",
+                    "direct_n2o_prp_total", "indirect_n2o_prp_total",
+                    "total_ch4", "total_n2o", "total_co2e")
+  fallback_vars <- c("total_enteric_ch4", "total_manure_ch4",
+                     "total_direct_n2o_mm", "total_indirect_n2o_mm",
+                     "total_direct_n2o_prp", "total_indirect_n2o_prp",
+                     "total_ch4", "total_n2o", "total_co2e")
+  display_vars <- if (any(primary_vars %in% uncertainty$variable))
+    primary_vars else fallback_vars
+  keep <- uncertainty[match(display_vars, uncertainty$variable), , drop = FALSE]
   keep <- keep[!is.na(keep$variable), , drop = FALSE]
+  if (nrow(keep) == 0) keep <- uncertainty
 
   df <- data.frame(
-    Source         = .pretty_var(keep$variable),
-    Mean           = formatC(keep$mean,     digits = 4, format = "g"),
-    `CI lower`     = formatC(keep$ci_lower, digits = 4, format = "g"),
-    `CI upper`     = formatC(keep$ci_upper, digits = 4, format = "g"),
-    `CV %`         = formatC(keep$cv_pct,   digits = 3, format = "g"),
-    `MoE %`        = formatC(keep$moe_pct,  digits = 3, format = "g"),
+    `Emission category` = .pretty_var(keep$variable),
+    Unit                = .unit_for_var(keep$variable),
+    Mean                = formatC(keep$mean,     digits = 4, format = "g"),
+    `CI lower`          = formatC(keep$ci_lower, digits = 4, format = "g"),
+    `CI upper`          = formatC(keep$ci_upper, digits = 4, format = "g"),
+    `CV (%)`            = formatC(keep$cv_pct,   digits = 3, format = "g"),
+    `MoE 95% (%)`       = formatC(keep$moe_pct,  digits = 3, format = "g"),
     check.names = FALSE,
     stringsAsFactors = FALSE
   )

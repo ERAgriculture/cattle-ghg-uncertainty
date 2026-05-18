@@ -66,6 +66,11 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     EF4           = get_param("EF4", 0.010),
     EF5           = get_param("EF5", 0.0075),
     Frac_LEACH_H  = get_param_alt("Frac_LEACH_H", "Frac_LEACH", 0.02),
+    # Andreas 2026-05 #10: PRP-side fractions, distinct from MM (Table 11.3).
+    # Falls back to IPCC 2019 Table 11.3 defaults when the template does not
+    # provide them (most existing templates won't yet).
+    Frac_GASM_PRP  = get_param("Frac_GASM_PRP",  0.21),
+    Frac_LEACH_PRP = get_param("Frac_LEACH_PRP", 0.30),
     gwp = gwp,
     Tw = Tw, pct_calving = pct_calving,
     frac_gas_values   = frac_gas_values,
@@ -104,14 +109,21 @@ run_inventory_simulation <- function(systems_data, n_iter = 10000, gwp = "AR5",
     by_system[[sys_name]] <- sim
   }
 
-  # Sum across systems per iteration
+  # Sum across systems per iteration. Per-source columns kept *separately* for
+  # MM and PRP (Andreas 2026-05 #27, C1 value-boxes) — totals retained for
+  # back-compat with consumers that still expect total_direct_n2o /
+  # total_indirect_n2o.
   inventory_results <- data.frame(
-    total_enteric_ch4 = rowSums(sapply(by_system, function(s) s$results$enteric_ch4_total)),
-    total_manure_ch4 = rowSums(sapply(by_system, function(s) s$results$manure_ch4_total)),
-    total_direct_n2o = rowSums(sapply(by_system, function(s) s$results$direct_n2o_mm_total + s$results$direct_n2o_prp_total)),
-    total_indirect_n2o = rowSums(sapply(by_system, function(s) s$results$indirect_n2o_mm_total + s$results$indirect_n2o_prp_total)),
-    total_ch4 = rowSums(sapply(by_system, function(s) s$results$total_ch4)),
-    total_n2o = rowSums(sapply(by_system, function(s) s$results$total_n2o)),
+    total_enteric_ch4    = rowSums(sapply(by_system, function(s) s$results$enteric_ch4_total)),
+    total_manure_ch4     = rowSums(sapply(by_system, function(s) s$results$manure_ch4_total)),
+    total_direct_n2o_mm  = rowSums(sapply(by_system, function(s) s$results$direct_n2o_mm_total)),
+    total_indirect_n2o_mm = rowSums(sapply(by_system, function(s) s$results$indirect_n2o_mm_total)),
+    total_direct_n2o_prp  = rowSums(sapply(by_system, function(s) s$results$direct_n2o_prp_total)),
+    total_indirect_n2o_prp = rowSums(sapply(by_system, function(s) s$results$indirect_n2o_prp_total)),
+    total_direct_n2o     = rowSums(sapply(by_system, function(s) s$results$direct_n2o_mm_total + s$results$direct_n2o_prp_total)),
+    total_indirect_n2o   = rowSums(sapply(by_system, function(s) s$results$indirect_n2o_mm_total + s$results$indirect_n2o_prp_total)),
+    total_ch4  = rowSums(sapply(by_system, function(s) s$results$total_ch4)),
+    total_n2o  = rowSums(sapply(by_system, function(s) s$results$total_n2o)),
     total_co2e = rowSums(sapply(by_system, function(s) s$results$total_co2e))
   )
 

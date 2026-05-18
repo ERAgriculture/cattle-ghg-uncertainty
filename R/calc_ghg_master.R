@@ -18,7 +18,13 @@ ghg_emissions <- function(
   # callers that haven't been updated, the legacy broadcast Frac_GASMS scalar
   # above is still applied to the manure-management indirect path as a fallback.
   frac_gas_values   = NULL,
-  frac_leach_values = NULL
+  frac_leach_values = NULL,
+  # Andreas 2026-05 comment #10: PRP volatilization/leaching fractions are
+  # distinct from MM (IPCC 2019 Table 11.3 vs Table 10.22). NULL = fall back
+  # to Table 11.3 defaults for back-compat with callers that don't yet pass
+  # PRP-specific values.
+  Frac_GASM_PRP  = NULL,
+  Frac_LEACH_PRP = NULL
 ) {
   # E1: cold-climate Cfi adjustment via Tw
   nem <- calc_nem(live_weight, Cfi, Tw = Tw)
@@ -55,8 +61,15 @@ ghg_emissions <- function(
     frac_gas = Frac_GASMS, frac_leach = Frac_LEACH_H
   )
   direct_n2o_prp_head <- calc_direct_n2o_prp(Nex, pct_pasture, EF3_PRP)
+  # Andreas 2026-05 #10: prefer PRP-specific Frac defaults (Table 11.3) when
+  # supplied; fall back to the function defaults (0.21 / 0.30) if the caller
+  # passed NULL.
+  prp_fg <- if (!is.null(Frac_GASM_PRP))  Frac_GASM_PRP  else 0.21
+  prp_fl <- if (!is.null(Frac_LEACH_PRP)) Frac_LEACH_PRP else 0.30
   indirect_n2o_prp_head <- calc_indirect_n2o_prp(
-    Nex, pct_pasture, Frac_GASMS, EF4, Frac_LEACH_H, EF5)
+    Nex, pct_pasture,
+    Frac_GASM_PRP  = prp_fg, EF4 = EF4,
+    Frac_LEACH_PRP = prp_fl, EF5 = EF5)
 
   direct_n2o_mm_total <- (direct_n2o_mm_head * cattle_pop) / 1000
   indirect_n2o_mm_total <- (indirect_n2o_mm_head * cattle_pop) / 1000
@@ -103,7 +116,11 @@ ghg_emissions_vec <- function(
   # Round 7 T4.21: per-iteration MMS allocation matrix (n_iter x n_mms,
   # rows sum to 1) sampled from a Dirichlet on the simplex. When supplied,
   # row i is used for iteration i instead of the broadcast scalar mms_fractions.
-  mms_fractions_matrix = NULL
+  mms_fractions_matrix = NULL,
+  # Andreas 2026-05 #10: PRP-specific volatilization/leaching fractions
+  # (IPCC 2019 Table 11.3). NULL = broadcast a constant from IPCC defaults.
+  Frac_GASM_PRP  = NULL,
+  Frac_LEACH_PRP = NULL
 ) {
   n <- length(cattle_pop)
   results <- data.frame(
@@ -122,6 +139,12 @@ ghg_emissions_vec <- function(
              nrow(mms_fractions_matrix) == n &&
              !is.null(colnames(mms_fractions_matrix))
 
+  # Broadcast PRP fractions to length n if scalar / NULL (back-compat path).
+  prp_fg_vec <- if (is.null(Frac_GASM_PRP))  rep(0.21, n) else
+                if (length(Frac_GASM_PRP)  == 1) rep(Frac_GASM_PRP,  n) else Frac_GASM_PRP
+  prp_fl_vec <- if (is.null(Frac_LEACH_PRP)) rep(0.30, n) else
+                if (length(Frac_LEACH_PRP) == 1) rep(Frac_LEACH_PRP, n) else Frac_LEACH_PRP
+
   for (i in seq_len(n)) {
     mms_i <- if (use_dir) {
       setNames(as.numeric(mms_fractions_matrix[i, ]), colnames(mms_fractions_matrix))
@@ -138,7 +161,9 @@ ghg_emissions_vec <- function(
       gwp,
       Tw = Tw, pct_calving = if (length(pct_calving) > 1) pct_calving[i] else pct_calving,
       frac_gas_values   = frac_gas_values,
-      frac_leach_values = frac_leach_values
+      frac_leach_values = frac_leach_values,
+      Frac_GASM_PRP  = prp_fg_vec[i],
+      Frac_LEACH_PRP = prp_fl_vec[i]
     )
     results$enteric_ch4_total[i] <- r$enteric_ch4_total
     results$manure_ch4_total[i] <- r$manure_ch4_total

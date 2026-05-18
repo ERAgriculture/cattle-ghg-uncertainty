@@ -78,101 +78,116 @@ PARAM_CATALOGUE <- data.frame(
     "Milk","Fat","pct_lactating","DE",
     "Cfi","Ca","C","Cp","hours","CP",
     "Ym","Bo","ASH","UE",
-    "EF3_PRP","Frac_GASMS","EF4","EF5","Frac_LEACH_H",
-    "MilkPR"),
+    "EF3_PRP","EF3_S","Frac_GASMS","EF4","EF5","Frac_LEACH_H",
+    "Frac_GASM_PRP","Frac_LEACH_PRP",
+    "MilkPR","Tw"),
   definition = c(
     "Number of animals in this sub-category",
     "Average live body weight of the animals",
     "Mature (adult) body weight of the animals",
     "Average daily weight gain — set 0 for non-growing (adult) animals",
-    "Daily milk yield per lactating cow — set 0 for non-dairy sub-categories",
-    "Milk fat content of the diet",
+    "Daily milk yield per lactating cow — set 0 for sub-categories that do not lactate",
+    "Fat content of milk (% by weight)",
     "Fraction of cows currently lactating (0 to 1)",
     "Digestible energy as a percentage of gross energy — typical range 45-75%",
     "Maintenance energy coefficient — depends on sex and lactation status (IPCC Table 10.4)",
     "Activity coefficient for locomotion energy — depends on feeding situation (IPCC Table 10.5)",
-    "Growth coefficient for the NEg equation — depends on sex (IPCC Eq 10.6)",
+    "Growth coefficient for the NEg equation — depends on sex and physiological status (IPCC Eq 10.6)",
     "Pregnancy coefficient — 0.10 for pregnant animals (IPCC Table 10.7)",
     "Daily working hours for draft animals — set 0 for non-draft",
-    "Crude protein content of the diet — used to estimate nitrogen excretion",
-    "Methane conversion factor: % of gross energy converted to enteric CH4 (IPCC Table 10.12)",
-    "Maximum CH4 producing capacity of manure (IPCC Table 10.16)",
+    "Crude protein (CP%) content of the diet — used to estimate nitrogen excretion",
+    "Methane conversion factor: % of gross energy in feed converted to methane (IPCC Table 10.12)",
+    "Maximum CH₄ producing capacity of manure (IPCC Table 10.16)",
     "Ash content of manure — IPCC default 0.08 (Eq 10.24 footnote)",
     "Urinary energy as fraction of gross energy — IPCC default 0.04 (Eq 10.24 footnote)",
-    "N2O emission factor for dung/urine deposited on pasture (IPCC Table 11.1)",
-    "Fraction of managed manure N volatilised as NH3/NOx (IPCC Table 10.22)",
-    "N2O EF for atmospheric N deposition — global default 0.010 (IPCC Table 11.3)",
-    "N2O EF for N leaching/runoff — global default 0.0075 (IPCC Table 11.3)",
-    "Fraction of managed N lost through leaching — IPCC default 0.02",
-    "Protein content of milk — required for IPCC 2019 nitrogen excretion (Eq 10.32A)"),
+    "N₂O emission factor for dung/urine deposited on pasture (IPCC Table 11.1)",
+    "N₂O emission factor for managed manure storage — weighted-average broadcast over MMS (IPCC Table 10.21)",
+    "Fraction of managed manure N volatilised as NH3/NOx — manure management (IPCC 2019 Table 10.22)",
+    "N₂O EF for atmospheric N deposition (IPCC Table 11.3)",
+    "N₂O EF for N leaching/runoff (IPCC Table 11.3)",
+    "Fraction of managed N lost through leaching — manure management (IPCC 2019 Table 10.22)",
+    "Fraction of N volatilised from dung/urine deposited on pasture (IPCC 2019 Table 11.3, FracGASM)",
+    "Fraction of N lost through leaching from pasture deposition (IPCC 2019 Table 11.3, Frac_leach-(H))",
+    "Protein content of milk — required for IPCC 2019 nitrogen excretion (Eq 10.32A)",
+    "Mean daily temperature in winter (°C) — Cfi cold-climate adjustment per IPCC Eq 10.2. Leave blank or set 20 to disable adjustment"),
   unit = c(
     "head","kg","kg","kg/day","kg/head/day","%","fraction (0-1)","%",
     "MJ/day/kg^0.75","dimensionless","dimensionless","dimensionless",
     "hours/day","%",
-    "%","m3 CH4/kg VS","fraction","fraction",
-    "kg N2O-N/kg N","fraction","kg N2O-N/kg N","kg N2O-N/kg N","fraction",
-    "%"),
+    "%","m3 CH₄/kg VS","fraction","fraction",
+    "kg N2O-N/kg N","kg N2O-N/kg N","fraction","kg N2O-N/kg N","kg N2O-N/kg N","fraction",
+    "fraction","fraction",
+    "%","°C"),
   ipcc_default = c(
     NA, 275, 300, 0.0, 4.0, 4.0, 0.60, 55.0,
     0.386, 0.17, 0.8, 0.10, 0.0, 10.0,
     6.5, 0.10, 0.08, 0.04,
-    0.02, 0.20, 0.010, 0.0075, 0.02,
-    3.3),
+    0.02, 0.005, 0.20, 0.010, 0.0075, 0.02,
+    0.21, 0.30,
+    3.3, 20),
   # Uncertainty % per Penman et al. (2000) / Monni et al. (2007).
   # NA = asymmetric: use suggested_lower_bound / suggested_upper_bound instead.
   suggested_uncertainty_pct = c(
     10, 15, 10, 30, 20, 10, 20, 15,   # cattle_pop..DE_pct
     30, 30, 30, 10, 20, 15,            # Cfi, Ca, C_growth, Cp, hours, CP_pct
     8, 20, 25, 25,                     # Ym_pct, Bo, ash, UE
-    NA, 40, NA, NA, NA,               # EF3_PRP, Frac_GASM, EF4, EF5, Frac_LEACH (asymmetric — use bounds)
-    10),
+    NA, NA, 40, NA, NA, NA,           # EF3_PRP, EF3_S, Frac_GASMS, EF4, EF5, Frac_LEACH_H (asymmetric — use bounds)
+    50, 50,                            # Frac_GASM_PRP, Frac_LEACH_PRP (IPCC 2019 Table 11.3, ±50%)
+    10, 25),                           # MilkPR, Tw
   suggested_distribution = c(
     "normal","normal","normal","pert","normal","normal","beta","normal",
     "pert","triangular","triangular","beta","pert","normal",
     "pert","pert","pert","pert",
-    "pert","pert","lognormal","lognormal","lognormal",
-    "normal"),
+    "pert","pert","pert","lognormal","lognormal","lognormal",
+    "pert","pert",
+    "normal","normal"),
   # Absolute lower/upper bounds for asymmetric parameters (Monni et al. 2007 / IPCC GPG).
   # These override the symmetric ±pct formula in the Excel template.
   suggested_lower_bound = c(
     NA, NA, NA, NA, NA, NA, NA, NA,
     NA, NA, NA, NA, NA, NA,
     NA, NA, NA, NA,
-    0.003, NA, 0.0043, 0.0015, 0.006,  # EF3(-85%), EF4(-57%), EF5(-80%), Frac_LEACH(-70%)
-    NA),
+    0.003, 0.001, NA, 0.0043, 0.0015, 0.006,  # EF3_PRP, EF3_S, EF4, EF5, Frac_LEACH_H
+    NA, NA,
+    NA, NA),
   suggested_upper_bound = c(
     NA, NA, NA, NA, NA, NA, NA, NA,
     NA, NA, NA, NA, NA, NA,
     NA, NA, NA, NA,
-    0.040, NA, 0.020, 0.0225, 0.054,   # EF3(+100%), EF4(+100%), EF5(+200%), Frac_LEACH(+170%)
-    NA),
+    0.040, 0.025, NA, 0.020, 0.0225, 0.054,  # EF3_PRP, EF3_S, EF4, EF5, Frac_LEACH_H
+    NA, NA,
+    NA, NA),
   # D1: IPCC convention adopted — only cattle_pop is true Activity Data;
   # everything else is a "coefficient" (combines into the per-head emission factor)
   param_type = c(
-    "activity_data",          # cattle_pop
-    rep("coefficient", 22),   # all other production parameters + IPCC equation params
-    "coefficient"),           # protein_milk
-  # "core" = must be entered by user; "technical" = IPCC coefficient, pre-filled with default
+    "activity_data",          # N
+    rep("coefficient", 26),   # all other production parameters + IPCC equation params
+    "coefficient"),           # Tw
+  # Andreas 2026-05 #5: renamed levels to avoid clash with IPCC "Tier" terminology.
+  # "core" = must be entered by user; "advanced" = IPCC coefficient, pre-filled with default.
   param_tier = c(
     "core","core","core","core","core","core","core","core",
-    "technical","technical","technical","technical","core","core",
-    "technical","technical","technical","technical",
-    "technical","technical","technical","technical","technical",
-    "core"),
+    "advanced","advanced","advanced","advanced","core","core",
+    "advanced","advanced","advanced","advanced",
+    "advanced","advanced","advanced","advanced","advanced","advanced",
+    "advanced","advanced",
+    "core","advanced"),
   # TRUE = user can reduce this uncertainty by improving local data/surveys;
   # FALSE = IPCC coefficient — requires dedicated measurement research to improve
   user_reducible = c(
     TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE,
     FALSE, FALSE, FALSE, FALSE, TRUE, TRUE,
     FALSE, FALSE, FALSE, FALSE,
-    FALSE, FALSE, FALSE, FALSE, FALSE,
-    TRUE),
+    FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
+    FALSE, FALSE,
+    TRUE, TRUE),
   ipcc_ref = c(
     "","Table 10A.2","Table 10A.2","Table 10A.1","","","","Table 10.2",
     "Table 10.4","Table 10.5","Eq 10.6","Table 10.7","Eq 10.11","",
     "Table 10.12","Table 10.16","Eq 10.24","Eq 10.24",
-    "Table 11.1","Table 10.22","Table 11.3","Table 11.3","Table 11.3",
-    "Table 10A.2"),
+    "Table 11.1","Table 10.21","Table 10.22","Table 11.3","Table 11.3","Table 10.22",
+    "Table 11.3","Table 11.3",
+    "Table 10A.2","Eq 10.2"),
   # T1.3: IPCC Inventory Software variable names (from screenshots provided by Andreas, May 2026).
   # Surfacing these here means inventory teams can match our column to the IPCC
   # software's terminology one-to-one when transposing data between tools.
@@ -196,12 +211,16 @@ PARAM_CATALOGUE <- data.frame(
     "Bo — Maximum methane producing capacity",
     "ASH — Ash content of manure (fraction of dry matter)",
     "UE — Urinary Energy fraction of GE",
-    "EF3(PRP) — Direct N2O EF, manure on pasture/range/paddock",
-    "Frac_GASMS — Fraction of N volatilised from MMS",
-    "EF4 — N2O EF for atmospheric N deposition (Vol 4 Ch 11)",
-    "EF5 — N2O EF for N leaching/runoff (Vol 4 Ch 11)",
-    "Frac_LEACH(H) — Fraction of managed N lost through leaching",
-    "Milk PR% — Milk protein content (1.9 + 0.4*Fat)"),
+    "EF3(PRP) — Direct N₂O EF, manure on pasture/range/paddock",
+    "EF3(S) — Direct N₂O EF, managed manure storage (Table 10.21)",
+    "Frac_GASMS — Fraction of N volatilised from managed manure (Table 10.22)",
+    "EF4 — N₂O EF for atmospheric N deposition (Vol 4 Ch 11)",
+    "EF5 — N₂O EF for N leaching/runoff (Vol 4 Ch 11)",
+    "Frac_LEACH(MS) — Fraction of managed N lost through leaching (Table 10.22)",
+    "FracGASM — Fraction of N volatilised from pasture deposition (Table 11.3)",
+    "Frac_leach-(H) — Fraction of N lost through leaching from pasture deposition (Table 11.3)",
+    "Milk PR% — Milk protein content (1.9 + 0.4*Fat)",
+    "Tw — Mean winter daily temperature (°C); IPCC software Cfi adjustment input"),
   stringsAsFactors = FALSE
 )
 
@@ -596,17 +615,24 @@ generate_template_openxlsx <- function(filepath, include_example,
 
   # Example values: hypothetical Country X activity data + IPCC defaults
   # Blank template: activity data blank, EFs pre-filled with IPCC defaults
+  # Example values mirror the PARAM_CATALOGUE order; keep lengths == nrow(PARAM_CATALOGUE).
   ex_values <- c(500000, 275, 300, 0.10, 4, 4, 0.60, 55,
                  0.386, 0.17, 0.8, 0.10, 0, 10,
                  6.5, 0.10, 0.08, 0.04,
-                 0.02, 0.20, 0.010, 0.0075, 0.02, 3.3)
-    # Corrected example uncertainties per Penman et al. (2000) / Monni et al. (2007).
+                 0.02, 0.005, 0.20, 0.010, 0.0075, 0.02,   # EF3_PRP, EF3_S, Frac_GASMS, EF4, EF5, Frac_LEACH_H
+                 0.21, 0.30,                                # Frac_GASM_PRP, Frac_LEACH_PRP
+                 3.3, 20)                                   # MilkPR, Tw
+  # Corrected example uncertainties per Penman et al. (2000) / Monni et al. (2007).
   # NA = asymmetric parameter; lower_bound/upper_bound are pre-filled from catalogue instead.
-  ex_unc <- c(10,15,10,30,20,10,20,15, 30,30,30,10,20,15, 8,20,25,25, NA,40,NA,NA,NA, 10)
+  ex_unc <- c(10,15,10,30,20,10,20,15, 30,30,30,10,20,15, 8,20,25,25,
+              NA,NA,40,NA,NA,NA,    # EF3_PRP, EF3_S, Frac_GASMS, EF4, EF5, Frac_LEACH_H
+              50,50,                # Frac_GASM_PRP, Frac_LEACH_PRP
+              10, 25)               # MilkPR, Tw
 
   for (i in seq_len(n_params)) {
     r <- DATA_START + i - 1
-    is_tech <- PARAM_CATALOGUE$param_tier[i] == "technical"
+    # Andreas 2026-05 #5: "technical" renamed to "advanced"; accept both during transition.
+    is_tech <- PARAM_CATALOGUE$param_tier[i] %in% c("advanced", "technical")
     is_ef   <- PARAM_CATALOGUE$param_type[i] == "coefficient"
 
     # value column: technical params get IPCC default; core activity data left blank
@@ -669,8 +695,9 @@ generate_template_openxlsx <- function(filepath, include_example,
 
   # ── Apply styles to data rows ──────────────────────────────────────────────
   data_rows  <- DATA_START:(DATA_START + n_params - 1)
+  # Andreas 2026-05 #5: "technical" renamed to "advanced"; accept both during transition.
   core_rows  <- DATA_START - 1 + which(PARAM_CATALOGUE$param_tier == "core")
-  tech_rows  <- DATA_START - 1 + which(PARAM_CATALOGUE$param_tier == "technical")
+  tech_rows  <- DATA_START - 1 + which(PARAM_CATALOGUE$param_tier %in% c("advanced", "technical"))
 
   apply_style("Parameters", s_req,  rows=data_rows, cols=P_COL_IDX["cattle_type"])
   apply_style("Parameters", s_req,  rows=data_rows, cols=P_COL_IDX["aggregation_level"])
@@ -1246,7 +1273,9 @@ generate_template_basic <- function(filepath, include_example) {
   ex_values <- c(500000, 275, 300, 0.10, 4, 4, 0.60, 55,
                  0.386, 0.17, 0.8, 0.10, 0, 10,
                  6.5, 0.10, 0.08, 0.04,
-                 0.02, 0.20, 0.010, 0.0075, 0.02, 3.3)
+                 0.02, 0.005, 0.20, 0.010, 0.0075, 0.02,
+                 0.21, 0.30,
+                 3.3, 20)
   params <- if (include_example) {
     data.frame(
       cattle_type="dairy",

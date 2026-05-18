@@ -13,7 +13,11 @@ IPCC_DEFAULTS <- list(
   pct_lactating = 0.60, pct_pregnant_cows = 0.60, pct_pregnant_heifers = 0.20,
   milk_yield = 4.0, milk_fat = 4.0, Ym = 6.5, DE = 55.0,
   Bo = 0.10, ASH = 0.08, UE = 0.04, CP = 10.0,
-  EF3_PRP = 0.02, Frac_GASMS = 0.20, EF4 = 0.010, EF5 = 0.0075, Frac_LEACH_H = 0.02
+  EF3_PRP = 0.02, Frac_GASMS = 0.20, EF4 = 0.010, EF5 = 0.0075, Frac_LEACH_H = 0.02,
+  # PRP-specific volatilization & leaching fractions (IPCC 2019 Vol 4 Ch 11
+  # Table 11.3). Separate from the MM-side Frac_GASMS / Frac_LEACH_H above;
+  # mixing them is comment #10 in Andreas's 2026-05 review.
+  Frac_GASM_PRP = 0.21, Frac_LEACH_PRP = 0.30
 )
 
 ## TT.3 / G1: MMS list expanded to cover IPCC 2006 (8 systems) and 2019 Refinement

@@ -11,43 +11,72 @@ format_ipcc_table <- function(uncertainty_decomposition, country = "", year = ""
     round(row$cv_pct, 1)
   }
 
+  # Andreas 2026-05 #36, C10: pasture direct + indirect must appear as
+  # separate IPCC reporting lines, not collapsed into "total N2O".
+  vars <- c("enteric_ch4_total", "manure_ch4_total",
+            "direct_n2o_mm_total", "indirect_n2o_mm_total",
+            "direct_n2o_prp_total", "indirect_n2o_prp_total",
+            "total_ch4", "total_n2o", "total_co2e")
+
   data.frame(
-    Source_Category = c(
-      "3.A.1 Enteric Fermentation - Cattle",
-      "3.A.2 Manure Management - Cattle (CH4)",
-      "3.A.2 Manure Management - Cattle (N2O direct)",
-      "3.A.2 Manure Management - Cattle (N2O indirect)",
-      "Total CH4", "Total N2O", "Total CO2eq"
+    `Emission category` = c(
+      "3.A.1 Enteric Fermentation — Cattle",
+      "3.A.2 Manure Management — Cattle (CH₄)",
+      "3.A.2 Manure Management — Cattle (N₂O direct)",
+      "3.A.2 Manure Management — Cattle (N₂O indirect)",
+      "3.C.4 Direct N₂O — Pasture/Range/Paddock",
+      "3.C.5 Indirect N₂O — Pasture/Range/Paddock",
+      "Total CH₄", "Total N₂O", "Total CO₂eq"
     ),
-    Gas = c("CH4", "CH4", "N2O", "N2O", "CH4", "N2O", "CO2eq"),
-    AD_Uncertainty_pct = c(
-      get_cv(ad_only, "enteric_ch4_total"), get_cv(ad_only, "manure_ch4_total"),
-      get_cv(ad_only, "direct_n2o_mm_total"), get_cv(ad_only, "indirect_n2o_mm_total"),
-      get_cv(ad_only, "total_ch4"), get_cv(ad_only, "total_n2o"), get_cv(ad_only, "total_co2e")
-    ),
-    EF_Uncertainty_pct = c(
-      get_cv(ef_only, "enteric_ch4_total"), get_cv(ef_only, "manure_ch4_total"),
-      get_cv(ef_only, "direct_n2o_mm_total"), get_cv(ef_only, "indirect_n2o_mm_total"),
-      get_cv(ef_only, "total_ch4"), get_cv(ef_only, "total_n2o"), get_cv(ef_only, "total_co2e")
-    ),
-    Combined_Uncertainty_pct = c(
-      get_cv(combined, "enteric_ch4_total"), get_cv(combined, "manure_ch4_total"),
-      get_cv(combined, "direct_n2o_mm_total"), get_cv(combined, "indirect_n2o_mm_total"),
-      get_cv(combined, "total_ch4"), get_cv(combined, "total_n2o"), get_cv(combined, "total_co2e")
-    ),
-    stringsAsFactors = FALSE
+    Gas = c("CH₄", "CH₄", "N₂O", "N₂O", "N₂O", "N₂O", "CH₄", "N₂O", "CO₂eq"),
+    `AD uncertainty (%)`       = sapply(vars, function(v) get_cv(ad_only, v)),
+    `EF uncertainty (%)`       = sapply(vars, function(v) get_cv(ef_only, v)),
+    `Combined uncertainty (%)` = sapply(vars, function(v) get_cv(combined, v)),
+    check.names = FALSE,
+    stringsAsFactors = FALSE,
+    row.names = NULL
   )
 }
 
 export_results_xlsx <- function(results, uncertainty, sensitivity, ipcc_table, filepath) {
+  # Andreas 2026-05 #38: previously crashed when ipcc_table was NULL (which
+  # happens whenever AD/EF decomposition didn't run, e.g. for custom uploads
+  # — see app_server.R line 982). Replace NULL/empty inputs with placeholder
+  # data frames so the writer always succeeds.
+  placeholder <- function(msg)
+    data.frame(Note = msg, stringsAsFactors = FALSE)
+
+  summary_df <- if (is.null(ipcc_table) || !is.data.frame(ipcc_table) || nrow(ipcc_table) == 0)
+    placeholder("IPCC summary unavailable. Enable 'Run uncertainty decomposition (AD/EF/Combined)' on Tab 5 and re-run to populate this sheet.")
+  else ipcc_table
+
+  uncertainty_df <- if (is.null(uncertainty) || !is.data.frame(uncertainty) || nrow(uncertainty) == 0)
+    placeholder("No uncertainty metrics available. Run a Monte Carlo simulation on Tab 5 first.")
+  else uncertainty
+
+  src_df <- if (!is.null(sensitivity) && is.data.frame(sensitivity$src) && nrow(sensitivity$src) > 0)
+    sensitivity$src
+  else placeholder(if (!is.null(attr(sensitivity, "message"))) attr(sensitivity, "message")
+                    else "Sensitivity (SRC) unavailable for this run.")
+
+  prcc_df <- if (!is.null(sensitivity) && is.data.frame(sensitivity$prcc) && nrow(sensitivity$prcc) > 0)
+    sensitivity$prcc
+  else placeholder(if (!is.null(attr(sensitivity, "message"))) attr(sensitivity, "message")
+                    else "Sensitivity (PRCC) unavailable for this run.")
+
+  n_iter <- if (is.data.frame(results)) nrow(results) else NA_integer_
+
   sheets <- list(
-    Summary = ipcc_table,
-    Uncertainty_Metrics = uncertainty,
-    Sensitivity_SRC = if (!is.null(sensitivity$src)) sensitivity$src else data.frame(),
-    Sensitivity_PRCC = if (!is.null(sensitivity$prcc)) sensitivity$prcc else data.frame(),
+    Summary             = summary_df,
+    Uncertainty_Metrics = uncertainty_df,
+    Sensitivity_SRC     = src_df,
+    Sensitivity_PRCC    = prcc_df,
     Metadata = data.frame(
       Field = c("Generated", "Tool", "Iterations"),
-      Value = c(as.character(Sys.time()), "IPCC Tier 2 Uncertainty Calculator v1.0", nrow(results))
+      Value = c(as.character(Sys.time()),
+                "IPCC Tier 2 Uncertainty Calculator v1.1",
+                as.character(n_iter)),
+      stringsAsFactors = FALSE
     )
   )
   writexl::write_xlsx(sheets, path = filepath)

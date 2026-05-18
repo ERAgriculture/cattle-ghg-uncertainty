@@ -2,8 +2,18 @@
 # run_qaqc() returns a tidy data.frame: one row per (group x parameter x check)
 
 # C1: IPCC-aligned names; legacy names auto-renamed by parse_uploaded_template
-ASYMMETRIC_PARAMS <- c("EF3_PRP", "EF4", "EF5", "Frac_LEACH_H")
-FRACTION_PARAMS   <- c("pct_lactating", "ASH", "UE", "Frac_GASMS", "Frac_LEACH_H")
+ASYMMETRIC_PARAMS <- c("EF3_PRP", "EF3_S", "EF4", "EF5", "Frac_LEACH_H")
+FRACTION_PARAMS   <- c("pct_lactating", "ASH", "UE",
+                        "Frac_GASMS", "Frac_LEACH_H",
+                        "Frac_GASM_PRP", "Frac_LEACH_PRP")
+
+# Andreas 2026-05 #25: parameters whose benchmark default is not directly an
+# IPCC table value but a Monni-2007 / Penman-2000 mid-point. Deviation from the
+# catalogue default for these is informational, not a failure, because country-
+# specific overrides are expected and the benchmark is approximate.
+MONNI_BENCHMARK_PARAMS <- c("EF3_PRP", "EF3_S", "EF4", "EF5",
+                             "Frac_LEACH_H", "Frac_GASMS",
+                             "Frac_GASM_PRP", "Frac_LEACH_PRP")
 
 run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global") {
   ps <- param_specs
@@ -151,17 +161,31 @@ run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global"
 
     # ------------------------------------------------------------------
     # Check 5: benchmark deviation from IPCC default
+    # Andreas 2026-05 #25: for parameters whose benchmark is a Monni-2007 /
+    # Penman-2000 mid-point (EF3, EF4, EF5, Frac_*), downgrade fail→info
+    # and warn→info because country-specific overrides are expected.
+    # For parameters whose benchmark is a direct IPCC table value (W, Milk,
+    # DE, Ym, Bo, etc.) the original fail/warn levels still apply.
     # ------------------------------------------------------------------
     if (!is.na(ipcc_def) && ipcc_def != 0 && !is.na(mu)) {
       pct_dev <- abs(mu - ipcc_def) / abs(ipcc_def) * 100
+      is_monni <- p %in% MONNI_BENCHMARK_PARAMS
       if (pct_dev > 200) {
-        add(grp, p, "benchmark_deviation", "fail",
-            sprintf("Mean (%.4g) deviates %.0f%% from IPCC default (%.4g). Verify the value or document the country-specific source.",
-                    mu, pct_dev, ipcc_def))
+        sev <- if (is_monni) "info" else "fail"
+        suffix <- if (is_monni)
+          " — benchmark is a Monni-2007/Penman-2000 mid-point; country-specific overrides are expected."
+        else " Verify the value or document the country-specific source."
+        add(grp, p, "benchmark_deviation", sev,
+            sprintf("Mean (%.4g) deviates %.0f%% from IPCC default (%.4g).%s",
+                    mu, pct_dev, ipcc_def, suffix))
       } else if (pct_dev > 50) {
-        add(grp, p, "benchmark_deviation", "warn",
-            sprintf("Mean (%.4g) deviates %.0f%% from IPCC default (%.4g). Large deviation — please document the source.",
-                    mu, pct_dev, ipcc_def))
+        sev <- if (is_monni) "info" else "warn"
+        suffix <- if (is_monni)
+          " — Monni-2007/Penman-2000 benchmark, informational only."
+        else " Large deviation — please document the source."
+        add(grp, p, "benchmark_deviation", sev,
+            sprintf("Mean (%.4g) deviates %.0f%% from IPCC default (%.4g).%s",
+                    mu, pct_dev, ipcc_def, suffix))
       } else {
         add(grp, p, "benchmark_deviation", "pass",
             sprintf("Mean (%.4g) within 50%% of IPCC default (%.4g)", mu, ipcc_def))
@@ -251,8 +275,8 @@ run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global"
 
   result <- do.call(rbind, lapply(rows, as.data.frame, stringsAsFactors = FALSE))
   param_order <- unique(ps$parameter)
-  # Sort: missing → fail → warn → pass, then by parameter and check name
-  status_rank <- c(missing = 1L, fail = 2L, warn = 3L, pass = 4L)
+  # Sort: missing → fail → warn → info → pass, then by parameter and check name
+  status_rank <- c(missing = 1L, fail = 2L, warn = 3L, info = 4L, pass = 5L)
   result <- result[order(
     status_rank[result$status],
     match(result$parameter, param_order),
@@ -265,6 +289,7 @@ run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global"
 qaqc_summary <- function(qaqc_df) {
   list(
     n_pass    = sum(qaqc_df$status == "pass", na.rm = TRUE),
+    n_info    = sum(qaqc_df$status == "info", na.rm = TRUE),
     n_warn    = sum(qaqc_df$status == "warn", na.rm = TRUE),
     n_fail    = sum(qaqc_df$status == "fail", na.rm = TRUE),
     n_missing = sum(qaqc_df$status == "missing", na.rm = TRUE)
@@ -274,6 +299,7 @@ qaqc_summary <- function(qaqc_df) {
 qaqc_icon <- function(status) {
   switch(status,
     pass    = '<span style="color:#2D6A4F;font-weight:bold;">&#10003; pass</span>',
+    info    = '<span style="color:#1565C0;font-weight:bold;">&#9432; info</span>',
     warn    = '<span style="color:#B45309;font-weight:bold;">&#9651; warn</span>',
     fail    = '<span style="color:#C1121F;font-weight:bold;">&#10007; fail</span>',
     missing = '<span style="color:#92400E;font-weight:bold;background-color:#FEF3C7;padding:1px 6px;border-radius:3px;">&#9888; missing</span>',

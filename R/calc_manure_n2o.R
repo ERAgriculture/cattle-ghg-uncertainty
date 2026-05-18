@@ -80,11 +80,15 @@ calc_direct_n2o_prp <- function(Nex, pct_pasture, EF3_PRP = 0.02) {
 }
 
 # Indirect N2O from PRP - kg N2O/head/year
-# C1: Frac_GASMS (was Frac_GASM), Frac_LEACH_H (was Frac_LEACH) — IPCC software-aligned
-calc_indirect_n2o_prp <- function(Nex, pct_pasture, Frac_GASMS = 0.20, EF4 = 0.010,
-                                   Frac_LEACH_H = 0.02, EF5 = 0.0075) {
+# Andreas 2026-05 comment #10: PRP volatilisation and leaching use IPCC 2019
+# Vol 4 Ch 11 Table 11.3 defaults (FracGASM ≈ 0.21, Frac_leach-(H) ≈ 0.30) —
+# distinct from the MM-side fractions in Table 10.22. Earlier versions reused
+# Frac_GASMS / Frac_LEACH_H for both pathways, conflating the two.
+calc_indirect_n2o_prp <- function(Nex, pct_pasture,
+                                   Frac_GASM_PRP = 0.21, EF4 = 0.010,
+                                   Frac_LEACH_PRP = 0.30, EF5 = 0.0075) {
   N_prp <- Nex * pct_pasture
-  volatilization <- N_prp * Frac_GASMS * EF4 * (44 / 28)
-  leaching <- N_prp * Frac_LEACH_H * EF5 * (44 / 28)
+  volatilization <- N_prp * Frac_GASM_PRP * EF4 * (44 / 28)
+  leaching <- N_prp * Frac_LEACH_PRP * EF5 * (44 / 28)
   volatilization + leaching
 }

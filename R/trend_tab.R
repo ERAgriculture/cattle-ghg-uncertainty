@@ -169,8 +169,11 @@ run_trend_analysis <- function(trend_df, base_specs, n_iter = 2000,
   # Round 9: emission-source filter — applied per year to recompute total_co2e
   # from the per-source columns of sim$inventory. Mirrors the single-year
   # post-filter at app_server.R ~line 927. NULL or all 5 keys = include all.
+  # Andreas 2026-05 #27: pasture direct & indirect split. Legacy "pasture_n2o"
+  # accepted as alias for both.
   all_src_keys <- c("enteric_ch4", "manure_ch4", "manure_n2o_direct",
-                     "manure_n2o_indirect", "pasture_n2o")
+                     "manure_n2o_indirect",
+                     "pasture_n2o_direct", "pasture_n2o_indirect")
   srcs <- if (is.null(emission_sources) || length(emission_sources) == 0L)
             all_src_keys else emission_sources
   apply_source_filter <- length(srcs) > 0L && length(srcs) < length(all_src_keys)
@@ -179,12 +182,13 @@ run_trend_analysis <- function(trend_df, base_specs, n_iter = 2000,
 
   filter_co2e <- function(df) {
     if (!apply_source_filter) return(df$total_co2e)
+    legacy_pasture <- "pasture_n2o" %in% srcs
     ch4 <- (if ("enteric_ch4" %in% srcs) df$enteric_ch4_total else 0) +
            (if ("manure_ch4"  %in% srcs) df$manure_ch4_total  else 0)
     n2o <- (if ("manure_n2o_direct"   %in% srcs) df$direct_n2o_mm_total   else 0) +
            (if ("manure_n2o_indirect" %in% srcs) df$indirect_n2o_mm_total else 0) +
-           (if ("pasture_n2o" %in% srcs)
-              df$direct_n2o_prp_total + df$indirect_n2o_prp_total else 0)
+           (if (legacy_pasture || "pasture_n2o_direct"   %in% srcs) df$direct_n2o_prp_total   else 0) +
+           (if (legacy_pasture || "pasture_n2o_indirect" %in% srcs) df$indirect_n2o_prp_total else 0)
     ch4 * gwp_vals$CH4 + n2o * gwp_vals$N2O
   }
 

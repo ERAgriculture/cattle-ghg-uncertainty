@@ -931,9 +931,15 @@ app_server <- function(input, output, session) {
           .apply_source_selection <- function(df) {
             ch4 <- (if ("enteric_ch4" %in% srcs) df$enteric_ch4_total else 0) +
                    (if ("manure_ch4"  %in% srcs) df$manure_ch4_total  else 0)
+            # Andreas 2026-05 #27: pasture direct and indirect are separate IPCC
+            # reporting categories — splitting the single legacy `pasture_n2o`
+            # checkbox into two. Old `pasture_n2o` kept as a back-compat alias
+            # for any saved bookmarks / URLs.
+            legacy_pasture <- "pasture_n2o" %in% srcs
             n2o <- (if ("manure_n2o_direct"   %in% srcs) df$direct_n2o_mm_total   else 0) +
                    (if ("manure_n2o_indirect" %in% srcs) df$indirect_n2o_mm_total else 0) +
-                   (if ("pasture_n2o" %in% srcs) df$direct_n2o_prp_total   + df$indirect_n2o_prp_total else 0)
+                   (if (legacy_pasture || "pasture_n2o_direct"   %in% srcs) df$direct_n2o_prp_total   else 0) +
+                   (if (legacy_pasture || "pasture_n2o_indirect" %in% srcs) df$indirect_n2o_prp_total else 0)
             df$total_ch4  <- ch4
             df$total_n2o  <- n2o
             df$co2e_ch4   <- ch4 * gwp_vals$CH4
@@ -941,7 +947,9 @@ app_server <- function(input, output, session) {
             df$total_co2e <- df$co2e_ch4 + df$co2e_n2o
             df
           }
-          if (length(srcs) > 0 && length(srcs) < 5) {
+          # 6 sources now (pasture direct & indirect split). Skip
+          # re-aggregation when the user has all 6 ticked.
+          if (length(srcs) > 0 && length(srcs) < 6) {
             sim_result$inventory <- .apply_source_selection(sim_result$inventory)
             for (sn in names(sim_result$by_system)) {
               sim_result$by_system[[sn]]$results <- .apply_source_selection(
@@ -1091,6 +1099,32 @@ app_server <- function(input, output, session) {
     if (nrow(row) > 0) paste0(round(row$mean, 3), " t") else "---"
   })
 
+  # Andreas 2026-05 C1: per-IPCC-source value boxes — mirrors the IPCC
+  # reporting categories (enteric CH₄, manure CH₄, MM N₂O total, PRP N₂O total).
+  # Column names refer to inventory aggregator output (mc_simulation.R
+  # run_inventory_simulation), not per-system results.
+  .vb_mean <- function(var) {
+    row <- rv$uncertainty[rv$uncertainty$variable == var, ]
+    if (nrow(row) == 0) return("---")
+    paste0(round(row$mean, if (row$mean < 10) 3 else 1), " t")
+  }
+  .vb_sum_means <- function(vars) {
+    rows <- rv$uncertainty[rv$uncertainty$variable %in% vars, ]
+    if (nrow(rows) == 0) return("---")
+    s <- sum(rows$mean, na.rm = TRUE)
+    paste0(round(s, if (s < 10) 3 else 1), " t")
+  }
+  output$vb_enteric_ch4 <- renderText({ req(rv$uncertainty); .vb_mean("total_enteric_ch4") })
+  output$vb_manure_ch4  <- renderText({ req(rv$uncertainty); .vb_mean("total_manure_ch4") })
+  output$vb_manure_n2o  <- renderText({
+    req(rv$uncertainty)
+    .vb_sum_means(c("total_direct_n2o_mm", "total_indirect_n2o_mm"))
+  })
+  output$vb_pasture_n2o <- renderText({
+    req(rv$uncertainty)
+    .vb_sum_means(c("total_direct_n2o_prp", "total_indirect_n2o_prp"))
+  })
+
   output$vb_co2e <- renderText({
     req(rv$uncertainty)
     row <- rv$uncertainty[rv$uncertainty$variable == "total_co2e", ]
@@ -1159,50 +1193,87 @@ app_server <- function(input, output, session) {
                      yaxis = list(title = "CV (%)"))
   })
 
+  # Andreas 2026-05 #32, C2: aggregate by_system results by user-chosen level
+  # (cattle_type / aggregation_level / sub_category). sys_name encodes
+  # `cattle_type||aggregation_level||sub_category` (see make_group_key in the
+  # simulation block above). Returns a named list of per-group iteration data
+  # frames where each emission column is the sum of contributing sub-categories.
+  .agg_results_by_level <- function(level = "cattle_type") {
+    by_sys <- rv$mc_results$by_system
+    sys_names <- names(by_sys)
+    if (length(sys_names) == 0) return(list())
+    parts <- strsplit(sys_names, "\\|\\|", fixed = FALSE)
+    idx <- switch(level, "cattle_type" = 1, "aggregation_level" = 2, "sub_category" = 3, 1)
+    group_keys <- sapply(parts, function(p) {
+      if (length(p) >= idx && nzchar(p[idx])) p[idx] else paste(p, collapse = " / ")
+    })
+    out <- list()
+    for (g in unique(group_keys)) {
+      members <- sys_names[group_keys == g]
+      frames <- lapply(members, function(sn) by_sys[[sn]]$results)
+      # Sum the iteration-aligned frames cell-wise across members.
+      combined <- frames[[1]]
+      if (length(frames) > 1) {
+        for (k in 2:length(frames)) {
+          for (col in names(combined)) {
+            combined[[col]] <- combined[[col]] + frames[[k]][[col]]
+          }
+        }
+      }
+      out[[g]] <- combined
+    }
+    out
+  }
+
   output$results_by_system <- DT::renderDT({
     req(rv$mc_results)
-    sys_names <- names(rv$mc_results$by_system)
-    summary_rows <- lapply(sys_names, function(sn) {
-      res <- rv$mc_results$by_system[[sn]]$results
+    level <- input$results_aggregation_level %||% "cattle_type"
+    agg <- .agg_results_by_level(level)
+    if (length(agg) == 0) return(DT::datatable(data.frame()))
+    summary_rows <- lapply(names(agg), function(gn) {
+      res <- agg[[gn]]
       m   <- mean(res$total_co2e)
       lo  <- quantile(res$total_co2e, 0.025, names = FALSE)
       hi  <- quantile(res$total_co2e, 0.975, names = FALSE)
       data.frame(
-        System = sn,
-        Mean_CH4_t = round(mean(res$total_ch4), 2),
-        Mean_N2O_t = round(mean(res$total_n2o), 4),
-        Mean_CO2eq_t = round(m, 2),
-        # T6.1: IPCC 95% margin of error (primary), CV% (secondary)
-        MoE_95_pct = round(((hi - lo) / 2) / m * 100, 1),
-        CV_pct = round(sd(res$total_co2e) / m * 100, 1),
-        CI_Lower = round(lo, 2),
-        CI_Upper = round(hi, 2)
+        Group = gn,
+        `Mean CH₄ (t)` = round(mean(res$total_ch4), 2),
+        `Mean N₂O (t)` = round(mean(res$total_n2o), 4),
+        `Mean CO₂eq (t)` = round(m, 2),
+        `MoE 95% (%)` = round(((hi - lo) / 2) / m * 100, 1),
+        `CV (%)` = round(sd(res$total_co2e) / m * 100, 1),
+        `CI lower (t CO₂eq)` = round(lo, 2),
+        `CI upper (t CO₂eq)` = round(hi, 2),
+        check.names = FALSE
       )
     })
     DT::datatable(do.call(rbind, summary_rows), rownames = FALSE,
-                  options = list(pageLength = 20))
+                  options = list(pageLength = 20, scrollX = TRUE))
   })
 
-  # T6.2: per-reporting-category breakdown (system x source) using GWP-aligned t CO2eq
+  # T6.2: per-reporting-category breakdown using GWP-aligned t CO₂eq, grouped
+  # by the aggregation level chosen on the Results tab (#32, C2).
   output$results_by_category <- DT::renderDT({
     req(rv$mc_results)
+    level <- input$results_aggregation_level %||% "cattle_type"
+    agg <- .agg_results_by_level(level)
     gwp_vals <- GWP_VALUES[[input$gwp_version]]
     g_ch4 <- gwp_vals$CH4
     g_n2o <- gwp_vals$N2O
 
-    # source_label, ch4 column, n2o column (column-name lookup so we get t CO2eq)
+    # source_label, ch4 column, n2o column (column-name lookup so we get t CO₂eq).
     sources <- list(
-      list(label = "Enteric fermentation CH4",       ch4 = "enteric_ch4_total",   n2o = NULL),
-      list(label = "Manure management CH4",          ch4 = "manure_ch4_total",    n2o = NULL),
-      list(label = "Manure management N2O direct",   ch4 = NULL,                  n2o = "direct_n2o_mm_total"),
-      list(label = "Manure management N2O indirect", ch4 = NULL,                  n2o = "indirect_n2o_mm_total"),
-      list(label = "Pasture deposition N2O direct",  ch4 = NULL,                  n2o = "direct_n2o_prp_total"),
-      list(label = "Pasture deposition N2O indirect",ch4 = NULL,                  n2o = "indirect_n2o_prp_total")
+      list(label = "Enteric fermentation CH₄",        ch4 = "enteric_ch4_total",    n2o = NULL),
+      list(label = "Manure management CH₄",           ch4 = "manure_ch4_total",     n2o = NULL),
+      list(label = "Manure management N₂O direct",    ch4 = NULL,                   n2o = "direct_n2o_mm_total"),
+      list(label = "Manure management N₂O indirect",  ch4 = NULL,                   n2o = "indirect_n2o_mm_total"),
+      list(label = "Pasture deposition N₂O direct",   ch4 = NULL,                   n2o = "direct_n2o_prp_total"),
+      list(label = "Pasture deposition N₂O indirect", ch4 = NULL,                   n2o = "indirect_n2o_prp_total")
     )
 
     rows <- list()
-    for (sn in names(rv$mc_results$by_system)) {
-      res <- rv$mc_results$by_system[[sn]]$results
+    for (gn in names(agg)) {
+      res <- agg[[gn]]
       for (s in sources) {
         co2e <- if (!is.null(s$ch4)) res[[s$ch4]] * g_ch4 else res[[s$n2o]] * g_n2o
         if (is.null(co2e) || all(co2e == 0)) next
@@ -1210,13 +1281,14 @@ app_server <- function(input, output, session) {
         lo <- quantile(co2e, 0.025, names = FALSE)
         hi <- quantile(co2e, 0.975, names = FALSE)
         rows[[length(rows) + 1]] <- data.frame(
-          System = sn,
+          Group = gn,
           Source = s$label,
-          Mean_t_CO2eq = round(m, 2),
-          MoE_95_pct   = if (m > 0) round(((hi - lo) / 2) / m * 100, 1) else NA_real_,
-          CV_pct       = if (m > 0) round(sd(co2e) / m * 100, 1) else NA_real_,
-          CI_Lower_t   = round(lo, 2),
-          CI_Upper_t   = round(hi, 2)
+          `Mean (t CO₂eq)` = round(m, 2),
+          `MoE 95% (%)`    = if (m > 0) round(((hi - lo) / 2) / m * 100, 1) else NA_real_,
+          `CV (%)`         = if (m > 0) round(sd(co2e) / m * 100, 1) else NA_real_,
+          `CI lower (t CO₂eq)` = round(lo, 2),
+          `CI upper (t CO₂eq)` = round(hi, 2),
+          check.names = FALSE
         )
       }
     }
@@ -1308,6 +1380,17 @@ app_server <- function(input, output, session) {
   output$tornado_chart <- plotly::renderPlotly({
     sens_data <- active_sensitivity()
     req(sens_data)
+    # Surface the zero-variance message from sensitivity_analysis() when the
+    # selected output is structurally constant (e.g. PRP N2O with no pasture).
+    msg <- attr(sens_data, "message")
+    if (length(sens_data) == 0 && !is.null(msg)) {
+      return(plotly::plot_ly() |> plotly::layout(
+        xaxis = list(visible = FALSE), yaxis = list(visible = FALSE),
+        annotations = list(list(
+          text = msg, showarrow = FALSE,
+          x = 0.5, y = 0.5, xref = "paper", yref = "paper",
+          font = list(size = 13, color = "#555")))))
+    }
     sens <- if (input$sens_method == "src" && !is.null(sens_data$src)) {
       sens_data$src
     } else if (!is.null(sens_data$prcc)) {
@@ -1380,7 +1463,7 @@ app_server <- function(input, output, session) {
                    "Unit" = "unit",
                    "IPCC default" = "ipcc_default",
                    "Suggested distribution" = "suggested_distribution",
-                   "Tier" = "param_tier",
+                   "Level" = "param_tier",
                    "IPCC framing" = "ipcc_framing",
                    "IPCC reference" = "ipcc_ref"),
       options = list(pageLength = 25, scrollX = TRUE),
@@ -1554,11 +1637,58 @@ app_server <- function(input, output, session) {
     }
   )
 
+  # Andreas 2026-05 #36, C10: CSV layout — emission category in column A,
+  # pasture direct + indirect kept as separate rows (not collapsed into
+  # total N₂O), and the variable->category mapping made explicit.
   output$download_csv <- downloadHandler(
     filename = function() paste0("uncertainty_results_", Sys.Date(), ".csv"),
     content = function(file) {
       req(rv$uncertainty)
-      write.csv(rv$uncertainty, file, row.names = FALSE)
+      cat_map <- c(
+        enteric_ch4_total       = "3.A.1 Enteric fermentation - CH4",
+        manure_ch4_total        = "3.A.2 Manure management - CH4",
+        direct_n2o_mm_total     = "3.A.2 Manure management - N2O direct",
+        indirect_n2o_mm_total   = "3.A.2 Manure management - N2O indirect",
+        direct_n2o_prp_total    = "3.C.4 Pasture deposition - N2O direct",
+        indirect_n2o_prp_total  = "3.C.5 Pasture deposition - N2O indirect",
+        total_enteric_ch4       = "3.A.1 Enteric fermentation - CH4 (inventory total)",
+        total_manure_ch4        = "3.A.2 Manure management - CH4 (inventory total)",
+        total_direct_n2o_mm     = "3.A.2 Manure management - N2O direct (inventory total)",
+        total_indirect_n2o_mm   = "3.A.2 Manure management - N2O indirect (inventory total)",
+        total_direct_n2o_prp    = "3.C.4 Pasture deposition - N2O direct (inventory total)",
+        total_indirect_n2o_prp  = "3.C.5 Pasture deposition - N2O indirect (inventory total)",
+        total_ch4               = "Aggregate - Total CH4",
+        total_n2o               = "Aggregate - Total N2O",
+        total_direct_n2o        = "Aggregate - Total N2O direct (MM + PRP)",
+        total_indirect_n2o      = "Aggregate - Total N2O indirect (MM + PRP)",
+        total_co2e              = "Aggregate - Total CO2eq"
+      )
+      unit_map <- c(
+        enteric_ch4_total = "t CH4", manure_ch4_total = "t CH4",
+        direct_n2o_mm_total = "t N2O", indirect_n2o_mm_total = "t N2O",
+        direct_n2o_prp_total = "t N2O", indirect_n2o_prp_total = "t N2O",
+        total_enteric_ch4 = "t CH4", total_manure_ch4 = "t CH4",
+        total_direct_n2o_mm = "t N2O", total_indirect_n2o_mm = "t N2O",
+        total_direct_n2o_prp = "t N2O", total_indirect_n2o_prp = "t N2O",
+        total_ch4 = "t CH4", total_n2o = "t N2O",
+        total_direct_n2o = "t N2O", total_indirect_n2o = "t N2O",
+        total_co2e = "t CO2eq"
+      )
+      df <- rv$uncertainty
+      out <- data.frame(
+        emission_category = ifelse(df$variable %in% names(cat_map),
+                                    cat_map[df$variable], df$variable),
+        unit              = ifelse(df$variable %in% names(unit_map),
+                                    unit_map[df$variable], ""),
+        variable          = df$variable,
+        mean              = df$mean,
+        ci_lower          = df$ci_lower,
+        ci_upper          = df$ci_upper,
+        moe_pct           = df$moe_pct,
+        cv_pct            = df$cv_pct,
+        stringsAsFactors  = FALSE
+      )
+      write.csv(out, file, row.names = FALSE)
     }
   )
 

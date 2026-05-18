@@ -49,6 +49,23 @@ calc_prcc <- function(inputs, output) {
 
 sensitivity_analysis <- function(inputs, output, method = c("src", "prcc", "both")) {
   method <- match.arg(method)
+
+  # Output-variance guard: SRC/PRCC on a constant (or near-constant) output
+  # returns spurious ranks. This happens when the selected output column is
+  # structurally zero — e.g. PRP direct N2O for an intensive-dairy run where
+  # pct_pasture = 0 across all iterations. Return an empty list with a
+  # `message` attribute so renderers can surface why the chart is empty.
+  if (length(output) == 0 || !is.finite(sd(output)) || sd(output) < 1e-9) {
+    out <- list()
+    attr(out, "message") <- paste0(
+      "This output is constant across all Monte Carlo iterations, so ",
+      "sensitivity is not defined. Common cause: the selected emission ",
+      "pathway is zero for this dataset (e.g. pasture-deposition emissions ",
+      "when no animals are on pasture)."
+    )
+    return(out)
+  }
+
   var_cols <- sapply(inputs, function(x) sd(x) > 0)
   inputs_var <- inputs[, var_cols, drop = FALSE]
   if (ncol(inputs_var) == 0) return(list())
