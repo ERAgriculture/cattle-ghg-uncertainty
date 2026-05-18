@@ -38,7 +38,8 @@ format_ipcc_table <- function(uncertainty_decomposition, country = "", year = ""
   )
 }
 
-export_results_xlsx <- function(results, uncertainty, sensitivity, ipcc_table, filepath) {
+export_results_xlsx <- function(results, uncertainty, sensitivity, ipcc_table, filepath,
+                                settings = NULL) {
   # Andreas 2026-05 #38: previously crashed when ipcc_table was NULL (which
   # happens whenever AD/EF decomposition didn't run, e.g. for custom uploads
   # — see app_server.R line 982). Replace NULL/empty inputs with placeholder
@@ -66,7 +67,30 @@ export_results_xlsx <- function(results, uncertainty, sensitivity, ipcc_table, f
 
   n_iter <- if (is.data.frame(results)) nrow(results) else NA_integer_
 
+  run_settings_df <- if (!is.null(settings)) {
+    data.frame(
+      Setting = c("Iterations", "AD correlations", "EF correlations",
+                  "Comparison run (no corr.)", "GWP basis", "Seed",
+                  "Analysis mode", "Emission sources"),
+      Value   = c(
+        as.character(settings$n_iter %||% NA),
+        as.character(settings$corr_mode %||% "none"),
+        as.character(settings$ef_corr_mode %||% "none"),
+        if (isTRUE(settings$run_comparison)) "yes" else "no",
+        as.character(settings$gwp_version %||% NA),
+        as.character(settings$seed %||% NA),
+        as.character(settings$analysis_mode %||% NA),
+        paste(settings$emission_sources %||% character(0), collapse = ", ")
+      ),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    data.frame(Note = "Settings not recorded (re-download after running a simulation).",
+               stringsAsFactors = FALSE)
+  }
+
   sheets <- list(
+    Run_Settings        = run_settings_df,
     Summary             = summary_df,
     Uncertainty_Metrics = uncertainty_df,
     Sensitivity_SRC     = src_df,

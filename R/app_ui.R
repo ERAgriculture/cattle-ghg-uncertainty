@@ -24,7 +24,15 @@ app_ui <- function() {
       base_font = bslib::font_google("DM Sans"),
       code_font = bslib::font_google("JetBrains Mono")
     ),
-    header = tags$head(tags$link(rel = "stylesheet", href = "custom.css")),
+    header = tagList(
+      tags$head(tags$link(rel = "stylesheet", href = "custom.css")),
+      tags$head(tags$script(HTML(
+        "Shiny.addCustomMessageHandler('scrollTo', function(id) {
+           var el = document.getElementById(id);
+           if (el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
+         });"
+      )))
+    ),
     fillable = FALSE,
 
     # ==================== HOME TAB ====================
@@ -44,28 +52,7 @@ app_ui <- function() {
           p("Monte Carlo uncertainty analysis for national cattle methane and nitrous oxide inventories.",
             style = "font-size: 1.1rem; opacity: 0.9; margin-bottom: 8px;"),
           p("Developed by CIAT/CGIAR Alliance | Funded by Global Methane Hub",
-            style = "font-size: 0.9rem; opacity: 0.7;"),
-          div(
-            style = "display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;",
-            tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;",
-                      "IPCC Tier 2 · Approach 2"),
-            tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;",
-                      "Monte Carlo — 10,000+ runs"),
-            tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;",
-                      "Activity data + coefficient uncertainty"),
-            tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;",
-                      "CH₄ + N₂O · 5 emission sources"),
-            tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;",
-                      "IPCC Table 3.3 export-ready"),
-            tags$span(style = "background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25);
-                               padding: 4px 14px; border-radius: 20px; font-size: 0.8rem;",
-                      "Sensitivity tornado + decomposition")
-          )
+            style = "font-size: 0.9rem; opacity: 0.7;")
         ),
 
         # What this tool does
@@ -228,7 +215,7 @@ app_ui <- function() {
               tags$li("If you are not accounting for uncertainty on a parameter, enter the parameter value and set uncertainty_pct = 0 (or distribution = constant)."),
               tags$li("Set Milk = 0 for sub-categories that do not lactate; set WG = 0 for adult animals not gaining weight."),
               tags$li("For asymmetric IPCC parameters (EF3_PRP, EF4, EF5, Frac_LEACH_H), supply explicit lower / upper bounds — the catalogue pre-fills Monni-2007 / Penman-2000 ranges if you leave them blank."),
-              tags$li("Two ways to fix QA/QC failures (Andreas 2026-05 #26): (a) edit values directly in the in-app Parameters table on Tab 1 — quick for one or two cells; or (b) edit the original Excel template and re-upload — easier when you have 100+ parameters and want a saved record of your final values. Both produce the same simulation inputs.")
+              tags$li("Two ways to fix QA/QC failures: (a) edit values directly in the in-app Parameters table on Tab 1 — quick for one or two cells; or (b) edit the original Excel template and re-upload — easier when you have 100+ parameters and want a saved record of your final values. Both produce the same simulation inputs.")
             ),
             tags$h5("Preparing uncertainty inputs"),
             tags$ul(
@@ -286,7 +273,7 @@ app_ui <- function() {
               tags$li("Monni et al. (2007) — Uncertainty in agricultural CH₄ and N₂O emissions from Finland"),
               tags$li("Karimi-Zindashty et al. (2012) — Sources of uncertainty in livestock emission inventories: Canadian case study"),
               tags$li("Milne et al. (2014) — Estimating uncertainty in pasture-based dairy CH₄ emissions"),
-              tags$li(tags$em("Additional national-inventory examples to be added (Andreas to compile)."))
+              tags$li(tags$em("Additional national-inventory examples to be added."))
             )
           )
         )
@@ -304,10 +291,27 @@ app_ui <- function() {
         bslib::card_body(
           radioButtons("analysis_mode",
             label = NULL,
-            choices = c(
-              "Single year — quantify uncertainty in one inventory year" = "single",
-              "Trend — compare uncertainty across multiple years (uses Tab 9)" = "trend"
+            choiceNames = list(
+              tagList(
+                "Single year — quantify uncertainty in one inventory year ",
+                bslib::tooltip(
+                  span(icon("circle-question"),
+                       style = "color:#2D6A4F; cursor:help; vertical-align:middle;"),
+                  "Use this mode to estimate the uncertainty for one specific inventory year. All parameters are sampled independently for each iteration. This is the most common mode and is sufficient for IPCC Table 3.3 reporting. Choose Trend if you also want to assess whether emission changes over time are statistically significant.",
+                  placement = "right"
+                )
+              ),
+              tagList(
+                "Trend — compare uncertainty across multiple years ",
+                bslib::tooltip(
+                  span(icon("circle-question"),
+                       style = "color:#2D6A4F; cursor:help; vertical-align:middle;"),
+                  "Use this mode when you have activity data for several inventory years and want to assess whether the trend (change over time) is statistically distinguishable from zero. IPCC Vol 1 Ch 3 §3.7 recommends reporting trend uncertainty for inventory series. Requires a Parameter_TimeSeries sheet in your upload template, or use one of the built-in example datasets.",
+                  placement = "right"
+                )
+              )
             ),
+            choiceValues = c("single", "trend"),
             selected = character(0)),
           div(id = "analysis_mode_warning",
               style = "background:#FEF3C7; border-left:3px solid #F59E0B; padding:8px 10px; margin-top:8px; font-size:0.85rem; color:#92400E; border-radius:4px;",
@@ -394,7 +398,13 @@ app_ui <- function() {
           tags$strong("Fail"), " (red) = the value or bounds will likely cause an error in the simulation. ",
           tags$strong("Warn"), " (amber) = the value is unusual compared with IPCC defaults or Penman/Monni uncertainty references -- investigate and document. ",
           tags$strong("Pass"), " (green) = check satisfied. ",
-          "Fix any fails before running the simulation. Warnings are advisory -- document your justification for large deviations from IPCC defaults."),
+          "Fix any fails before running the simulation. Warnings are advisory -- document your justification for large deviations from IPCC defaults. ",
+          tags$br(), tags$br(),
+          tags$strong("Auto-filled parameters: "),
+          "If any parameters were absent from your upload, an ",
+          tags$strong("Auto-filled parameters"),
+          " panel appears above the results table showing which values were substituted from IPCC defaults. ",
+          "Review these and replace with country-specific data in your template where possible."),
       conditionalPanel(
         condition = "output.has_imputed_params == true",
         div(style = "margin: 0 16px 16px 16px;",
@@ -491,20 +501,25 @@ app_ui <- function() {
           "If you have no information, leave both sections at 'No correlations' (the default).",
           tags$br(), tags$br(),
           # T4.2: extended guidance
-          tags$strong("When to use correlations: "),
+          tags$strong("Activity data correlation modes (four options): "),
           tags$ul(
-            tags$li(tags$strong("Activity data — from time series:"),
+            tags$li(tags$strong("No correlations (default):"),
+                    " parameters are sampled independently. Conservative and appropriate when you have no information about co-movement."),
+            tags$li(tags$strong("From template (auto, time-series):"),
                     " upload multi-year national livestock data in the Parameter_TimeSeries sheet. ",
                     "Year-to-year co-movement is computed automatically (Pearson correlation, then nearest positive-definite). ",
                     "This is the recommended option whenever you have ≥5 years of data."),
-            tags$li(tags$strong("Activity data — manual entry (advanced):"),
-                    " hide-and-seek option for users who have expert estimates of pairwise correlations. ",
-                    "Most users should leave this alone."),
-            tags$li(tags$strong("Emission factors — uniform rho:"),
-                    " a single number (rho ∈ [0, 0.9]) representing systematic methodological bias shared across ",
-                    "all IPCC equation parameters. Use ρ = 0.3 as a moderate sensitivity test if you suspect bias; ",
-                    "values above 0.5 require explicit justification.")
-          )),
+            tags$li(tags$strong("IPCC-guidance preset:"),
+                    " applies a sparse correlation matrix containing only well-documented structural pairs ",
+                    "(e.g. W ↔ MW, Milk ↔ Fat). ",
+                    "All other pairs are zero. A good middle ground when you have no time series but want some realism beyond full independence."),
+            tags$li(tags$strong("Advanced — manual entry:"),
+                    " upload a CSV with expert estimates of pairwise correlations. ",
+                    "Most users should leave this alone.")
+          ),
+          tags$strong("Emission factor correlations: "),
+          "A single uniform rho (ρ ∈ [0, 0.9]) representing systematic bias shared across ",
+          "all IPCC equation coefficients. Use ρ = 0.3 as a moderate sensitivity test; values above 0.5 require justification."),
       bslib::layout_columns(
         col_widths = c(6, 6),
 
@@ -601,7 +616,15 @@ app_ui <- function() {
           tags$br(), tags$br(),
           tags$strong("Once the simulation completes, this tab switches to the results view automatically."),
           " Use the ", tags$em("Back to settings"), " button at the top of the results to change inputs and re-run — the next run will switch back to results when it finishes. ",
-          "Tab 7 (Sensitivity) and Tab 8 (IPCC Report) provide deeper drill-downs."),
+          "Tab 7 (Sensitivity) and Tab 8 (IPCC Report) provide deeper drill-downs.",
+          tags$br(), tags$br(),
+          tags$strong("How many iterations to use: "),
+          "For a typical Tier 2 cattle inventory with 2–5 sub-categories and 15–30 parameters, ",
+          tags$strong("5,000 iterations"), " is usually sufficient for stable CV estimates. ",
+          "Use ", tags$strong("10,000"), " when correlations are enabled, when you have more sub-categories, ",
+          "or for final reporting. Use ", tags$strong("1,000 only for quick testing"),
+          " — convergence is not guaranteed below 5,000 iterations. ",
+          "To verify convergence, re-run with a different random seed: if the CV% changes by more than 1–2 percentage points, increase the number of iterations."),
       # R1.5: view toggle — output.sim_view is "settings" or "results"
       conditionalPanel(
         condition = "output.sim_view != 'results'",
@@ -612,15 +635,34 @@ app_ui <- function() {
           bslib::card_body(
             sliderInput("n_iter", "Number of Iterations",
                         min = 1000, max = 50000, value = 10000, step = 1000),
-            numericInput("seed", "Random Seed (for reproducibility)", value = 42),
+            numericInput("seed",
+              label = tagList(
+                "Random Seed (for reproducibility) ",
+                bslib::tooltip(
+                  span(icon("circle-question"),
+                       style = "color:#2D6A4F; cursor:help; vertical-align:middle;"),
+                  "Fixing the seed makes results exactly reproducible — anyone using the same data, settings, and seed will get the same numbers. To check convergence, re-run with a different seed (e.g. 123 or 456): if the CV% changes by more than ~1 percentage point, increase the number of iterations.",
+                  placement = "right"
+                )
+              ),
+              value = 42),
             # Andreas 2026-05 follow-up: Dirichlet MMS-allocation control removed
             # (no IPCC citation). MMS% is now treated deterministically across
             # iterations, matching the IPCC Inventory Software's behaviour.
-            selectInput("gwp_version", "GWP Assessment Report",
-                        choices = c("AR4 (CH₄=25)" = "AR4",
-                                    "AR5 (CH₄=28, N₂O=265)" = "AR5",
-                                    "AR6 (CH₄=27, N₂O=273)" = "AR6"),
-                        selected = "AR5"),
+            selectInput("gwp_version",
+              label = tagList(
+                "GWP Assessment Report ",
+                bslib::tooltip(
+                  span(icon("circle-question"),
+                       style = "color:#2D6A4F; cursor:help; vertical-align:middle;"),
+                  "GWP (Global Warming Potential) converts CH₄ and N₂O emissions to CO₂ equivalent for reporting. AR5 (CH₄=28, N₂O=265) is the most commonly required for current IPCC submissions. AR6 (CH₄=27, N₂O=273) is the latest IPCC assessment. Use whichever version your national reporting guidelines specify.",
+                  placement = "right"
+                )
+              ),
+              choices = c("AR4 (CH₄=25)" = "AR4",
+                          "AR5 (CH₄=28, N₂O=265)" = "AR5",
+                          "AR6 (CH₄=27, N₂O=273)" = "AR6"),
+              selected = "AR5"),
             # T1.12 / R1.4: emission source selector — none ticked by default,
             # forcing the user to make an explicit choice before running.
             checkboxGroupInput("emission_sources", "Emission sources to include",
@@ -633,35 +675,12 @@ app_ui <- function() {
                                  "Pasture deposition N₂O indirect"     = "pasture_n2o_indirect"
                                ),
                                selected = character(0)),
-            div(style = "font-size:0.78rem; color:#92400E; background:#FEF3C7; padding:8px 10px; border-radius:6px; margin-bottom:8px;",
+            uiOutput("select_all_btn"),
+            div(style = "font-size:0.78rem; color:#92400E; background:#FEF3C7; padding:8px 10px; border-radius:6px; margin-bottom:8px; margin-top:4px;",
                 icon("exclamation-triangle"),
                 tags$strong(" Tick at least one source above"),
                 " — the simulation cannot run without an explicit selection. ",
-                tags$em("(Most users tick all 5 for a full inventory.)")),
-            hr(),
-            # Andreas 2026-05 follow-up: Tw moved to the Parameters template
-            # exclusively (per-sub-category column). The global UI input
-            # was removed because (a) it duplicated the template column,
-            # (b) the per-row template value was previously ignored, and
-            # (c) Andreas's comment #23 asked for per-row Tw so high-Andes
-            # and lowland production systems can use different winter
-            # temperatures. Set Tw on the Parameters sheet now.
-            tags$details(
-              tags$summary(tags$strong("IPCC software-aligned options (advanced)")),
-              div(style = "padding: 8px 4px;",
-                  div(style = "font-size:0.85rem; color:#1B4332; margin-bottom:10px;",
-                      tags$strong("Mean winter temperature (Tw):"),
-                      " set per sub-category on the ",
-                      tags$em("Parameters"), " sheet of the upload template ",
-                      "(IPCC Eq 10.2 cold-climate Cfi adjustment). Default 20°C ",
-                      "= no adjustment (tropical / temperate regions)."),
-                  sliderInput("pct_calving",
-                              "Fraction of females that calve in a year (Cp pro-rate)",
-                              min = 0, max = 1, value = 1, step = 0.05),
-                  div(style = "font-size:0.75rem; color:#666; margin-top:-8px; margin-bottom:8px;",
-                      tags$em("Pro-rates Cp for the share of cows actually pregnant in the year (IPCC software 'Pregnancy fraction')."))
-              )
-            ),
+                tags$em("(Most users tick all 6 for a full inventory.)")),
             hr(),
             # Round 9: single-year-only options (decomposition + comparison).
             # Trend mode doesn't use these — the trend's IPCC-§3.7 framework
@@ -895,7 +914,16 @@ app_ui <- function() {
             tags$em(" of total emissions, not the absolute emission level."),
             tags$br(),
             tags$strong("Action item: "), "Focus your data improvement efforts on the top 3-5 parameters ",
-            "to get the biggest reduction in overall inventory uncertainty."),
+            "to get the biggest reduction in overall inventory uncertainty.",
+            tags$br(), tags$br(),
+            tags$strong("Sensitivity methods explained: "),
+            tags$strong("SRC (Standardized Regression Coefficients)"),
+            " — fits a linear model between each input parameter and the output; fast and easy to interpret. ",
+            "A positive SRC means higher values of that input produce higher emissions. ",
+            tags$strong("PRCC (Partial Rank Correlation Coefficients)"),
+            " — rank-based method, more robust when the input-output relationship is non-linear or when the output distribution is skewed. ",
+            "For most livestock inventories both methods give similar rankings. ",
+            "Use PRCC as a cross-check when SRC rankings seem counterintuitive or when distributions are highly asymmetric."),
         uiOutput("sens_view_toggle"),
         div(style = "margin: 0 16px 12px 16px;",
             selectInput("sens_source", "Output variable",
@@ -994,10 +1022,15 @@ app_ui <- function() {
         div(class = "info-panel", style = "margin: 16px;",
             tags$strong("What to do: "),
             "This page shows your uncertainty results formatted as IPCC Table 3.3, ready for your national ",
-            "inventory submission. The table shows uncertainty (CV%) decomposed by activity data, emission factors, ",
-            "and combined, for each emission source category. ",
+            "inventory submission. ",
+            "The table has three uncertainty columns — ",
+            tags$strong("AD uncertainty (%)"), ", ",
+            tags$strong("EF uncertainty (%)"), ", and ",
+            tags$strong("Combined uncertainty (%)"),
+            " — all expressed as CV (coefficient of variation = SD ÷ mean × 100). ",
+            "AD = population/activity-data uncertainty only; EF = per-head emission factor uncertainty driven by the 23 IPCC coefficients; Combined = both sources together. ",
             "Click ", tags$strong("'Download Excel Report'"), " to get a complete workbook with all results, ",
-            "sensitivity rankings, and metadata. Click ", tags$strong("'Download CSV'"), " for a simpler file ",
+            "sensitivity rankings, run settings, and metadata. Click ", tags$strong("'Download CSV'"), " for a simpler file ",
             "with uncertainty metrics only."),
         div(style = "margin: 0 16px 12px; font-size:0.82rem; color:#1B4332; background:#D8F3DC; border-left:3px solid #2D6A4F; padding:10px 12px; border-radius:4px;",
             tags$strong("AD vs EF column convention: "),
@@ -1024,7 +1057,12 @@ app_ui <- function() {
           bslib::card_header("Uncertainty distributions per emission source"),
           bslib::card_body(
             p("Histograms of the Monte Carlo output for each emission source. ",
-              "Useful for third-party QA review of which sources contribute the most variance."),
+              "Useful for third-party QA review of which sources contribute the most variance. ",
+              "When you hover over a bar, the tooltip shows two numbers: ",
+              "the ", tags$strong("x-range"), " (e.g. '37k–38k') is the emission value interval for that bin in tonnes — ",
+              "the width of this interval reflects the spread of the distribution for that source; ",
+              "the ", tags$strong("count"), " (e.g. '530') is the number of Monte Carlo iterations that fell in that bin. ",
+              "A narrow x-range with a tall peak indicates low uncertainty; a wide x-range with a flat histogram indicates high uncertainty."),
             plotly::plotlyOutput("report_source_histograms", height = "420px")
           )
         ),

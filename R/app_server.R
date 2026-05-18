@@ -705,14 +705,14 @@ app_server <- function(input, output, session) {
   observeEvent(input$run_sim, {
     req(rv$param_specs)
 
-    # Round 6a #1: block run if no analysis mode selected on the Home tab.
+    # Block run if no analysis mode selected — navigate to Data Input (where the toggle lives).
     if (is.null(input$analysis_mode) || !nzchar(input$analysis_mode)) {
       showNotification(
-        "Please choose an analysis mode (Single year or Trend) on the Home tab before running.",
+        "Please choose an analysis mode (Single year or Trend) at the top of the Data Input tab before running.",
         type = "error", duration = 10)
       rv$sim_log <- paste0(rv$sim_log,
-        "Run blocked: no analysis mode selected on Home tab.\n")
-      bslib::nav_select(id = "nav", selected = "Home", session = session)
+        "Run blocked: no analysis mode selected.\n")
+      bslib::nav_select(id = "nav", selected = "1. Data Input", session = session)
       return()
     }
 
@@ -727,13 +727,14 @@ app_server <- function(input, output, session) {
       return()
     }
 
-    # R1.4: block run if no emission sources selected
+    # Block run if no emission sources selected; scroll to the checkboxes
     if (is.null(input$emission_sources) || length(input$emission_sources) == 0) {
       showNotification(
         "Please tick at least one emission source on the left before running the simulation.",
         type = "error", duration = 8)
       rv$sim_log <- paste0(rv$sim_log,
         "Run blocked: no emission sources selected.\n")
+      session$sendCustomMessage("scrollTo", "emission_sources")
       return()
     }
 
@@ -1142,6 +1143,27 @@ app_server <- function(input, output, session) {
     rv$sim_view <- "settings"
   })
 
+  # Select all / Deselect all toggle for emission sources
+  .all_source_vals <- c("enteric_ch4", "manure_ch4", "manure_n2o_direct",
+                        "manure_n2o_indirect", "pasture_n2o_direct", "pasture_n2o_indirect")
+
+  output$select_all_btn <- renderUI({
+    all_selected <- setequal(input$emission_sources %||% character(0), .all_source_vals)
+    actionButton("toggle_all_sources",
+      label = if (all_selected) "Deselect all" else "Select all sources",
+      class = "btn-outline-secondary btn-sm w-100 mb-1",
+      icon  = if (all_selected) icon("square") else icon("check-square"))
+  })
+  outputOptions(output, "select_all_btn", suspendWhenHidden = FALSE)
+
+  observeEvent(input$toggle_all_sources, {
+    if (setequal(input$emission_sources %||% character(0), .all_source_vals)) {
+      updateCheckboxGroupInput(session, "emission_sources", selected = character(0))
+    } else {
+      updateCheckboxGroupInput(session, "emission_sources", selected = .all_source_vals)
+    }
+  })
+
   output$sim_view <- reactive(rv$sim_view)
   outputOptions(output, "sim_view", suspendWhenHidden = FALSE)
 
@@ -1544,7 +1566,8 @@ app_server <- function(input, output, session) {
                    "Level" = "param_tier",
                    "IPCC framing" = "ipcc_framing",
                    "IPCC reference" = "ipcc_ref"),
-      options = list(pageLength = 25, scrollX = TRUE),
+      # Show all 28 parameters in a single scrollable list (no pagination).
+      options = list(pageLength = -1, dom = "t", scrollX = TRUE),
       class = "compact stripe"
     )
   })
@@ -1710,7 +1733,17 @@ app_server <- function(input, output, session) {
       req(rv$mc_results, rv$uncertainty)
       export_results_xlsx(
         rv$mc_results$inventory, rv$uncertainty,
-        rv$sensitivity, rv$ipcc_table, file
+        rv$sensitivity, rv$ipcc_table, file,
+        settings = list(
+          n_iter           = input$n_iter,
+          corr_mode        = input$corr_mode,
+          ef_corr_mode     = input$ef_corr_mode,
+          run_comparison   = input$run_comparison,
+          gwp_version      = input$gwp_version,
+          seed             = input$seed,
+          analysis_mode    = input$analysis_mode,
+          emission_sources = input$emission_sources
+        )
       )
     }
   )
