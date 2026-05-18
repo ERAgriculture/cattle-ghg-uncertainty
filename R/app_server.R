@@ -841,6 +841,9 @@ app_server <- function(input, output, session) {
             # to mms_frac_defaults_2019() inside calc_indirect_n2o_mm().
             frac_gas_vals   <- NULL
             frac_leach_vals <- NULL
+            # Andreas 2026-05 follow-up (C4 / C6): per-MMS uncertainty matrices
+            # populated below if the manure sheet has lower/upper/dist cols.
+            mcf_samples <- ef3_samples <- fg_samples <- fl_samples <- NULL
 
             if (!is.null(manure) && nrow(manure) > 0 &&
                 all(c("mms_type", "fraction_pct", "MCF_pct", "EF3") %in% names(manure))) {
@@ -874,6 +877,54 @@ app_server <- function(input, output, session) {
                   frac_leach_vals <- setNames(fl_num, mms_rows$mms_type)
                   frac_leach_vals <- frac_leach_vals[names(mms_fracs)]
                 }
+
+                # Andreas 2026-05 follow-up (C4 / C6): sample per-MMS MCF /
+                # EF3 / Frac_GasMS / Frac_LeachMS uncertainty from the
+                # lower / upper / distribution columns on the manure sheet.
+                # Was previously dropped — only central values were used as
+                # deterministic per-iteration constants, so MCF never showed
+                # up in the MM-CH4 tornado despite huge bounds in real data.
+                mc_n_iter <- if (!is.null(input$n_iter)) input$n_iter else 10000
+                # Pre-scale percentage cols to fractions so the sampler works
+                # in the same units the downstream calc expects.
+                mr_mcf_scaled <- mms_rows
+                for (col in c("MCF_pct", "lower_mcf", "upper_mcf")) {
+                  if (col %in% names(mr_mcf_scaled))
+                    mr_mcf_scaled[[col]] <- suppressWarnings(
+                      as.numeric(mr_mcf_scaled[[col]])) / 100
+                }
+                mr_fg_scaled <- mms_rows
+                for (col in c("Frac_GasMS_pct", "lower_frac_gas", "upper_frac_gas")) {
+                  if (col %in% names(mr_fg_scaled))
+                    mr_fg_scaled[[col]] <- suppressWarnings(
+                      as.numeric(mr_fg_scaled[[col]])) / 100
+                }
+                mr_fl_scaled <- mms_rows
+                for (col in c("Frac_LeachMS_pct", "lower_frac_leach", "upper_frac_leach")) {
+                  if (col %in% names(mr_fl_scaled))
+                    mr_fl_scaled[[col]] <- suppressWarnings(
+                      as.numeric(mr_fl_scaled[[col]])) / 100
+                }
+                mcf_samples <- sample_per_mms_param(
+                  mr_mcf_scaled, "MCF_pct", "lower_mcf", "upper_mcf",
+                  "distribution_mcf", mc_n_iter, default_dist = "pert")
+                ef3_samples <- sample_per_mms_param(
+                  mms_rows, "EF3", "lower_ef3", "upper_ef3",
+                  "distribution_ef3", mc_n_iter, default_dist = "pert")
+                fg_samples <- sample_per_mms_param(
+                  mr_fg_scaled, "Frac_GasMS_pct", "lower_frac_gas",
+                  "upper_frac_gas", "distribution_frac_gas",
+                  mc_n_iter, default_dist = "pert")
+                fl_samples <- sample_per_mms_param(
+                  mr_fl_scaled, "Frac_LeachMS_pct", "lower_frac_leach",
+                  "upper_frac_leach", "distribution_frac_leach",
+                  mc_n_iter, default_dist = "pert")
+                # Reorder columns to match mms_fracs ordering.
+                ord_names <- names(mms_fracs)
+                if (!is.null(mcf_samples)) mcf_samples <- mcf_samples[, ord_names, drop = FALSE]
+                if (!is.null(ef3_samples)) ef3_samples <- ef3_samples[, ord_names, drop = FALSE]
+                if (!is.null(fg_samples))  fg_samples  <- fg_samples[, ord_names, drop = FALSE]
+                if (!is.null(fl_samples))  fl_samples  <- fl_samples[, ord_names, drop = FALSE]
                 # Final guard: if all MMS rows were unparsable, use defaults
                 if (length(mms_fracs) == 0) {
                   mms_fracs <- default_mms_fracs
@@ -922,11 +973,14 @@ app_server <- function(input, output, session) {
 
             # Andreas 2026-05 follow-up: Dirichlet MMS-allocation sampling
             # removed (not in IPCC guidance; MMS% is now deterministic).
+            # Per-MMS uncertainty matrices (C4 / C6 fix) attached below.
             systems_data[[sg]] <- list(
               param_specs = sys_specs, corr_matrix = corr, ef_corr_matrix = ef_corr,
               unified_corr_matrix = unified_corr,
               mms_fractions = mms_fracs, mcf_values = mcf_vals, ef3_values = ef3_vals,
-              frac_gas_values = frac_gas_vals, frac_leach_values = frac_leach_vals
+              frac_gas_values = frac_gas_vals, frac_leach_values = frac_leach_vals,
+              mcf_samples = mcf_samples, ef3_samples = ef3_samples,
+              frac_gas_samples = fg_samples, frac_leach_samples = fl_samples
             )
           }
 

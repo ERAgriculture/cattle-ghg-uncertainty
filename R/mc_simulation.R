@@ -13,13 +13,34 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
                                # Round 7 T4.3: unified copula across AD + coefficients
                                unified_corr_matrix = NULL,
                                # Round 7 R1.14: pre-sampled coefficient block (trend mode)
-                               pre_sampled_coefficients = NULL) {
+                               pre_sampled_coefficients = NULL,
+                               # Andreas 2026-05 follow-up (C4 / C6): per-MMS
+                               # uncertainty matrices n_iter × n_MMS. NULL =
+                               # treat the corresponding MMS values as
+                               # deterministic constants (pre-fix behaviour).
+                               mcf_samples = NULL, ef3_samples = NULL,
+                               frac_gas_samples = NULL, frac_leach_samples = NULL) {
   # Andreas 2026-05 follow-up: the Dirichlet `mms_fractions_matrix` argument
   # was removed because the Dirichlet MMS-allocation sampling it enabled is
   # not cited in IPCC 2006 / 2019 guidance. MMS% is now deterministic.
   samples <- generate_mc_samples(param_specs, corr_matrix, n_iter, seed, ef_corr_matrix,
                                   unified_corr_matrix = unified_corr_matrix,
                                   pre_sampled_coefficients = pre_sampled_coefficients)
+
+  # Andreas 2026-05 follow-up (C4 / C6): expose per-MMS sampled values to the
+  # sensitivity analysis by appending them to `samples` as e.g.
+  # MCF_solid_storage, EF3_lagoon, Frac_GasMS_dry_lot, ... Each contributing
+  # parameter becomes its own tornado bar instead of being invisible.
+  .bind_mms_to_samples <- function(samples, mat, prefix) {
+    if (is.null(mat) || ncol(mat) == 0) return(samples)
+    extra <- as.data.frame(mat)
+    names(extra) <- paste0(prefix, "_", colnames(mat))
+    cbind(samples, extra)
+  }
+  samples <- .bind_mms_to_samples(samples, mcf_samples, "MCF")
+  samples <- .bind_mms_to_samples(samples, ef3_samples, "EF3")
+  samples <- .bind_mms_to_samples(samples, frac_gas_samples,   "Frac_GasMS")
+  samples <- .bind_mms_to_samples(samples, frac_leach_samples, "Frac_LeachMS")
 
   get_param <- function(name, default = 0) {
     if (name %in% names(samples)) samples[[name]] else rep(default, n_iter)
@@ -83,7 +104,14 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     Tw          = get_param("Tw", 20),
     pct_calving = pct_calving,
     frac_gas_values   = frac_gas_values,
-    frac_leach_values = frac_leach_values
+    frac_leach_values = frac_leach_values,
+    # Andreas 2026-05 follow-up (C4 / C6): per-iteration per-MMS matrices
+    # from the manure-sheet uncertainty columns. NULL = use the named scalar
+    # mms-keyed vectors above (pre-fix deterministic behaviour).
+    mcf_samples        = mcf_samples,
+    ef3_samples        = ef3_samples,
+    frac_gas_samples   = frac_gas_samples,
+    frac_leach_samples = frac_leach_samples
   )
 
   list(samples = samples, results = results)
@@ -111,7 +139,11 @@ run_inventory_simulation <- function(systems_data, n_iter = 10000, gwp = "AR5",
       frac_gas_values   = sys$frac_gas_values,
       frac_leach_values = sys$frac_leach_values,
       unified_corr_matrix      = sys$unified_corr_matrix,
-      pre_sampled_coefficients = sys$pre_sampled_coefficients
+      pre_sampled_coefficients = sys$pre_sampled_coefficients,
+      mcf_samples              = sys$mcf_samples,
+      ef3_samples              = sys$ef3_samples,
+      frac_gas_samples         = sys$frac_gas_samples,
+      frac_leach_samples       = sys$frac_leach_samples
     )
     by_system[[sys_name]] <- sim
   }

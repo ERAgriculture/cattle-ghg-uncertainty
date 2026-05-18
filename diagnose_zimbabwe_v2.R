@@ -75,16 +75,33 @@ for (sg in sys_groups) {
     frac_leach_vals <- if ("Frac_LeachMS_pct" %in% names(mms_rows))
       setNames(suppressWarnings(as.numeric(mms_rows$Frac_LeachMS_pct)) / 100,
                mms_rows$mms_type)[keep] else NULL
+
+    # Andreas 2026-05 follow-up (C4 / C6): build per-MMS uncertainty matrices.
+    mc_n_iter <- 10000
+    mr_mcf_scaled <- mms_rows
+    for (col in c("MCF_pct","lower_mcf","upper_mcf"))
+      if (col %in% names(mr_mcf_scaled))
+        mr_mcf_scaled[[col]] <- suppressWarnings(as.numeric(mr_mcf_scaled[[col]])) / 100
+    mcf_samples <- sample_per_mms_param(mr_mcf_scaled, "MCF_pct",
+                                         "lower_mcf", "upper_mcf",
+                                         "distribution_mcf", mc_n_iter, "pert")
+    ef3_samples <- sample_per_mms_param(mms_rows, "EF3",
+                                         "lower_ef3", "upper_ef3",
+                                         "distribution_ef3", mc_n_iter, "pert")
+    if (!is.null(mcf_samples)) mcf_samples <- mcf_samples[, names(mms_fracs), drop = FALSE]
+    if (!is.null(ef3_samples)) ef3_samples <- ef3_samples[, names(mms_fracs), drop = FALSE]
   } else {
     mms_fracs <- c(pasture = 1.0)
     mcf_vals  <- c(pasture = 0.015)
     ef3_vals  <- c(pasture = 0.02)
     frac_gas_vals <- frac_leach_vals <- NULL
+    mcf_samples <- ef3_samples <- NULL
   }
   systems_data[[sg]] <- list(
     param_specs = sys_specs, corr_matrix = NULL, ef_corr_matrix = NULL,
     mms_fractions = mms_fracs, mcf_values = mcf_vals, ef3_values = ef3_vals,
-    frac_gas_values = frac_gas_vals, frac_leach_values = frac_leach_vals
+    frac_gas_values = frac_gas_vals, frac_leach_values = frac_leach_vals,
+    mcf_samples = mcf_samples, ef3_samples = ef3_samples
   )
   cat(sprintf("  [%s] N parameters=%d, MMS=%s, MMS%%=%s\n",
               sg, nrow(sys_specs), paste(names(mms_fracs), collapse="/"),

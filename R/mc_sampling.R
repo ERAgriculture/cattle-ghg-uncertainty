@@ -151,6 +151,41 @@ compute_correlation_from_timeseries <- function(pop_data) {
   as.matrix(Matrix::nearPD(cor_matrix, corr = TRUE)$mat)
 }
 
+# Andreas 2026-05 follow-up (C4 / C6 root cause): per-MMS uncertainty sampler.
+# Manure_Management exposes lower_mcf / upper_mcf / distribution_mcf, and the
+# same triplet for EF3, Frac_GasMS, Frac_LeachMS. Previously only the central
+# values flowed into the calc; the uncertainty triplets were silently dropped.
+# This helper builds an n_iter x n_MMS matrix sampled per MMS from its own
+# distribution. If any MMS has missing lower/upper/dist for the target column,
+# that MMS broadcasts the central value (no MC variability for that one).
+sample_per_mms_param <- function(mms_rows, value_col, lower_col, upper_col,
+                                  dist_col, n_iter, default_dist = "pert") {
+  if (is.null(mms_rows) || nrow(mms_rows) == 0) return(NULL)
+  mms_names <- as.character(mms_rows$mms_type)
+  out <- matrix(NA_real_, nrow = n_iter, ncol = length(mms_names))
+  colnames(out) <- mms_names
+  for (j in seq_along(mms_names)) {
+    mu <- suppressWarnings(as.numeric(mms_rows[[value_col]][j]))
+    lo <- if (lower_col %in% names(mms_rows))
+      suppressWarnings(as.numeric(mms_rows[[lower_col]][j])) else NA_real_
+    hi <- if (upper_col %in% names(mms_rows))
+      suppressWarnings(as.numeric(mms_rows[[upper_col]][j])) else NA_real_
+    dist <- if (dist_col %in% names(mms_rows))
+      as.character(mms_rows[[dist_col]][j]) else NA_character_
+    if (is.na(dist) || !nzchar(dist)) dist <- default_dist
+    if (is.na(mu)) {
+      out[, j] <- 0  # caller fills with default downstream
+      next
+    }
+    if (is.na(lo) || is.na(hi) || isTRUE(all.equal(lo, hi)) || lo >= hi) {
+      out[, j] <- mu                      # no uncertainty → broadcast central value
+    } else {
+      out[, j] <- sample_distribution(n_iter, dist, mu, lo, hi)
+    }
+  }
+  out
+}
+
 # Dirichlet MMS-allocation sampling (introduced in Round 7 T4.21) was removed
 # in the Andreas 2026-05 follow-up: it is not explicitly cited in IPCC 2006 /
 # 2019 Refinement guidance, and the diagnostic run-through proved it leaves

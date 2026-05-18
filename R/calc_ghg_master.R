@@ -124,7 +124,15 @@ ghg_emissions_vec <- function(
   Frac_LEACH_PRP = NULL,
   # Andreas 2026-05 follow-up: MilkPR (milk protein %, IPCC 2006 Table 10.11)
   # threaded through to calc_n_excretion. NULL/scalar/vector all supported.
-  MilkPR = NULL
+  MilkPR = NULL,
+  # Andreas 2026-05 follow-up (C4 / C6): per-iteration per-MMS uncertainty
+  # matrices (n_iter × n_MMS). When supplied, the named per-MMS vector for
+  # iteration i is row mat[i, ], used in place of the scalar mcf_values /
+  # ef3_values / frac_gas_values / frac_leach_values for that iteration.
+  mcf_samples        = NULL,
+  ef3_samples        = NULL,
+  frac_gas_samples   = NULL,
+  frac_leach_samples = NULL
 ) {
   n <- length(cattle_pop)
   results <- data.frame(
@@ -155,19 +163,39 @@ ghg_emissions_vec <- function(
   tw_vec <- if (is.null(Tw)) rep(20, n) else
             if (length(Tw) == 1) rep(Tw, n) else Tw
 
+  # Andreas 2026-05 follow-up (C4 / C6): per-iteration MMS uncertainty.
+  # When a sample matrix is supplied, row i replaces the corresponding
+  # named scalar vector for iteration i. Caller must order the matrix
+  # columns to match the MMS keys in `mms_fractions`. NA entries fall
+  # back to the scalar value for that MMS.
+  .row_or_scalar <- function(mat, scalar_vec, i) {
+    if (is.null(mat)) return(scalar_vec)
+    out <- setNames(as.numeric(mat[i, ]), colnames(mat))
+    bad <- is.na(out)
+    if (any(bad) && !is.null(scalar_vec)) {
+      sc <- scalar_vec[colnames(mat)]
+      out[bad] <- sc[bad]
+    }
+    out
+  }
+
   for (i in seq_len(n)) {
+    mcf_i <- .row_or_scalar(mcf_samples, mcf_values, i)
+    ef3_i <- .row_or_scalar(ef3_samples, ef3_values, i)
+    fg_i  <- .row_or_scalar(frac_gas_samples,   frac_gas_values,   i)
+    fl_i  <- .row_or_scalar(frac_leach_samples, frac_leach_values, i)
     r <- ghg_emissions(
       cattle_pop[i], live_weight[i], weight_gain[i], mature_weight[i],
       milk_yield[i], milk_fat[i], pct_lactating[i],
       hours[i], DE[i], Cfi[i], Ca[i], C_growth[i], Cp[i],
       Ym[i], Bo[i], ASH[i], UE[i], CP[i],
-      mms_fractions, mcf_values, ef3_values,
+      mms_fractions, mcf_i, ef3_i,
       EF3_PRP[i], Frac_GASMS[i], EF4[i], EF5[i], Frac_LEACH_H[i],
       gwp,
       Tw = tw_vec[i],
       pct_calving = if (length(pct_calving) > 1) pct_calving[i] else pct_calving,
-      frac_gas_values   = frac_gas_values,
-      frac_leach_values = frac_leach_values,
+      frac_gas_values   = fg_i,
+      frac_leach_values = fl_i,
       Frac_GASM_PRP  = prp_fg_vec[i],
       Frac_LEACH_PRP = prp_fl_vec[i],
       MilkPR         = milkpr_vec[i]
