@@ -13,11 +13,10 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
                                # Round 7 T4.3: unified copula across AD + coefficients
                                unified_corr_matrix = NULL,
                                # Round 7 R1.14: pre-sampled coefficient block (trend mode)
-                               pre_sampled_coefficients = NULL,
-                               # Round 7 T4.21: per-iteration MMS fractions matrix
-                               # (n_iter x n_mms). When supplied, overrides the scalar
-                               # mms_fractions argument with row i for iteration i.
-                               mms_fractions_matrix = NULL) {
+                               pre_sampled_coefficients = NULL) {
+  # Andreas 2026-05 follow-up: the Dirichlet `mms_fractions_matrix` argument
+  # was removed because the Dirichlet MMS-allocation sampling it enabled is
+  # not cited in IPCC 2006 / 2019 guidance. MMS% is now deterministic.
   samples <- generate_mc_samples(param_specs, corr_matrix, n_iter, seed, ef_corr_matrix,
                                   unified_corr_matrix = unified_corr_matrix,
                                   pre_sampled_coefficients = pre_sampled_coefficients)
@@ -74,8 +73,7 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     gwp = gwp,
     Tw = Tw, pct_calving = pct_calving,
     frac_gas_values   = frac_gas_values,
-    frac_leach_values = frac_leach_values,
-    mms_fractions_matrix = mms_fractions_matrix
+    frac_leach_values = frac_leach_values
   )
 
   list(samples = samples, results = results)
@@ -103,8 +101,7 @@ run_inventory_simulation <- function(systems_data, n_iter = 10000, gwp = "AR5",
       frac_gas_values   = sys$frac_gas_values,
       frac_leach_values = sys$frac_leach_values,
       unified_corr_matrix      = sys$unified_corr_matrix,
-      pre_sampled_coefficients = sys$pre_sampled_coefficients,
-      mms_fractions_matrix     = sys$mms_fractions_matrix
+      pre_sampled_coefficients = sys$pre_sampled_coefficients
     )
     by_system[[sys_name]] <- sim
   }

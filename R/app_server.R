@@ -893,28 +893,13 @@ app_server <- function(input, output, session) {
               if (nrow(rv$ef_corr_matrix) == ef_n) rv$ef_corr_matrix else NULL
             } else NULL
 
-            # Round 7 T4.21: build per-iteration MMS allocation matrix from a
-            # Dirichlet on the simplex with concentration controlled by the
-            # mms_concentration input. concentration <= 0 disables sampling
-            # and falls back to deterministic shares.
-            mms_matrix <- NULL
-            mc_n_iter <- if (!is.null(input$n_iter)) input$n_iter else 10000
-            conc <- if (!is.null(input$mms_concentration)) input$mms_concentration else 0
-            if (length(mms_fracs) >= 2 && !is.na(conc) && conc > 0) {
-              mms_matrix <- sample_dirichlet_simplex(
-                p = as.numeric(mms_fracs),
-                n_iter = mc_n_iter,
-                names_vec = names(mms_fracs),
-                concentration = conc
-              )
-            }
-
+            # Andreas 2026-05 follow-up: Dirichlet MMS-allocation sampling
+            # removed (not in IPCC guidance; MMS% is now deterministic).
             systems_data[[sg]] <- list(
               param_specs = sys_specs, corr_matrix = corr, ef_corr_matrix = ef_corr,
               unified_corr_matrix = unified_corr,
               mms_fractions = mms_fracs, mcf_values = mcf_vals, ef3_values = ef3_vals,
-              frac_gas_values = frac_gas_vals, frac_leach_values = frac_leach_vals,
-              mms_fractions_matrix = mms_matrix
+              frac_gas_values = frac_gas_vals, frac_leach_values = frac_leach_vals
             )
           }
 

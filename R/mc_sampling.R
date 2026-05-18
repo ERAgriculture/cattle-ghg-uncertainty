@@ -135,32 +135,14 @@ compute_correlation_from_timeseries <- function(pop_data) {
   as.matrix(Matrix::nearPD(cor_matrix, corr = TRUE)$mat)
 }
 
-# Round 7 T4.21: Dirichlet sampling on the MMS allocation simplex per IPCC 2019
-# Box 3.1A. Returns an n_iter x length(alpha_vec) matrix where each row sums to
-# 1. Implementation uses the gamma-quotient construction so we don't pull in
-# `gtools` as a new dependency. concentration controls how tightly samples
-# cluster around the user's stated proportions: alpha_i = concentration * p_i.
-sample_dirichlet_simplex <- function(p, n_iter, names_vec = NULL,
-                                      concentration = 50) {
-  p <- as.numeric(p)
-  if (any(is.na(p)) || any(p < 0)) stop("Dirichlet means must be non-negative.")
-  s <- sum(p)
-  if (s <= 0) {
-    out <- matrix(rep(p, each = n_iter), nrow = n_iter)
-    if (!is.null(names_vec)) colnames(out) <- names_vec
-    return(out)
-  }
-  p <- p / s
-  alpha <- concentration * p
-  alpha[alpha < 1e-6] <- 1e-6  # numerical floor — degenerate categories
-  # Sample n_iter draws from Gamma(alpha_i, 1) and normalise per row
-  k <- length(alpha)
-  g <- matrix(NA_real_, nrow = n_iter, ncol = k)
-  for (j in seq_len(k)) g[, j] <- rgamma(n_iter, shape = alpha[j], rate = 1)
-  g <- g / rowSums(g)
-  if (!is.null(names_vec)) colnames(g) <- names_vec
-  g
-}
+# Dirichlet MMS-allocation sampling (introduced in Round 7 T4.21) was removed
+# in the Andreas 2026-05 follow-up: it is not explicitly cited in IPCC 2006 /
+# 2019 Refinement guidance, and the diagnostic run-through proved it leaves
+# the mean of every emission source unchanged (Dirichlet preserves marginal
+# means when per-MMS coefficients are constant). MMS% is now deterministic,
+# matching the IPCC Inventory Software's behaviour. If the feature ever needs
+# to come back, the previous `sample_dirichlet_simplex` implementation lives
+# in git history at commit 4191b73.
 
 # Round 7 R1.15: build the IPCC-guidance preset correlation matrix.
 # Pure function — no rv dependency. Returns a named partial matrix containing

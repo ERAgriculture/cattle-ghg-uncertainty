@@ -613,16 +613,9 @@ app_ui <- function() {
             sliderInput("n_iter", "Number of Iterations",
                         min = 1000, max = 50000, value = 10000, step = 1000),
             numericInput("seed", "Random Seed (for reproducibility)", value = 42),
-            # Round 7 T4.21: Dirichlet MMS allocation precision per IPCC 2019
-            # Box 3.1A. Higher concentration = tighter sampling around the user's
-            # stated MMS percentages. 50 ≈ ±5pp jitter on a 50/50 split.
-            # Set to 0 to disable Dirichlet sampling and use deterministic
-            # MMS shares (pre-Round-7 behaviour).
-            numericInput("mms_concentration",
-                          "MMS allocation precision (Dirichlet concentration)",
-                          value = 50, min = 0, max = 10000, step = 10),
-            div(style = "font-size:0.78rem; color:#666; margin-top:-6px; margin-bottom:8px;",
-                tags$em("0 = deterministic (no MMS uncertainty). 50 ≈ ±5pp on a 50/50 split. Higher = tighter around your stated percentages.")),
+            # Andreas 2026-05 follow-up: Dirichlet MMS-allocation control removed
+            # (no IPCC citation). MMS% is now treated deterministically across
+            # iterations, matching the IPCC Inventory Software's behaviour.
             selectInput("gwp_version", "GWP Assessment Report",
                         choices = c("AR4 (CH₄=25)" = "AR4",
                                     "AR5 (CH₄=28, N₂O=265)" = "AR5",

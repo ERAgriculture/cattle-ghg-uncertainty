@@ -3,18 +3,17 @@
 #   Excel/@Risk mean (33.23 t); for indirect N2O MM, ~43% below.
 #
 # Approach: reproduce his intensive-dairy run with his source data (from
-# 22-07-2023 Zimbabwe Uncertanity Analysis input data_WSv_SWa.xlsx), then
-# compute the same outputs three ways:
-#   A. Deterministic point estimate (no Monte Carlo)
-#   B. Monte Carlo with Dirichlet MMS% sampling OFF
-#   C. Monte Carlo with Dirichlet MMS% sampling ON (concentration = 50,
-#      the app's default)
+# 22-07-2023 Zimbabwe Uncertanity Analysis input data_WSv_SWa.xlsx).
+#   A. Deterministic point estimate (no Monte Carlo).
+#   B. Monte Carlo with deterministic MMS%.
 #
-# Decision tree:
-#   - If A disagrees with Excel ~33 t → equations themselves are wrong.
-#   - If A agrees with Excel but B disagrees → MC sampling bias unrelated
-#     to Dirichlet.
-#   - If A and B agree but C disagrees → Dirichlet is the cause.
+# Historical note: an earlier version of this script had a third run "C"
+# that used Dirichlet sampling on MMS% to test whether Dirichlet vs fixed
+# MMS% explained the Excel/tool gap. The result: B and C produced identical
+# means (Dirichlet preserves marginal means when per-MMS coefficients are
+# constant), so Dirichlet was ruled out as the cause. Dirichlet sampling
+# was then removed from the app entirely (no IPCC citation; not part of
+# the IPCC Inventory Software flow).
 
 suppressPackageStartupMessages({
   library(MASS)
@@ -158,8 +157,8 @@ build_specs <- function(sub, p, n_pop) {
   fill_bounds(df)
 }
 
-# ---------- B. MC with Dirichlet OFF ----------
-cat("\n========== B. Monte Carlo, Dirichlet OFF ==========\n")
+# ---------- B. Monte Carlo (MMS% deterministic) ----------
+cat("\n========== B. Monte Carlo (deterministic MMS%) ==========\n")
 set.seed(42)
 n_iter <- 10000
 mc_b <- list()
@@ -168,8 +167,7 @@ for (sub in names(sub_pars)) {
   sim <- run_mc_simulation(
     param_specs   = specs, n_iter = n_iter,
     mms_fractions = mms_fractions, mcf_values = mcf_values, ef3_values = ef3_values,
-    gwp = "AR5", seed = 42,
-    mms_fractions_matrix = NULL    # ← Dirichlet OFF
+    gwp = "AR5", seed = 42
   )
   mc_b[[sub]] <- sim$results
 }
@@ -182,38 +180,10 @@ cat(sprintf("  Indirect N2O MM: mean=%.3f t, 95%% CI=[%.3f, %.3f]\n",
             mean(B_indir_v), quantile(B_indir_v, .025),
             quantile(B_indir_v, .975)))
 
-# ---------- C. MC with Dirichlet ON (concentration = 50, app default) ----------
-cat("\n========== C. Monte Carlo, Dirichlet ON (concentration=50) ==========\n")
-set.seed(42)
-mc_c <- list()
-for (sub in names(sub_pars)) {
-  specs <- build_specs(sub, sub_pars[[sub]], N[[sub]])
-  mms_mat <- sample_dirichlet_simplex(
-    p = as.numeric(mms_fractions), n_iter = n_iter,
-    names_vec = names(mms_fractions), concentration = 50)
-  sim <- run_mc_simulation(
-    param_specs   = specs, n_iter = n_iter,
-    mms_fractions = mms_fractions, mcf_values = mcf_values, ef3_values = ef3_values,
-    gwp = "AR5", seed = 42,
-    mms_fractions_matrix = mms_mat   # ← Dirichlet ON
-  )
-  mc_c[[sub]] <- sim$results
-}
-C_direct_v <- Reduce(`+`, lapply(mc_c, `[[`, "direct_n2o_mm_total"))
-C_indir_v  <- Reduce(`+`, lapply(mc_c, `[[`, "indirect_n2o_mm_total"))
-cat(sprintf("  Direct N2O MM  : mean=%.3f t, 95%% CI=[%.3f, %.3f]\n",
-            mean(C_direct_v), quantile(C_direct_v, .025),
-            quantile(C_direct_v, .975)))
-cat(sprintf("  Indirect N2O MM: mean=%.3f t, 95%% CI=[%.3f, %.3f]\n",
-            mean(C_indir_v), quantile(C_indir_v, .025),
-            quantile(C_indir_v, .975)))
-
 cat("\n========== Comparison summary ==========\n")
 cat(sprintf("                              | direct N2O MM  | indirect N2O MM\n"))
 cat(sprintf("Excel/@Risk (Andreas)         | 33.23 t        | 16.89 t\n"))
 cat(sprintf("rShiny simulated (Andreas)    | 24.77 t        |  9.69 t\n"))
 cat(sprintf("A. Deterministic              | %6.2f t       | %6.2f t\n",  A_direct,  A_indir))
-cat(sprintf("B. MC, Dirichlet OFF (mean)   | %6.2f t       | %6.2f t\n",
+cat(sprintf("B. MC (deterministic MMS%%)    | %6.2f t       | %6.2f t\n",
             mean(B_direct_v), mean(B_indir_v)))
-cat(sprintf("C. MC, Dirichlet ON  (mean)   | %6.2f t       | %6.2f t\n",
-            mean(C_direct_v), mean(C_indir_v)))

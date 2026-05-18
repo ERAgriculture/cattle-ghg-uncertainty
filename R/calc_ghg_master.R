@@ -113,10 +113,6 @@ ghg_emissions_vec <- function(
   Tw = 20, pct_calving = 1,
   frac_gas_values   = NULL,
   frac_leach_values = NULL,
-  # Round 7 T4.21: per-iteration MMS allocation matrix (n_iter x n_mms,
-  # rows sum to 1) sampled from a Dirichlet on the simplex. When supplied,
-  # row i is used for iteration i instead of the broadcast scalar mms_fractions.
-  mms_fractions_matrix = NULL,
   # Andreas 2026-05 #10: PRP-specific volatilization/leaching fractions
   # (IPCC 2019 Table 11.3). NULL = broadcast a constant from IPCC defaults.
   Frac_GASM_PRP  = NULL,
@@ -135,9 +131,8 @@ ghg_emissions_vec <- function(
     total_co2e = numeric(n)
   )
 
-  use_dir <- !is.null(mms_fractions_matrix) &&
-             nrow(mms_fractions_matrix) == n &&
-             !is.null(colnames(mms_fractions_matrix))
+  # Andreas 2026-05 follow-up: removed Dirichlet `mms_fractions_matrix` path —
+  # MMS% is now deterministic across iterations (matches IPCC Inventory Software).
 
   # Broadcast PRP fractions to length n if scalar / NULL (back-compat path).
   prp_fg_vec <- if (is.null(Frac_GASM_PRP))  rep(0.21, n) else
@@ -146,17 +141,12 @@ ghg_emissions_vec <- function(
                 if (length(Frac_LEACH_PRP) == 1) rep(Frac_LEACH_PRP, n) else Frac_LEACH_PRP
 
   for (i in seq_len(n)) {
-    mms_i <- if (use_dir) {
-      setNames(as.numeric(mms_fractions_matrix[i, ]), colnames(mms_fractions_matrix))
-    } else {
-      mms_fractions
-    }
     r <- ghg_emissions(
       cattle_pop[i], live_weight[i], weight_gain[i], mature_weight[i],
       milk_yield[i], milk_fat[i], pct_lactating[i],
       hours[i], DE[i], Cfi[i], Ca[i], C_growth[i], Cp[i],
       Ym[i], Bo[i], ASH[i], UE[i], CP[i],
-      mms_i, mcf_values, ef3_values,
+      mms_fractions, mcf_values, ef3_values,
       EF3_PRP[i], Frac_GASMS[i], EF4[i], EF5[i], Frac_LEACH_H[i],
       gwp,
       Tw = Tw, pct_calving = if (length(pct_calving) > 1) pct_calving[i] else pct_calving,
