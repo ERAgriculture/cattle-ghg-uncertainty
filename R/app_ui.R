@@ -342,30 +342,35 @@ app_ui <- function() {
                 icon("info-circle"),
                 " Custom mode selected. Pick an IPCC version, download the matching template, fill it in, then upload below.")
           ),
-          hr(),
-          # Andreas 2026-05 (follow-up): reordered so the user picks an IPCC
-          # version FIRST, downloads the matching template, then uploads.
-          # Round 7.1: IPCC version picker drives the downloaded template's
-          # MMS dropdown (filtered to systems valid for that version) and the
-          # Inventory_Metadata `ipcc_version` cell.
-          h5("1. Pick an IPCC Guidelines version"),
-          radioButtons("template_version", label = NULL,
-                        choices = c("IPCC 2006" = "2006",
-                                    "IPCC 2019 Refinement" = "2019_refinement"),
-                        selected = character(0), inline = TRUE),
-          div(style = "font-size:0.78rem; color:#666; margin-top:-6px; margin-bottom:8px;",
-              tags$em("The MMS dropdown in the downloaded template will be filtered to manure systems valid for the version you pick here.")),
-          h5("2. Download a template"),
-          downloadButton("download_template", "Download Blank Template",
-                         class = "btn-outline-success btn-sm"),
-          downloadButton("download_template_example", "Download Template with Example",
-                         class = "btn-outline-primary btn-sm mt-2"),
-          div(style = "font-size:0.78rem; color:#666; margin-top:6px;",
-              tags$em("If no IPCC version is picked, the download is blocked and the app will prompt you to select one.")),
-          hr(),
-          h5("3. Upload your filled template"),
-          fileInput("data_upload", "Upload Excel Template (.xlsx)",
-                    accept = ".xlsx"),
+          # Andreas 2026-05 follow-up: the IPCC version picker, template
+          # downloads and upload section only apply to the Custom Upload
+          # path — hide them entirely for the built-in example datasets so
+          # the sidebar isn't cluttered.
+          conditionalPanel(
+            condition = "input.country == 'custom'",
+            hr(),
+            # Round 7.1: IPCC version picker drives the downloaded template's
+            # MMS dropdown (filtered to systems valid for that version) and
+            # the Inventory_Metadata `ipcc_version` cell.
+            h5("1. Pick an IPCC Guidelines version"),
+            radioButtons("template_version", label = NULL,
+                          choices = c("IPCC 2006" = "2006",
+                                      "IPCC 2019 Refinement" = "2019_refinement"),
+                          selected = character(0), inline = TRUE),
+            div(style = "font-size:0.78rem; color:#666; margin-top:-6px; margin-bottom:8px;",
+                tags$em("The MMS dropdown in the downloaded template will be filtered to manure systems valid for the version you pick here.")),
+            h5("2. Download a template"),
+            downloadButton("download_template", "Download Blank Template",
+                           class = "btn-outline-success btn-sm"),
+            downloadButton("download_template_example", "Download Template with Example",
+                           class = "btn-outline-primary btn-sm mt-2"),
+            div(style = "font-size:0.78rem; color:#666; margin-top:6px;",
+                tags$em("If no IPCC version is picked, the download is blocked and the app will prompt you to select one.")),
+            hr(),
+            h5("3. Upload your filled template"),
+            fileInput("data_upload", "Upload Excel Template (.xlsx)",
+                      accept = ".xlsx")
+          ),
           hr(),
           h5("Validation"),
           uiOutput("validation_status")
