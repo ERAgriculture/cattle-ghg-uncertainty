@@ -835,10 +835,13 @@ app_server <- function(input, output, session) {
 
     rv$sim_running <- TRUE
     rv$sim_error   <- NULL
-    n_iter_fmt <- format(input$n_iter, big.mark = ",")
+    # selectInput returns a character string; coerce once here so all downstream
+    # code receives an integer without needing individual as.integer() calls.
+    n_iter_val <- as.integer(input$n_iter)
+    n_iter_fmt <- format(n_iter_val, big.mark = ",")
 
     rv$sim_log <- paste0(rv$sim_log, "\n--- Starting simulation ---\n")
-    rv$sim_log <- paste0(rv$sim_log, "Iterations: ", input$n_iter, "\n")
+    rv$sim_log <- paste0(rv$sim_log, "Iterations: ", n_iter_val, "\n")
     rv$sim_log <- paste0(rv$sim_log, "GWP: ", input$gwp_version, "\n")
     if (!is.null(rv$ef_corr_matrix)) {
       rho_val <- if (!is.null(input$ef_corr_rho)) input$ef_corr_rho else "?"
@@ -956,7 +959,7 @@ app_server <- function(input, output, session) {
                 # Was previously dropped — only central values were used as
                 # deterministic per-iteration constants, so MCF never showed
                 # up in the MM-CH4 tornado despite huge bounds in real data.
-                mc_n_iter <- if (!is.null(input$n_iter)) input$n_iter else 10000
+                mc_n_iter <- n_iter_val
                 # Pre-scale percentage cols to fractions so the sampler works
                 # in the same units the downstream calc expects.
                 mr_mcf_scaled <- mms_rows
@@ -1063,7 +1066,7 @@ app_server <- function(input, output, session) {
                              n_iter_fmt, n_sys))
 
           sim_result <- run_inventory_simulation(
-            systems_data, n_iter = input$n_iter,
+            systems_data, n_iter = n_iter_val,
             gwp = input$gwp_version, seed = input$seed,
             # Andreas 2026-05 follow-up: Tw is now sourced exclusively from
             # the Parameters template (per sub-category) — the UI input was
@@ -1115,44 +1118,96 @@ app_server <- function(input, output, session) {
           rv$uncertainty <- calc_all_uncertainty(sim_result$inventory)
           rv$sim_log <- paste0(rv$sim_log, "Simulation complete.\n")
 
-          # ---- Stage 4: decomposition (3 additional MC runs) ----
-          if (input$run_decomposition && length(systems_data) == 1) {
-            sg <- names(systems_data)[1]
-            setProgress(0.48, detail = "Running AD-only simulation...")
-            # decompose_uncertainty runs combined + AD-only + EF-only internally
-            # progress jumps to ~90% when it returns
-            rv$decomposition <- decompose_uncertainty(
-              systems_data[[sg]]$param_specs,
-              systems_data[[sg]]$corr_matrix,
-              n_iter         = input$n_iter,
-              mms_fractions  = mms_fracs, mcf_values = mcf_vals, ef3_values = ef3_vals,
-              gwp            = input$gwp_version, seed = input$seed,
-              ef_corr_matrix = systems_data[[sg]]$ef_corr_matrix
+          # ---- Stage 4: decomposition (AD-only + EF-only, multi-group safe) ----
+          # Run two additional full-inventory simulations with parameters locked:
+          #   AD-only  — all emission-factor/coefficient params fixed at their means
+          #   EF-only  — all activity-data params fixed at their means
+          # Works for any number of cattle groups because it uses the same
+          # run_inventory_simulation() pipeline as the main run.
+          if (input$run_decomposition) {
+            setProgress(0.48, detail = sprintf("Running AD-only simulation (%d group(s))...",
+                                               length(systems_data)))
+
+            fix_params <- function(sd, fix_type) {
+              ps <- sd$param_specs
+              ps$param_type[is.na(ps$param_type)] <- "coefficient"
+              rows <- ps$param_type == fix_type
+              ps$distribution[rows] <- "constant"
+              ps$lower[rows] <- ps$mean[rows]
+              ps$upper[rows] <- ps$mean[rows]
+              sd$param_specs <- ps
+              if (fix_type == "coefficient") sd$ef_corr_matrix <- NULL
+              if (fix_type == "activity_data") {
+                sd$corr_matrix         <- NULL
+                sd$unified_corr_matrix <- NULL
+              }
+              sd
+            }
+
+            systems_ad <- lapply(systems_data, fix_params, fix_type = "coefficient")
+            ad_result  <- run_inventory_simulation(
+              systems_ad, n_iter = n_iter_val,
+              gwp = input$gwp_version, seed = input$seed,
+              pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1
+            )
+
+            setProgress(0.70, detail = sprintf("Running EF-only simulation (%d group(s))...",
+                                               length(systems_data)))
+            systems_ef <- lapply(systems_data, fix_params, fix_type = "activity_data")
+            ef_result  <- run_inventory_simulation(
+              systems_ef, n_iter = n_iter_val,
+              gwp = input$gwp_version, seed = input$seed,
+              pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1
+            )
+
+            rv$decomposition <- list(
+              combined = rv$uncertainty,
+              ad_only  = calc_all_uncertainty(ad_result$inventory),
+              ef_only  = calc_all_uncertainty(ef_result$inventory)
             )
             rv$ipcc_table <- format_ipcc_table(rv$decomposition)
-            rv$sim_log <- paste0(rv$sim_log, "Uncertainty decomposition complete.\n")
+            rv$sim_log <- paste0(rv$sim_log,
+              sprintf("Uncertainty decomposition complete (%d group(s)).\n", length(systems_data)))
             setProgress(0.90, detail = "Decomposition complete.")
           } else {
-            skip_reason <- if (!input$run_decomposition) {
-              "Uncertainty decomposition skipped (checkbox unchecked)."
-            } else {
-              sprintf(
-                "Uncertainty decomposition skipped: your data has %d cattle groups. AD/EF decomposition requires a single-group inventory. To generate the IPCC Table 3.3 report, run each cattle group separately.",
-                length(systems_data))
-            }
-            rv$sim_log <- paste0(rv$sim_log, skip_reason, "\n")
+            rv$sim_log  <- paste0(rv$sim_log,
+              "Uncertainty decomposition skipped (checkbox unchecked).\n")
             rv$ipcc_table <- NULL
             setProgress(0.90, detail = "Decomposition skipped.")
           }
 
           # ---- Stage 5: sensitivity analysis ----
+          # For multi-group inventories, combine each group's parameter samples
+          # (column-labelled by sub-category) and regress against the TOTAL
+          # inventory CO2eq. This gives true aggregate sensitivity rankings rather
+          # than rankings for the first group only.
+          .aggregate_sensitivity <- function(by_system, total_co2e) {
+            if (length(by_system) == 0) return(NULL)
+            if (length(by_system) == 1) {
+              samp <- by_system[[1]]$samples
+              if (is.null(samp) || ncol(samp) == 0) return(NULL)
+              return(sensitivity_analysis(samp, total_co2e, method = "both"))
+            }
+            blocks <- lapply(names(by_system), function(sn) {
+              samp <- by_system[[sn]]$samples
+              if (is.null(samp) || ncol(samp) == 0) return(NULL)
+              # Use the sub-category segment (last "||"-delimited part) as prefix
+              label <- trimws(tail(strsplit(sn, "||", fixed = TRUE)[[1]], 1L))
+              colnames(samp) <- paste0(label, ".", colnames(samp))
+              samp
+            })
+            blocks <- Filter(Negate(is.null), blocks)
+            if (length(blocks) == 0) return(NULL)
+            sensitivity_analysis(do.call(cbind, blocks), total_co2e, method = "both")
+          }
+
           setProgress(0.92, detail = "Running sensitivity analysis...")
           if (length(sim_result$by_system) > 0) {
-            first_sys <- sim_result$by_system[[1]]
-            rv$sensitivity <- sensitivity_analysis(
-              first_sys$samples, first_sys$results$total_co2e, method = "both"
-            )
-            rv$sim_log <- paste0(rv$sim_log, "Sensitivity analysis complete.\n")
+            rv$sensitivity <- .aggregate_sensitivity(
+              sim_result$by_system, sim_result$inventory$total_co2e)
+            rv$sim_log <- paste0(rv$sim_log,
+              sprintf("Sensitivity analysis complete (%d group(s)).\n",
+                      length(sim_result$by_system)))
           }
 
           # ---- Stage 6: comparison run (no correlations) ----
@@ -1166,15 +1221,13 @@ app_server <- function(input, output, session) {
               s
             })
             nocorr_result <- run_inventory_simulation(
-              systems_nocorr, n_iter = input$n_iter,
+              systems_nocorr, n_iter = n_iter_val,
               gwp = input$gwp_version, seed = input$seed
             )
             rv$comparison_result <- nocorr_result
             if (length(nocorr_result$by_system) > 0) {
-              first_nocorr <- nocorr_result$by_system[[1]]
-              rv$comparison_sensitivity <- sensitivity_analysis(
-                first_nocorr$samples, first_nocorr$results$total_co2e, method = "both"
-              )
+              rv$comparison_sensitivity <- .aggregate_sensitivity(
+                nocorr_result$by_system, nocorr_result$inventory$total_co2e)
             }
             rv$sim_log <- paste0(rv$sim_log, "Comparison (no correlations) complete.\n")
             setProgress(0.99, detail = "Comparison complete.")
@@ -1625,8 +1678,7 @@ app_server <- function(input, output, session) {
           style = "margin-bottom:12px;",
           icon("triangle-exclamation"), " ",
           tags$strong("IPCC Table 3.3 not available for this run. "),
-          "AD/EF uncertainty decomposition requires a single-group inventory. ",
-          "If your data has multiple cattle groups, run each group separately to obtain the decomposed table. ",
+          "Enable 'Run uncertainty decomposition (AD/EF/Combined)' on Tab 5 and re-run the simulation. ",
           "Check the Simulation Log on Tab 5 for details.")
     }
   })
@@ -1827,7 +1879,7 @@ app_server <- function(input, output, session) {
         rv$mc_results$inventory, rv$uncertainty,
         rv$sensitivity, rv$ipcc_table, file,
         settings = list(
-          n_iter           = input$n_iter,
+          n_iter           = as.integer(input$n_iter),
           corr_mode        = input$corr_mode,
           ef_corr_mode     = input$ef_corr_mode,
           run_comparison   = input$run_comparison,
@@ -1904,7 +1956,7 @@ app_server <- function(input, output, session) {
         need(!is.null(rv$uncertainty), "Uncertainty metrics not yet computed.")
       )
       settings <- list(
-        n_iter            = input$n_iter,
+        n_iter            = as.integer(input$n_iter),
         corr_mode         = input$corr_mode,
         ef_corr_mode      = input$ef_corr_mode,
         run_comparison    = isTRUE(input$run_comparison),
@@ -1938,7 +1990,7 @@ app_server <- function(input, output, session) {
 
   observeEvent(input$run_trend, {
     req(rv$param_specs)
-    n_iter <- if (!is.null(input$n_iter)) input$n_iter else 10000
+    n_iter <- as.integer(input$n_iter %||% 10000)
     n_iter_fmt <- format(n_iter, big.mark = ",")
     # Round 9 follow-up: withProgress bar mirrors the single-year handler so
     # the user gets feedback during the per-year MC loop (which can take ~1
@@ -2440,7 +2492,7 @@ app_server <- function(input, output, session) {
     content = function(file) {
       validate(need(!is.null(rv_trend$results),
                     "Run a trend simulation on Tab 7 before downloading."))
-      n_iter_val <- if (!is.null(input$n_iter)) input$n_iter else 10000
+      n_iter_val <- as.integer(input$n_iter %||% 10000)
       export_trend_xlsx(
         results_table        = rv_trend$results,
         slope                = rv_trend$slope,
@@ -2468,7 +2520,7 @@ app_server <- function(input, output, session) {
     content = function(file) {
       validate(need(!is.null(rv_trend$results),
                     "Run a trend simulation on Tab 7 before downloading."))
-      n_iter_val <- if (!is.null(input$n_iter)) input$n_iter else 10000
+      n_iter_val <- as.integer(input$n_iter %||% 10000)
       build_trend_summary_docx(
         path                 = file,
         trend_results        = rv_trend$results,

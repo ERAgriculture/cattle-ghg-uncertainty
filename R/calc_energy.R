@@ -45,11 +45,15 @@ calc_nep <- function(nem, Cp, pct_calving = 1) {
 
 # REM - Ratio of NE for maintenance to DE consumed (Eq 10.14)
 calc_rem <- function(DE) {
+  if (any(DE <= 0, na.rm = TRUE))
+    stop("calc_rem: DE must be > 0 (got ", DE, "). Check DE_pct in the Parameters sheet.")
   1.123 - (4.092e-3 * DE) + (1.126e-5 * DE^2) - (25.4 / DE)
 }
 
 # REG - Ratio of NE for growth to DE consumed (Eq 10.15)
 calc_reg <- function(DE) {
+  if (any(DE <= 0, na.rm = TRUE))
+    stop("calc_reg: DE must be > 0 (got ", DE, "). Check DE_pct in the Parameters sheet.")
   1.164 - (5.160e-3 * DE) + (1.308e-5 * DE^2) - (37.4 / DE)
 }
 

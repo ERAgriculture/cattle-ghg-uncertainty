@@ -1623,7 +1623,7 @@ build_ipcc_reference_sheet <- function() {
     stringsAsFactors=FALSE)
   gwp <- data.frame(category="GWP",
     subcategory=c("CH4/AR4","N2O/AR4","CH4/AR5","N2O/AR5","CH4/AR6","N2O/AR6"),
-    default_value=c(25,298,28,265,27.9,273), unit="kg CO2eq/kg gas",
+    default_value=c(25,298,28,265,27.0,273), unit="kg CO2eq/kg gas",
     ipcc_ref="IPCC AR WG1", depends_on="Assessment report",
     notes="100-yr GWP", stringsAsFactors=FALSE)
   bind_rows_safe(cfi, ca, cg, lw, ym, mcf_rows, ef3, gwp)
