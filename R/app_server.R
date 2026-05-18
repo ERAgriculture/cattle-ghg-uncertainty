@@ -480,6 +480,10 @@ app_server <- function(input, output, session) {
       tags$span(class = "badge bg-success",
                 style = "font-size:1rem; padding:6px 14px;",
                 paste(s$n_pass, "pass")),
+      if ((s$n_info %||% 0) > 0)
+        tags$span(class = "badge",
+                  style = "font-size:1rem; padding:6px 14px; background-color:#1565C0; color:#fff;",
+                  paste(s$n_info, "info")),
       tags$span(class = "badge bg-warning text-dark",
                 style = "font-size:1rem; padding:6px 14px;",
                 paste(s$n_warn, "warn")),
