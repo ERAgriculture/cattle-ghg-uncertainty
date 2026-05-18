@@ -627,7 +627,7 @@ app_ui <- function() {
           "Use ", tags$strong("1,000 only for a quick test run"),
           " to check that the model runs. Use a ", tags$strong("minimum of 10,000 iterations"),
           " for any result you intend to use — convergence is not guaranteed below 10,000. ",
-          "Higher is always better: 25,000–50,000 is recommended for final reporting, especially when correlations are enabled or you have many sub-categories. ",
+          "Higher is always better: 25,000–30,000 is recommended for final reporting, especially when correlations are enabled or you have many sub-categories. ",
           "To verify convergence, re-run with a different random seed: if the CV% changes by more than 1–2 percentage points, increase the number of iterations."),
       # R1.5: view toggle — output.sim_view is "settings" or "results"
       conditionalPanel(
