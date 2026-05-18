@@ -48,6 +48,15 @@ app_server <- function(input, output, session) {
   })
 
   # Helper: load an example dataset
+  # Helper: run ensure_completeness() immediately after loading any dataset so
+  # the imputed-parameter flags are set before the user reaches Tab 2 or Tab 5.
+  .apply_completeness <- function(region = NULL) {
+    comp <- ensure_completeness(rv$param_specs, region = region)
+    if (isTRUE(comp$valid) && length(comp$auto_filled) > 0) {
+      rv$param_specs <- comp$param_specs
+    }
+  }
+
   .load_example <- function(name) {
     # T0.3 + B1: distinct example datasets per country selection
     if (name == "uganda") {
@@ -64,6 +73,9 @@ app_server <- function(input, output, session) {
       rv$corr_matrix <- compute_corr_from_population(rv$population)
       rv$sim_log <- "Country Y (hypothetical pastoral non-dairy) example data loaded — 11 parameters, non_dairy / breeding_cows; 5-year synthetic time-series populated for correlation auto-mode.\n"
     }
+    # Flag any missing core parameters immediately so the Tab 1 notice appears
+    # without needing to run the simulation first.
+    .apply_completeness()
     rv$has_custom_upload <- FALSE
     rv$upload_status     <- list(type = "success",
                                  message = sprintf("%s example loaded — %d parameters (with example time-series)",
@@ -103,6 +115,12 @@ app_server <- function(input, output, session) {
       if (!is.null(parsed$corr_matrix))
         msg <- paste0(msg, " — correlation matrix loaded from Parameter_TimeSeries (",
                       nrow(parsed$corr_matrix), " parameters)")
+
+      # Flag missing core parameters immediately so Tab 1 shows the notice.
+      region_upload <- if (!is.null(parsed$metadata) &&
+                           nzchar(parsed$metadata$region %||% ""))
+        parsed$metadata$region else NULL
+      .apply_completeness(region = region_upload)
 
       rv$upload_status <- list(type = "success", message = msg)
       rv$sim_log <- paste0(rv$sim_log, "Custom data uploaded: ", msg, "\n")
@@ -398,6 +416,55 @@ app_server <- function(input, output, session) {
       class    = "compact stripe"
     )
   })
+
+  # Tab 1 (Data Input) inline notice — shown immediately when data is loaded.
+  # A simpler amber card than the Tab 2 DT: lists imputed parameter names and
+  # the IPCC default value used. No DT needed — the full details are on Tab 2.
+  output$imputed_params_notice_tab1 <- renderUI({
+    rows <- imputed_rows()
+    if (is.null(rows) || nrow(rows) == 0) return(NULL)
+    n <- nrow(rows)
+    param_list <- paste(rows$parameter, collapse = ", ")
+    tags$div(
+      style = "background:#FEF3C7; border-left:4px solid #F59E0B; border-radius:8px; padding:14px 16px; margin-bottom:14px;",
+      tags$p(style = "margin:0 0 6px; font-weight:600; color:#92400E;",
+             icon("triangle-exclamation"),
+             sprintf(" %d parameter%s auto-filled from IPCC defaults",
+                     n, if (n == 1) "" else "s")),
+      tags$p(style = "margin:0 0 8px; font-size:0.88rem; color:#92400E;",
+             tags$strong("Parameters: "), param_list),
+      tags$table(
+        style = "width:100%; border-collapse:collapse; font-size:0.82rem;",
+        tags$thead(
+          tags$tr(style = "background:rgba(245,158,11,0.15);",
+            tags$th(style = "padding:4px 8px; text-align:left;", "Parameter"),
+            tags$th(style = "padding:4px 8px; text-align:left;", "IPCC default used"),
+            tags$th(style = "padding:4px 8px; text-align:left;", "IPCC reference")
+          )
+        ),
+        tags$tbody(
+          lapply(seq_len(n), function(i) {
+            ref_val <- if ("ipcc_ref" %in% names(rows) && nzchar(rows$ipcc_ref[i] %||% ""))
+              rows$ipcc_ref[i] else {
+                cat_row <- PARAM_CATALOGUE[PARAM_CATALOGUE$parameter == rows$parameter[i], ]
+                if (nrow(cat_row) > 0) cat_row$ipcc_ref[1] else "—"
+              }
+            tags$tr(style = if (i %% 2 == 0) "background:rgba(245,158,11,0.08);" else "",
+              tags$td(style = "padding:4px 8px; font-weight:600;", rows$parameter[i]),
+              tags$td(style = "padding:4px 8px;",
+                      formatC(as.numeric(rows$mean[i]), digits = 4, format = "g")),
+              tags$td(style = "padding:4px 8px; color:#666;", ref_val)
+            )
+          })
+        )
+      ),
+      tags$p(style = "margin:8px 0 0; font-size:0.8rem; color:#92400E;",
+             icon("info-circle"),
+             " These are IPCC defaults — replace with country-specific values in your template where available. Full details and QA flags are on the ",
+             tags$strong("QA/QC"), " tab.")
+    )
+  })
+  outputOptions(output, "imputed_params_notice_tab1", suspendWhenHidden = FALSE)
 
   output$qaqc_summary_ui <- renderUI({
     df <- qaqc_result()

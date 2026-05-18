@@ -380,6 +380,10 @@ app_ui <- function() {
           h5("Validation"),
           uiOutput("validation_status")
         ),
+        conditionalPanel(
+          condition = "output.has_imputed_params == true",
+          uiOutput("imputed_params_notice_tab1")
+        ),
         bslib::card(
           bslib::card_header("Parameter Data"),
           bslib::card_body(DT::DTOutput("param_table"))
