@@ -75,7 +75,13 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     # default is 3.3 (IPCC 2006 Table 10.11 African-dairy mid-point).
     MilkPR         = get_param_alt("MilkPR", "protein_milk", 3.3),
     gwp = gwp,
-    Tw = Tw, pct_calving = pct_calving,
+    # Andreas 2026-05 follow-up: Tw (mean winter temperature for the IPCC
+    # Eq 10.2 cold-climate Cfi adjustment) is now sourced exclusively from
+    # the Parameters template via the sampled values. Default 20°C makes
+    # the adjustment inert (matches the IPCC formula's neutral baseline).
+    # The old global Tw argument was retained as a fallback only.
+    Tw          = get_param("Tw", 20),
+    pct_calving = pct_calving,
     frac_gas_values   = frac_gas_values,
     frac_leach_values = frac_leach_values
   )

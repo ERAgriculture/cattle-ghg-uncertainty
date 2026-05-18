@@ -142,13 +142,18 @@ ghg_emissions_vec <- function(
   # Andreas 2026-05 follow-up: removed Dirichlet `mms_fractions_matrix` path —
   # MMS% is now deterministic across iterations (matches IPCC Inventory Software).
 
-  # Broadcast PRP fractions to length n if scalar / NULL (back-compat path).
+  # Broadcast PRP fractions / MilkPR / Tw to length n if scalar / NULL.
   prp_fg_vec <- if (is.null(Frac_GASM_PRP))  rep(0.21, n) else
                 if (length(Frac_GASM_PRP)  == 1) rep(Frac_GASM_PRP,  n) else Frac_GASM_PRP
   prp_fl_vec <- if (is.null(Frac_LEACH_PRP)) rep(0.30, n) else
                 if (length(Frac_LEACH_PRP) == 1) rep(Frac_LEACH_PRP, n) else Frac_LEACH_PRP
   milkpr_vec <- if (is.null(MilkPR)) rep(3.3, n) else
                 if (length(MilkPR) == 1) rep(MilkPR, n) else MilkPR
+  # Andreas 2026-05 follow-up: Tw is now sourced from samples (catalogue row
+  # added per #23). Broadcast a scalar default if the caller hasn't supplied
+  # a per-iteration vector.
+  tw_vec <- if (is.null(Tw)) rep(20, n) else
+            if (length(Tw) == 1) rep(Tw, n) else Tw
 
   for (i in seq_len(n)) {
     r <- ghg_emissions(
@@ -159,7 +164,8 @@ ghg_emissions_vec <- function(
       mms_fractions, mcf_values, ef3_values,
       EF3_PRP[i], Frac_GASMS[i], EF4[i], EF5[i], Frac_LEACH_H[i],
       gwp,
-      Tw = Tw, pct_calving = if (length(pct_calving) > 1) pct_calving[i] else pct_calving,
+      Tw = tw_vec[i],
+      pct_calving = if (length(pct_calving) > 1) pct_calving[i] else pct_calving,
       frac_gas_values   = frac_gas_values,
       frac_leach_values = frac_leach_values,
       Frac_GASM_PRP  = prp_fg_vec[i],

@@ -639,15 +639,22 @@ app_ui <- function() {
                 " — the simulation cannot run without an explicit selection. ",
                 tags$em("(Most users tick all 5 for a full inventory.)")),
             hr(),
-            # E1, E3: IPCC software-aligned optional inputs (collapsible)
+            # Andreas 2026-05 follow-up: Tw moved to the Parameters template
+            # exclusively (per-sub-category column). The global UI input
+            # was removed because (a) it duplicated the template column,
+            # (b) the per-row template value was previously ignored, and
+            # (c) Andreas's comment #23 asked for per-row Tw so high-Andes
+            # and lowland production systems can use different winter
+            # temperatures. Set Tw on the Parameters sheet now.
             tags$details(
               tags$summary(tags$strong("IPCC software-aligned options (advanced)")),
               div(style = "padding: 8px 4px;",
-                  numericInput("tw",
-                               "Mean daily temperature in winter, Tw (°C)",
-                               value = 20, min = -40, max = 40, step = 1),
-                  div(style = "font-size:0.75rem; color:#666; margin-top:-8px; margin-bottom:8px;",
-                      tags$em("Triggers IPCC cold-climate Cfi adjustment when Tw < 20°C: Cfi(in_cold) = Cfi + 0.0048 × (20 − Tw). Leave at 20 for tropical / temperate regions.")),
+                  div(style = "font-size:0.85rem; color:#1B4332; margin-bottom:10px;",
+                      tags$strong("Mean winter temperature (Tw):"),
+                      " set per sub-category on the ",
+                      tags$em("Parameters"), " sheet of the upload template ",
+                      "(IPCC Eq 10.2 cold-climate Cfi adjustment). Default 20°C ",
+                      "= no adjustment (tropical / temperate regions)."),
                   sliderInput("pct_calving",
                               "Fraction of females that calve in a year (Cp pro-rate)",
                               min = 0, max = 1, value = 1, step = 0.05),

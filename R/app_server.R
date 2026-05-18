@@ -939,8 +939,10 @@ app_server <- function(input, output, session) {
           sim_result <- run_inventory_simulation(
             systems_data, n_iter = input$n_iter,
             gwp = input$gwp_version, seed = input$seed,
-            # E1, E3: read from UI inputs (default 20°C Tw, 1.0 = no Cp pro-rate)
-            Tw = if (!is.null(input$tw)) input$tw else 20,
+            # Andreas 2026-05 follow-up: Tw is now sourced exclusively from
+            # the Parameters template (per sub-category) — the UI input was
+            # removed. pct_calving is still read here as a single global
+            # value (Cp pro-rate applies inventory-wide).
             pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1
           )
 
