@@ -207,6 +207,23 @@ build_run_summary_docx <- function(path,
   doc <- .add_h2(doc, "Executive summary")
   doc <- .add_p(doc, .build_single_exec_summary(uncertainty, sensitivity, settings))
 
+  # Andreas 2026-05 C11: AD-uncertainty and EF-uncertainty per-source tables
+  # follow the exec summary, matching the mock-up. Only render when the
+  # decomposition was actually run (ipcc_table is the canonical signal).
+  if (!is.null(ipcc_table) && is.data.frame(ipcc_table) && nrow(ipcc_table) > 0) {
+    ad_ft <- .ad_ef_flextable(ipcc_table, kind = "AD")
+    if (!is.null(ad_ft)) {
+      doc <- .add_p(doc, "For IPCC reporting, the key results are:")
+      doc <- .add_p(doc, "Activity-data uncertainty:")
+      doc <- .add_flextable_safe(doc, .styled_flextable(ad_ft))
+    }
+    ef_ft <- .ad_ef_flextable(ipcc_table, kind = "EF")
+    if (!is.null(ef_ft)) {
+      doc <- .add_p(doc, "Emission-factor uncertainty:")
+      doc <- .add_flextable_safe(doc, .styled_flextable(ef_ft))
+    }
+  }
+
   # ---- Run settings -------------------------------------------------------
   doc <- .add_h2(doc, "1. What was run")
   doc <- .add_flextable_safe(doc, .styled_flextable(.settings_flextable(settings)))
@@ -268,8 +285,12 @@ build_run_summary_docx <- function(path,
 
   # ---- IPCC reporting context --------------------------------------------
   doc <- .add_h2(doc, "7. IPCC reporting context")
+  # Andreas 2026-05 C12: previous wording named a specific column ("column J")
+  # in the national inventory uncertainty table that we had not verified
+  # against the live IPCC 2006 Vol 1 Ch 3 / Annex 7 template. Reworded to
+  # describe the metric instead of pinning a column letter.
   doc <- .add_p(doc,
-    "This run follows IPCC 2006 Vol 1 Ch 3 Approach 2 (Monte Carlo) for combined uncertainty estimation. The headline CV% in section 4 is the value to enter in column J of the national inventory uncertainty table (Annex 7 / IPCC Table 3.3). The activity-data vs emission-factor split in section 3 follows the convention adopted in this tool — AD = animal population (N) only; coefficient (EF) = the 23 IPCC equation parameters that combine into the per-head emission factor.")
+    "This run follows IPCC 2006 Vol 1 Ch 3 Approach 2 (Monte Carlo) for combined uncertainty estimation. The headline CV % values in section 4 are the per-source combined-uncertainty figures used to populate the IPCC Annex 7 / Table 3.3 national inventory uncertainty table (CV % column). Cross-check the exact column letter against your national submission template. The activity-data vs emission-factor split follows the convention adopted in this tool — AD = animal population (N) only; coefficient (EF) = the IPCC equation parameters that combine into the per-head emission factor.")
   doc <- .add_p(doc,
     "Where parameters were auto-filled (section 2), the IPCC default carries the uncertainty bounds suggested by Penman et al. (2000) and Monni et al. (2007). For parameters with country-specific values, the uncertainty bounds entered on the Uncertainty tab of the app drive the Monte Carlo distribution.")
 
@@ -601,6 +622,24 @@ build_trend_summary_docx <- function(path,
 
 .ipcc_flextable <- function(ipcc_table) {
   flextable::flextable(ipcc_table)
+}
+
+# Andreas 2026-05 C11: per-reporting-category AD or EF uncertainty table for
+# the Word exec summary. `kind` is "AD" or "EF" — picks the matching column
+# from the IPCC summary table and trims to the per-source rows.
+.ad_ef_flextable <- function(ipcc_table, kind = c("AD", "EF")) {
+  kind <- match.arg(kind)
+  if (is.null(ipcc_table) || !is.data.frame(ipcc_table) || nrow(ipcc_table) == 0)
+    return(NULL)
+  cv_col <- if (kind == "AD") "AD uncertainty (%)" else "EF uncertainty (%)"
+  cat_col <- "Emission category"
+  if (!(cv_col %in% names(ipcc_table)) || !(cat_col %in% names(ipcc_table)))
+    return(NULL)
+  source_rows <- !grepl("^Total ", ipcc_table[[cat_col]])
+  df <- ipcc_table[source_rows, c(cat_col, "Gas", cv_col), drop = FALSE]
+  names(df)[3] <- if (kind == "AD") "AD uncertainty (CV %)" else "EF uncertainty (CV %)"
+  if (nrow(df) == 0) return(NULL)
+  flextable::flextable(df)
 }
 
 .trend_table_flextable <- function(trend_results) {

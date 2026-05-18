@@ -109,6 +109,25 @@ run_inventory_simulation <- function(systems_data, n_iter = 10000, gwp = "AR5",
     by_system[[sys_name]] <- sim
   }
 
+  # Andreas 2026-05 #33: harden against an empty by_system (or one whose
+  # per-iteration result frame has zero rows — which produces the cryptic
+  # "replacement has 0 rows, data has 5000" error when downstream code
+  # assigns to a pre-allocated column). Bail out with a descriptive error
+  # before the rowSums(sapply(...)) call instead.
+  if (length(by_system) == 0L) {
+    stop("run_inventory_simulation: no systems were simulated. Check that ",
+         "Parameters has at least one cattle_type+aggregation_level+sub_category ",
+         "group with a non-zero population.")
+  }
+  row_counts <- vapply(by_system, function(s) nrow(s$results), integer(1))
+  if (any(row_counts != n_iter)) {
+    stop("run_inventory_simulation: at least one system returned ",
+         row_counts[row_counts != n_iter][1], " iterations instead of the ",
+         "expected ", n_iter, ". This usually means a sampled parameter ",
+         "collapsed to length 0 — re-upload the template after checking ",
+         "that every Parameters row has a numeric `mean`.")
+  }
+
   # Sum across systems per iteration. Per-source columns kept *separately* for
   # MM and PRP (Andreas 2026-05 #27, C1 value-boxes) — totals retained for
   # back-compat with consumers that still expect total_direct_n2o /

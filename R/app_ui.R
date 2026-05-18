@@ -227,7 +227,8 @@ app_ui <- function() {
             tags$ul(
               tags$li("If you are not accounting for uncertainty on a parameter, enter the parameter value and set uncertainty_pct = 0 (or distribution = constant)."),
               tags$li("Set Milk = 0 for sub-categories that do not lactate; set WG = 0 for adult animals not gaining weight."),
-              tags$li("For asymmetric IPCC parameters (EF3_PRP, EF4, EF5, Frac_LEACH_H), supply explicit lower / upper bounds — the catalogue pre-fills Monni-2007 / Penman-2000 ranges if you leave them blank.")
+              tags$li("For asymmetric IPCC parameters (EF3_PRP, EF4, EF5, Frac_LEACH_H), supply explicit lower / upper bounds — the catalogue pre-fills Monni-2007 / Penman-2000 ranges if you leave them blank."),
+              tags$li("Two ways to fix QA/QC failures (Andreas 2026-05 #26): (a) edit values directly in the in-app Parameters table on Tab 1 — quick for one or two cells; or (b) edit the original Excel template and re-upload — easier when you have 100+ parameters and want a saved record of your final values. Both produce the same simulation inputs.")
             ),
             tags$h5("Preparing uncertainty inputs"),
             tags$ul(

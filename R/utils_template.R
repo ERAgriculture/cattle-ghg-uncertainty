@@ -62,7 +62,11 @@ PARAM_ALIASES <- c(
   "milk_yield"   = "Milk",
   "milk_fat"     = "Fat",
   "protein_milk" = "MilkPR",
-  "C_growth"     = "C"
+  "C_growth"     = "C",
+  # Andreas 2026-05 #6: IPCC mixes "W" (Eq 10.3) and "BW" (Eq 10.6, 10.17).
+  # Accept "BW" as an upload-only alias for the canonical "W" so users
+  # familiar with the "BW" convention can use it without confusion.
+  "BW"           = "W"
 )
 
 # ---------------------------------------------------------------------------
@@ -86,7 +90,7 @@ PARAM_CATALOGUE <- data.frame(
     "Average live body weight of the animals",
     "Mature (adult) body weight of the animals",
     "Average daily weight gain — set 0 for non-growing (adult) animals",
-    "Daily milk yield per lactating cow — set 0 for sub-categories that do not lactate",
+    "Daily milk yield per LACTATING cow (not sub-category-average — the tool multiplies by pct_lactating internally). Set 0 for sub-categories that do not lactate.",
     "Fat content of milk (% by weight)",
     "Fraction of cows currently lactating (0 to 1)",
     "Digestible energy as a percentage of gross energy — typical range 45-75%",
@@ -677,20 +681,41 @@ generate_template_openxlsx <- function(filepath, include_example,
                             colNames=FALSE)
     }
 
-    # Excel formulas for lower (col L=12) and upper (col M=13)
-    # Logic: use lower_bound/upper_bound override if filled, else ±pct formula
+    # Andreas 2026-05 #22c: for example rows we know the value + uncertainty_pct
+    # ahead of time, so pre-compute the lower/upper bounds as numeric cells.
+    # This avoids the openxlsx-formula auto-recalc quirk where the lower/upper
+    # cells showed blank until the user clicked into them. For blank rows we
+    # still need the formula so the bounds populate as soon as the user fills
+    # value + uncertainty_pct in Excel.
     g_col <- LETTERS[P_COL_IDX["value"]]           # "G"
     h_col <- LETTERS[P_COL_IDX["uncertainty_pct"]] # "H"
     i_col <- LETTERS[P_COL_IDX["lower_bound"]]     # "I"
     j_col <- LETTERS[P_COL_IDX["upper_bound"]]     # "J"
-    openxlsx::writeFormula(wb, "Parameters",
-      x = sprintf('=IF(%s%d<>"",%s%d,IF(AND(%s%d<>"",%s%d<>""),%s%d*(1-%s%d/100),\"\"))',
-                  i_col,r, i_col,r, g_col,r, h_col,r, g_col,r, h_col,r),
-      startRow=r, startCol=P_COL_IDX["lower"])
-    openxlsx::writeFormula(wb, "Parameters",
-      x = sprintf('=IF(%s%d<>"",%s%d,IF(AND(%s%d<>"",%s%d<>""),%s%d*(1+%s%d/100),\"\"))',
-                  j_col,r, j_col,r, g_col,r, h_col,r, g_col,r, h_col,r),
-      startRow=r, startCol=P_COL_IDX["upper"])
+    val_i <- row_data$value
+    unc_i <- row_data$uncertainty_pct
+    lb_i  <- row_data$lower_bound
+    ub_i  <- row_data$upper_bound
+    have_numeric <- is.numeric(val_i) && length(val_i) == 1 && !is.na(val_i) &&
+                    is.numeric(unc_i) && length(unc_i) == 1 && !is.na(unc_i)
+    if (have_numeric) {
+      lower_val <- if (!is.null(lb_i) && !is.na(lb_i) && is.numeric(lb_i)) lb_i
+                   else val_i * (1 - unc_i / 100)
+      upper_val <- if (!is.null(ub_i) && !is.na(ub_i) && is.numeric(ub_i)) ub_i
+                   else val_i * (1 + unc_i / 100)
+      openxlsx::writeData(wb, "Parameters", lower_val, startRow = r,
+                          startCol = P_COL_IDX["lower"], colNames = FALSE)
+      openxlsx::writeData(wb, "Parameters", upper_val, startRow = r,
+                          startCol = P_COL_IDX["upper"], colNames = FALSE)
+    } else {
+      openxlsx::writeFormula(wb, "Parameters",
+        x = sprintf('=IF(%s%d<>"",%s%d,IF(AND(%s%d<>"",%s%d<>""),%s%d*(1-%s%d/100),\"\"))',
+                    i_col,r, i_col,r, g_col,r, h_col,r, g_col,r, h_col,r),
+        startRow=r, startCol=P_COL_IDX["lower"])
+      openxlsx::writeFormula(wb, "Parameters",
+        x = sprintf('=IF(%s%d<>"",%s%d,IF(AND(%s%d<>"",%s%d<>""),%s%d*(1+%s%d/100),\"\"))',
+                    j_col,r, j_col,r, g_col,r, h_col,r, g_col,r, h_col,r),
+        startRow=r, startCol=P_COL_IDX["upper"])
+    }
   }
 
   # ── Apply styles to data rows ──────────────────────────────────────────────
@@ -770,15 +795,19 @@ generate_template_openxlsx <- function(filepath, include_example,
   openxlsx::addWorksheet(wb, "Manure_Management", tabColour = "#1B4332",
                          gridLines = TRUE)
 
-  # Round 7 R1.12: 8 new columns for per-MMS Frac_GasMS / Frac_LeachMS
+  # Round 7 R1.12: per-MMS Frac_GasMS / Frac_LeachMS columns.
+  # Andreas 2026-05 #22b: Bo removed from Manure_Management — it is animal-
+  # sub-category-specific (varies by dairy vs non-dairy, not by MMS) and the
+  # app reads it from the Parameters sheet only. The earlier MM column was
+  # never consumed and lacked uncertainty inputs (#22d), so it created
+  # confusion without affecting calculations.
   MM_COLS   <- c("cattle_type","aggregation_level","sub_category",
                  "mms_type","fraction_pct",
                  "MCF_pct","lower_mcf","upper_mcf","distribution_mcf",
                  "EF3","lower_ef3","upper_ef3","distribution_ef3",
-                 "Bo",
                  "Frac_GasMS_pct","lower_frac_gas","upper_frac_gas","distribution_frac_gas",
                  "Frac_LeachMS_pct","lower_frac_leach","upper_frac_leach","distribution_frac_leach")
-  MM_WIDTHS <- c(14, 20, 16, 18, 12, 10, 10, 10, 15, 10, 10, 10, 15, 8,
+  MM_WIDTHS <- c(14, 20, 16, 18, 12, 10, 10, 10, 15, 10, 10, 10, 15,
                  14, 12, 12, 18, 14, 12, 12, 18)
   MM_NCOL   <- length(MM_COLS)
 
@@ -814,7 +843,6 @@ generate_template_openxlsx <- function(filepath, include_example,
     lower_ef3="Optional: min value for asymmetric EF3 distribution",
     upper_ef3="Optional: max value for asymmetric EF3 distribution",
     distribution_ef3="Distribution for EF3 uncertainty — select from dropdown",
-    Bo="Max CH4 capacity (m3/kg VS) — IPCC default 0.10",
     Frac_GasMS_pct="Volatilisation fraction % per MMS — IPCC 2019 Table 10.22",
     lower_frac_gas="Optional: min for asymmetric Frac_GasMS distribution",
     upper_frac_gas="Optional: max for asymmetric Frac_GasMS distribution",
@@ -846,7 +874,6 @@ generate_template_openxlsx <- function(filepath, include_example,
       lower_ef3=c(NA_real_,NA_real_),
       upper_ef3=c(NA_real_,NA_real_),
       distribution_ef3=c("pert","pert"),
-      Bo=c(0.10,0.10),
       Frac_GasMS_pct=c(mms_frac_defaults_2019("pasture")$frac_gas * 100,
                        mms_frac_defaults_2019("solid_storage")$frac_gas * 100),
       lower_frac_gas=c(mms_frac_defaults_2019("pasture")$frac_gas_low * 100,
@@ -869,6 +896,7 @@ generate_template_openxlsx <- function(filepath, include_example,
     data_rng <- 4:100
   }
 
+  # Andreas 2026-05 #22b: column indices shifted down by 1 after Bo removal.
   apply_style("Manure_Management", s_req,  rows=data_rng, cols=1)    # cattle_type
   apply_style("Manure_Management", s_req,  rows=data_rng, cols=2)    # aggregation_level
   apply_style("Manure_Management", s_opt,  rows=data_rng, cols=3)    # sub_category
@@ -880,19 +908,18 @@ generate_template_openxlsx <- function(filepath, include_example,
   apply_style("Manure_Management", s_req,  rows=data_rng, cols=10)   # EF3
   apply_style("Manure_Management", s_opt,  rows=data_rng, cols=11:12) # lower/upper_ef3
   apply_style("Manure_Management", s_drop, rows=data_rng, cols=13)   # distribution_ef3
-  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=14)   # Bo
-  apply_style("Manure_Management", s_req,  rows=data_rng, cols=15)   # Frac_GasMS_pct
-  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=16:17) # lower/upper frac_gas
-  apply_style("Manure_Management", s_drop, rows=data_rng, cols=18)   # distribution_frac_gas
-  apply_style("Manure_Management", s_req,  rows=data_rng, cols=19)   # Frac_LeachMS_pct
-  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=20:21) # lower/upper frac_leach
-  apply_style("Manure_Management", s_drop, rows=data_rng, cols=22)   # distribution_frac_leach
+  apply_style("Manure_Management", s_req,  rows=data_rng, cols=14)   # Frac_GasMS_pct
+  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=15:16) # lower/upper frac_gas
+  apply_style("Manure_Management", s_drop, rows=data_rng, cols=17)   # distribution_frac_gas
+  apply_style("Manure_Management", s_req,  rows=data_rng, cols=18)   # Frac_LeachMS_pct
+  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=19:20) # lower/upper frac_leach
+  apply_style("Manure_Management", s_drop, rows=data_rng, cols=21)   # distribution_frac_leach
 
   add_validation("Manure_Management", col=4,  rows=data_rng, "mms")
   add_validation("Manure_Management", col=9,  rows=data_rng, "dist")
   add_validation("Manure_Management", col=13, rows=data_rng, "dist")
-  add_validation("Manure_Management", col=18, rows=data_rng, "dist")
-  add_validation("Manure_Management", col=22, rows=data_rng, "dist")
+  add_validation("Manure_Management", col=17, rows=data_rng, "dist")
+  add_validation("Manure_Management", col=21, rows=data_rng, "dist")
 
   # =========================================================================
   # SHEET: Parameter_TimeSeries  (rows = years, cols = parameters)
@@ -900,7 +927,10 @@ generate_template_openxlsx <- function(filepath, include_example,
   # =========================================================================
   openxlsx::addWorksheet(wb, "Parameter_TimeSeries", tabColour = "#40916C",
                          gridLines = TRUE)
-  # R1.6: time-series uses IPCC names (parser still aliases legacy names on upload)
+  # R1.6: time-series uses IPCC names (parser still aliases legacy names on upload).
+  # Andreas 2026-05 #22e: added cattle_type / aggregation_level / sub_category
+  # so users can supply per-group time series instead of a single inventory-wide
+  # series. Leave them blank to apply the row to all groups.
   ts_params <- c("N", "W", "MW", "WG",
                  "Milk", "Fat", "pct_lactating", "DE",
                  "CP", "MilkPR")
@@ -910,9 +940,14 @@ generate_template_openxlsx <- function(filepath, include_example,
                 "Daily weight gain", "Daily milk yield per cow", "Milk fat content",
                 "Fraction of cows lactating", "Digestible energy",
                 "Crude protein in diet", "Milk protein content")
-  ts_all_cols  <- c("year", ts_params)
-  ts_all_units <- c("(label only)", ts_units)
-  ts_all_desc  <- c("Calendar year", ts_desc)
+  ts_all_cols  <- c("cattle_type", "aggregation_level", "sub_category",
+                    "year", ts_params)
+  ts_all_units <- c("(label)", "(label)", "(label)",
+                    "(label only)", ts_units)
+  ts_all_desc  <- c("dairy / non_dairy / mixed (free text; blank = applies to all)",
+                    "Production system / AEZ (free text; blank = all)",
+                    "Sub-category (free text; blank = all)",
+                    "Calendar year", ts_desc)
   ts_n_cols    <- length(ts_all_cols)
 
   s_ts_hdr   <- mk(fontSize=10, fontName="Calibri", textDecoration="bold",
@@ -982,7 +1017,12 @@ generate_template_openxlsx <- function(filepath, include_example,
   TS_DATA_START <- 5
 
   if (include_example) {
+    # Andreas #22e: example now includes cattle_type / aggregation_level /
+    # sub_category so users see the expected layout.
     ts_ex <- data.frame(
+      cattle_type       = rep("dairy", 10),
+      aggregation_level = rep("Country X – smallholder dairy", 10),
+      sub_category      = rep("", 10),
       year         = 2013:2022,
       N            = c(4320000, 4410000, 4480000, 4530000, 4490000,
                        4560000, 4620000, 4670000, 4720000, 4790000),
@@ -994,17 +1034,19 @@ generate_template_openxlsx <- function(filepath, include_example,
       pct_lactating= c(0.59, 0.61, 0.60, 0.58, 0.62, 0.60, 0.59, 0.61, 0.60, 0.62),
       DE           = c(54.5, 55.0, 55.5, 54.0, 55.5, 55.0, 54.5, 56.0, 55.0, 55.5),
       CP           = c(9.8, 10.0, 10.2, 9.6, 10.3, 10.0, 9.9, 10.4, 10.1, 10.2),
-      MilkPR       = c(3.2, 3.3, 3.3, 3.2, 3.4, 3.3, 3.2, 3.4, 3.3, 3.4)
+      MilkPR       = c(3.2, 3.3, 3.3, 3.2, 3.4, 3.3, 3.2, 3.4, 3.3, 3.4),
+      stringsAsFactors = FALSE
     )
     ts_n_ex <- nrow(ts_ex)
     openxlsx::writeData(wb, "Parameter_TimeSeries", ts_ex,
                         startRow=TS_DATA_START, startCol=1, colNames=FALSE)
+    # Cols 1-3 = labels, col 4 = year, col 5 = N (integer), 6+ = numeric.
     apply_style("Parameter_TimeSeries", s_ts_year,
-                rows=TS_DATA_START:(TS_DATA_START + ts_n_ex - 1), cols=1)
+                rows=TS_DATA_START:(TS_DATA_START + ts_n_ex - 1), cols=1:4)
     apply_style("Parameter_TimeSeries", s_ts_int,
-                rows=TS_DATA_START:(TS_DATA_START + ts_n_ex - 1), cols=2)
+                rows=TS_DATA_START:(TS_DATA_START + ts_n_ex - 1), cols=5)
     apply_style("Parameter_TimeSeries", s_ts_data,
-                rows=TS_DATA_START:(TS_DATA_START + ts_n_ex - 1), cols=3:ts_n_cols)
+                rows=TS_DATA_START:(TS_DATA_START + ts_n_ex - 1), cols=6:ts_n_cols)
     openxlsx::setRowHeights(wb, "Parameter_TimeSeries",
                             rows=TS_DATA_START:(TS_DATA_START + ts_n_ex - 1), heights=16)
     TS_BLANK_START <- TS_DATA_START + ts_n_ex
@@ -1030,8 +1072,13 @@ generate_template_openxlsx <- function(filepath, include_example,
   apply_style("Parameter_TimeSeries", s_ts_note, rows=TS_NOTE_ROW, cols=1)
   openxlsx::mergeCells(wb, "Parameter_TimeSeries", cols=1:ts_n_cols, rows=TS_NOTE_ROW)
 
-  openxlsx::setColWidths(wb, "Parameter_TimeSeries", cols=1, widths=7)
-  openxlsx::setColWidths(wb, "Parameter_TimeSeries", cols=2:ts_n_cols, widths=14)
+  # Andreas #22e: column widths now reflect the cattle_type/agg/sub_cat columns
+  # before the year column.
+  openxlsx::setColWidths(wb, "Parameter_TimeSeries", cols=1, widths=14)  # cattle_type
+  openxlsx::setColWidths(wb, "Parameter_TimeSeries", cols=2, widths=22)  # aggregation_level
+  openxlsx::setColWidths(wb, "Parameter_TimeSeries", cols=3, widths=16)  # sub_category
+  openxlsx::setColWidths(wb, "Parameter_TimeSeries", cols=4, widths=7)   # year
+  openxlsx::setColWidths(wb, "Parameter_TimeSeries", cols=5:ts_n_cols, widths=14)
   openxlsx::freezePane(wb, "Parameter_TimeSeries", firstActiveRow=TS_DATA_START)
 
   if (FALSE) { # dead block — kept only so unicode – below doesn't break parse

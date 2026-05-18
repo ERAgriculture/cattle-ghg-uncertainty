@@ -27,10 +27,26 @@ calc_all_uncertainty <- function(results_df) {
   do.call(rbind, metrics)
 }
 
-# Uncertainty decomposition: AD-only, EF-only, Combined
+# Uncertainty decomposition: AD-only, EF-only, Combined.
+# Andreas 2026-05 #29: defensive coercion of param_type — custom uploads can
+# arrive with NA in param_type when the user didn't fill that column. Treat
+# missing as "coefficient" (the IPCC convention adopted in this tool — only
+# N is activity data). NA in a logical subset triggers "NAs not allowed in
+# subscripted assignments", which manifested as the silent decomposition
+# failure on custom data Andreas reported.
 decompose_uncertainty <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
                                    mms_fractions = NULL, mcf_values = NULL, ef3_values = NULL,
                                    gwp = "AR5", seed = NULL, ef_corr_matrix = NULL) {
+  if (is.null(param_specs) || nrow(param_specs) == 0) {
+    stop("decompose_uncertainty: param_specs is empty.")
+  }
+  if (!"param_type" %in% names(param_specs)) {
+    param_specs$param_type <- ifelse(
+      param_specs$parameter %in% c("N", "cattle_pop"),
+      "activity_data", "coefficient")
+  }
+  param_specs$param_type[is.na(param_specs$param_type)] <- "coefficient"
+
   # Combined
   combined <- run_mc_simulation(param_specs, corr_matrix, n_iter,
                                  mms_fractions, mcf_values, ef3_values, gwp, seed,
