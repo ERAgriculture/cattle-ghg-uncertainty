@@ -1624,7 +1624,13 @@ app_server <- function(input, output, session) {
           x = 0.5, y = 0.5, xref = "paper", yref = "paper",
           font = list(size = 13, color = "#555")))))
     }
-    sens <- if (input$sens_method == "src" && !is.null(sens_data$src)) {
+    # When PRCC was skipped (too many parameters — multi-group inventory),
+    # fall back to SRC and surface the reason as a chart annotation.
+    prcc_note <- attr(sens_data, "prcc_note")
+    sens <- if (input$sens_method == "prcc" && is.null(sens_data$prcc) &&
+                !is.null(sens_data$src)) {
+      sens_data$src   # fallback: show SRC with note below
+    } else if (input$sens_method == "src" && !is.null(sens_data$src)) {
       sens_data$src
     } else if (!is.null(sens_data$prcc)) {
       sens_data$prcc
@@ -1654,19 +1660,29 @@ app_server <- function(input, output, session) {
       plotly::layout(
         title = paste0("Top Parameters — ", toupper(val_col), view_label),
         xaxis = list(title = val_col), yaxis = list(title = ""),
-        annotations = list(list(
-          x = 0.99, y = 0.01, xref = "paper", yref = "paper", showarrow = FALSE, align = "right",
-          text = "<span style='color:#2D6A4F'>■</span> User-reducible &nbsp; <span style='color:#78909C'>■</span> IPCC coefficient",
-          font = list(size = 10)
-        ))
+        annotations = c(
+          list(list(
+            x = 0.99, y = 0.01, xref = "paper", yref = "paper", showarrow = FALSE, align = "right",
+            text = "<span style='color:#2D6A4F'>■</span> User-reducible &nbsp; <span style='color:#78909C'>■</span> IPCC coefficient",
+            font = list(size = 10)
+          )),
+          if (!is.null(prcc_note)) list(list(
+            x = 0.5, y = 1.08, xref = "paper", yref = "paper", showarrow = FALSE, align = "center",
+            text = paste0("<i>", prcc_note, "</i>"),
+            font = list(size = 10, color = "#92400E")
+          )) else list()
+        )
       )
   })
 
   output$sensitivity_table <- DT::renderDT({
     sens_data <- active_sensitivity()
     req(sens_data)
-    sens <- if (input$sens_method == "src") sens_data$src else sens_data$prcc
-    req(sens)
+    sens <- if (input$sens_method == "prcc" && !is.null(sens_data$prcc)) {
+      sens_data$prcc
+    } else if (!is.null(sens_data$src)) {
+      sens_data$src
+    } else req(FALSE)
     DT::datatable(sens, rownames = FALSE, options = list(pageLength = 20))
   })
 

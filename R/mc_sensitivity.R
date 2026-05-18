@@ -47,7 +47,8 @@ calc_prcc <- function(inputs, output) {
   result
 }
 
-sensitivity_analysis <- function(inputs, output, method = c("src", "prcc", "both")) {
+sensitivity_analysis <- function(inputs, output, method = c("src", "prcc", "both"),
+                                  max_prcc_cols = 40L) {
   method <- match.arg(method)
 
   # Output-variance guard: SRC/PRCC on a constant (or near-constant) output
@@ -70,8 +71,25 @@ sensitivity_analysis <- function(inputs, output, method = c("src", "prcc", "both
   inputs_var <- inputs[, var_cols, drop = FALSE]
   if (ncol(inputs_var) == 0) return(list())
 
+  # PRCC is O(p) in lm() fits (one per parameter). For multi-group inventories
+  # the combined parameter matrix can have 80-150 columns, making PRCC take
+  # several minutes. Cap it: if p > max_prcc_cols, compute SRC only and attach
+  # a note so the UI can explain the fallback.
+  prcc_note <- NULL
+  if (method %in% c("prcc", "both") && ncol(inputs_var) > max_prcc_cols) {
+    method <- "src"
+    prcc_note <- paste0(
+      "PRCC was skipped: the combined parameter matrix has ",
+      ncol(inputs_var), " columns (limit: ", max_prcc_cols, "). ",
+      "SRC is shown instead — it requires only one regression fit regardless ",
+      "of the number of parameters. To see PRCC, select a single emission ",
+      "source from the 'Output' dropdown above."
+    )
+  }
+
   result <- list()
   if (method %in% c("src", "both")) result$src <- calc_src(inputs_var, output)
   if (method %in% c("prcc", "both")) result$prcc <- calc_prcc(inputs_var, output)
+  if (!is.null(prcc_note)) attr(result, "prcc_note") <- prcc_note
   result
 }

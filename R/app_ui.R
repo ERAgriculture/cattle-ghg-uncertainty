@@ -638,7 +638,7 @@ app_ui <- function() {
           bslib::card_header("Simulation Settings"),
           bslib::card_body(
             sliderInput("n_iter", "Number of Iterations",
-              min = 10000, max = 100000, step = 10000,
+              min = 1000, max = 50000, step = 1000,
               value = 10000, sep = ","),
             numericInput("seed",
               label = tagList(
