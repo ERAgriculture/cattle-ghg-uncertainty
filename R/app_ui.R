@@ -771,7 +771,7 @@ app_ui <- function() {
         conditionalPanel(
           condition = "input.analysis_mode != 'trend'",
           bslib::layout_columns(
-            col_widths = c(NA, NA, NA, NA, NA),
+            col_widths = NULL,
             bslib::value_box(title = "Enteric CH₄ (t)",
                               value = textOutput("vb_enteric_ch4"),
                               showcase = icon("fire"), theme = "success"),
