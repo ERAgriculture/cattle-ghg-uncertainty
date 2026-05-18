@@ -637,8 +637,18 @@ app_ui <- function() {
         bslib::card(
           bslib::card_header("Simulation Settings"),
           bslib::card_body(
-            sliderInput("n_iter", "Number of Iterations",
-                        min = 1000, max = 50000, value = 10000, step = 1000),
+            selectInput("n_iter", "Number of Iterations",
+              choices = c(
+                "1,000  — test run only"        = "1000",
+                "5,000"                          = "5000",
+                "10,000  — minimum recommended"  = "10000",
+                "15,000"                         = "15000",
+                "20,000"                         = "20000",
+                "25,000"                         = "25000",
+                "30,000  — recommended for reporting" = "30000",
+                "50,000  — high precision"       = "50000"
+              ),
+              selected = "10000"),
             numericInput("seed",
               label = tagList(
                 "Random Seed (for reproducibility) ",
