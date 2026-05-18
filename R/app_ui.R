@@ -401,6 +401,7 @@ app_ui <- function() {
           tags$strong("Missing"), " (amber) = the parameter was not in your upload and was auto-filled from the IPCC default — verify or replace with country data. ",
           tags$strong("Fail"), " (red) = the value or bounds will likely cause an error in the simulation. ",
           tags$strong("Warn"), " (amber) = the value is unusual compared with IPCC defaults or Penman/Monni uncertainty references -- investigate and document. ",
+          tags$strong("Info"), " (blue) = informational only — typically for emission factor parameters (EF3, EF4, EF5, Frac_*) where country-specific overrides are expected and the IPCC benchmark is a Monni-2007 / Penman-2000 mid-point, not a fixed table value. No action required unless the deviation is very large. ",
           tags$strong("Pass"), " (green) = check satisfied. ",
           "Fix any fails before running the simulation. Warnings are advisory -- document your justification for large deviations from IPCC defaults. ",
           tags$br(), tags$br(),
