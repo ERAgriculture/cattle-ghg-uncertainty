@@ -203,25 +203,19 @@ app_ui <- function() {
         bslib::card(
           bslib::card_header(h4("Tool-specific resources", style = "margin: 0;")),
           bslib::card_body(
-            p(tags$em("Drafts in progress for beta-testing. Sections below will be expanded with detailed content before partner rollout.")),
             tags$h5("How this tool works"),
             tags$ul(
               tags$li("Equation chain: IPCC 2006 Vol 4 Ch 10 (Eq 10.1–10.34) and Ch 11 for the per-head emission factor; population × EF for the per-sub-category total."),
               tags$li("Monte Carlo: Approach 2 from IPCC 2006 Vol 1 Ch 3, with optional Gaussian copula correlations across activity data and coefficients."),
               tags$li("Sensitivity: Standardised regression coefficients (SRC) and partial rank correlation (PRCC) on the sampled inputs vs each output.")
             ),
-            tags$h5("How to use the tool"),
-            tags$ul(
-              tags$li("If you are not accounting for uncertainty on a parameter, enter the parameter value and set uncertainty_pct = 0 (or distribution = constant)."),
-              tags$li("Set Milk = 0 for sub-categories that do not lactate; set WG = 0 for adult animals not gaining weight."),
-              tags$li("For asymmetric IPCC parameters (EF3_PRP, EF4, EF5, Frac_LEACH_H), supply explicit lower / upper bounds — the catalogue pre-fills Monni-2007 / Penman-2000 ranges if you leave them blank."),
-              tags$li("Two ways to fix QA/QC failures: (a) edit values directly in the in-app Parameters table on Tab 1 — quick for one or two cells; or (b) edit the original Excel template and re-upload — easier when you have 100+ parameters and want a saved record of your final values. Both produce the same simulation inputs.")
-            ),
-            tags$h5("Preparing uncertainty inputs"),
-            tags$ul(
-              tags$li("Use the IPCC Approach 1 spreadsheet to combine survey CVs into a 95 % CI half-width, then enter as `uncertainty_pct` in the Parameters sheet."),
-              tags$li("For parameters with skewed empirical distributions (e.g. milk yield across smallholders), choose `lognormal` or `pert` instead of `normal`."),
-              tags$li("For correlations, upload a multi-year activity-data time-series in the Parameter_TimeSeries sheet and let the Correlations tab auto-compute Pearson coefficients.")
+            div(style = "margin-top: 16px;",
+              tags$a(
+                href = "methodology.pdf",
+                download = "IPCC_Tier2_Livestock_GHG_Methodology.pdf",
+                class = "btn btn-success",
+                icon("file-pdf"), " Download full methodology (PDF)"
+              )
             )
           )
         ),

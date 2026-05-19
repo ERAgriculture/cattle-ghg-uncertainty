@@ -1,0 +1,575 @@
+---
+title: "IPCC Tier 2 Livestock GHG Uncertainty Calculator"
+subtitle: "Technical Methodology: Equations, Monte Carlo Procedure, and Uncertainty Reporting"
+author: "CIAT / CGIAR Alliance — ClimateActionNetZero"
+date: "May 2026"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 3
+    number_sections: true
+    latex_engine: pdflatex
+    keep_tex: false
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{longtable}
+  - \usepackage{array}
+  - \usepackage{multirow}
+  - \usepackage{xcolor}
+  - \usepackage{fancyhdr}
+  - \usepackage{graphicx}
+  - \usepackage{amsmath}
+  - \usepackage{amssymb}
+  - \usepackage{hyperref}
+  - \usepackage{setspace}
+  - \usepackage{caption}
+  - \definecolor{cgiargreen}{RGB}{45,106,79}
+  - \definecolor{lightgreen}{RGB}{216,243,220}
+  - \definecolor{darkgrey}{RGB}{60,60,60}
+  - \pagestyle{fancy}
+  - \fancyhf{}
+  - \fancyhead[L]{\textcolor{cgiargreen}{\small IPCC Tier 2 Livestock GHG Uncertainty Calculator}}
+  - \fancyhead[R]{\textcolor{darkgrey}{\small Technical Methodology}}
+  - \fancyfoot[C]{\textcolor{darkgrey}{\small \thepage}}
+  - \renewcommand{\headrulewidth}{0.4pt}
+  - \renewcommand{\footrulewidth}{0pt}
+  - \setlength{\parskip}{6pt}
+  - \captionsetup{font=small,labelfont=bf}
+geometry: "top=3cm, bottom=2.5cm, left=2.5cm, right=2.5cm"
+fontsize: 11pt
+linestretch: 1.15
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+\vspace{1cm}
+
+\begin{center}
+\textcolor{cgiargreen}{\rule{14cm}{1.5pt}}\\[6pt]
+\textcolor{cgiargreen}{\large\textbf{Version 1.0 — May 2026}}\\[4pt]
+\textcolor{darkgrey}{Developed under the Global Methane Hub initiative}\\[4pt]
+\textcolor{cgiargreen}{\rule{14cm}{1.5pt}}
+\end{center}
+
+\newpage
+
+# Introduction
+
+## Purpose
+
+The **IPCC Tier 2 Livestock GHG Uncertainty Calculator** is a web-based tool that enables national inventory compilers to quantify the uncertainty in cattle greenhouse gas (GHG) emission estimates produced using the IPCC Tier 2 methodology. The tool implements the Monte Carlo (Approach 2) uncertainty framework described in IPCC (2006) Volume 1, Chapter 3, applied to the full emission equation chain of IPCC (2006) Volume 4, Chapter 10.
+
+Under the Paris Agreement Enhanced Transparency Framework (ETF), national inventory reports are expected to include quantitative uncertainty estimates alongside emission totals. This tool automates that process, from parameter sampling to the formatted IPCC Table 3.3 output, for cattle inventories comprising one or more sub-categories (cattle types).
+
+## Scope
+
+The tool covers six emission pathways for cattle:
+
+1. **Enteric fermentation CH$_4$** — methane produced during enteric fermentation in the rumen
+2. **Manure management CH$_4$** — methane from anaerobic decomposition of manure in storage systems
+3. **Manure management N$_2$O (direct)** — direct nitrous oxide from nitrogen in managed manure
+4. **Manure management N$_2$O (indirect)** — indirect N$_2$O via atmospheric deposition and leaching from managed manure
+5. **Pasture/range/paddock N$_2$O (direct)** — direct N$_2$O from dung and urine deposited on pasture
+6. **Pasture/range/paddock N$_2$O (indirect)** — indirect N$_2$O from dung and urine on pasture
+
+The tool supports multiple cattle sub-categories (e.g. dairy cows, beef bulls, heifers, growing males, calves) within a single inventory run, with results aggregated to national totals.
+
+## IPCC Tier Classification
+
+The tool implements **Tier 2** methods for enteric fermentation (country-specific feed digestibility and body weight data) and **Tier 1 or Tier 2** methods for manure management, depending on the parameters provided. The uncertainty analysis itself follows the **Approach 2** (Monte Carlo) framework, which is the more accurate of the two IPCC uncertainty methods and is recommended when non-linear equation chains are involved.
+
+\newpage
+
+# Input Parameters
+
+All parameters are entered via an Excel template (one row per parameter per cattle sub-category) and loaded into the tool. Each parameter requires a central value, an uncertainty specification (distribution type and bounds or percentage), and optional metadata (data source quality, IPCC reference).
+
+Table \ref{tab:params} lists all parameters used in the calculation chain, their units, the IPCC equation in which they appear, and the probability distribution typically applied in uncertainty analysis.
+
+\begin{longtable}{p{3.2cm} p{4.5cm} p{1.5cm} p{2cm} p{2.2cm}}
+\caption{Input parameters for the IPCC Tier 2 cattle GHG calculation chain.\label{tab:params}} \\
+\toprule
+\textbf{Variable} & \textbf{Definition} & \textbf{Unit} & \textbf{IPCC Eq.} & \textbf{Typical dist.} \\
+\midrule
+\endfirsthead
+\multicolumn{5}{l}{\small\textit{Table \ref{tab:params} continued}} \\
+\toprule
+\textbf{Variable} & \textbf{Definition} & \textbf{Unit} & \textbf{IPCC Eq.} & \textbf{Typical dist.} \\
+\midrule
+\endhead
+\midrule
+\multicolumn{5}{r}{\small\textit{Continued on next page}} \\
+\endfoot
+\bottomrule
+\endlastfoot
+\texttt{N} & Number of animals (population) & head & 10.1 & Normal \\
+\texttt{BW} & Mean live body weight & kg/head & 10.3 & Normal \\
+\texttt{Cfi} & Coefficient for calculating NEM & MJ/kg$^{0.75}$/d & 10.3 & Constant \\
+\texttt{Tw} & Mean annual temperature & °C & 10.3 & Constant \\
+\texttt{Ca} & Coefficient for animal activity & — & 10.4 & Constant \\
+\texttt{WG} & Mean daily weight gain & kg/head/d & 10.6 & Normal \\
+\texttt{MW} & Mature body weight & kg/head & 10.6 & Normal \\
+\texttt{C} & Coefficient for sex/condition & — & 10.6 & Constant \\
+\texttt{Milk} & Daily milk yield & kg/head/d & 10.8 & Normal/Lognormal \\
+\texttt{MilkFat} & Milk fat content & \% & 10.8 & Normal \\
+\texttt{WorkHours} & Daily draft hours & h/head/d & 10.11 & Constant \\
+\texttt{Cp} & Coefficient for pregnancy & — & 10.13 & Constant \\
+\texttt{DE\_pct} & Digestible energy as \% of GE & \% & 10.14--16 & Normal \\
+\texttt{Ym} & Methane conversion factor & \% & 10.21 & Normal/PERT \\
+\texttt{MMS\_fractions} & Fraction of manure in each MMS & — & 10.23 & Uniform/Dirichlet \\
+\texttt{Bo} & Maximum methane capacity & m$^3$ CH$_4$/kg VS & 10.24 & Normal \\
+\texttt{MCF} & Methane conversion factor (MMS) & — & 10.24 & Normal/PERT \\
+\texttt{EF3} & Emission factor for N$_2$O (MMS) & kg N$_2$O-N/kg N & 10.26 & Lognormal/PERT \\
+\texttt{Frac\_GasMS} & Fraction N volatilised (MMS) & — & 10.29 & Normal \\
+\texttt{EF4} & EF for atmospheric deposition & kg N$_2$O-N/kg NH$_3$-N & 10.29 & PERT \\
+\texttt{Frac\_LEACH} & Fraction N lost by leaching & — & 10.31 & PERT \\
+\texttt{EF5} & EF for leaching/runoff & kg N$_2$O-N/kg N & 10.31 & PERT \\
+\texttt{Frac\_PRP} & Fraction of time on pasture & — & 10.32A & Uniform \\
+\texttt{EF3\_PRP} & EF for PRP N$_2$O & kg N$_2$O-N/kg N & 10.33 & PERT \\
+\texttt{Frac\_GasPRP} & Fraction N volatilised (PRP) & — & 10.34 & Normal \\
+\texttt{Frac\_LEACH\_H} & Fraction N leached (PRP) & — & 10.34 & PERT \\
+\end{longtable}
+
+\newpage
+
+# IPCC Tier 2 Emission Equations
+
+This section presents the complete equation chain implemented in the tool, following IPCC (2006) Volume 4, Chapter 10. All equations are evaluated for each cattle sub-category independently; results are then aggregated to national totals by summing across sub-categories.
+
+## Net Energy for Maintenance
+
+The daily net energy requirement for maintenance ($NE_m$, MJ head$^{-1}$ day$^{-1}$) is given by IPCC Eq. 10.3:
+
+$$NE_m = C_{fi,\text{adj}} \times BW^{0.75}$$
+
+where $BW$ is the mean live body weight (kg head$^{-1}$) and $C_{fi}$ is a species/condition coefficient (MJ kg$^{-0.75}$ day$^{-1}$). In cold climates (mean annual temperature $T_w < 20$°C), the IPCC software v2.95 applies a linear cold-climate adjustment:
+
+$$C_{fi,\text{adj}} = C_{fi} + 0.0048 \times (20 - T_w) \quad \text{when } T_w < 20\text{°C}$$
+
+otherwise $C_{fi,\text{adj}} = C_{fi}$. This adjustment increases the maintenance energy requirement by approximately 0.48\% per degree below 20°C. The linear model is validated for $-50\text{°C} \leq T_w < 20\text{°C}$.
+
+## Net Energy for Activity
+
+The net energy for physical activity ($NE_a$, MJ head$^{-1}$ day$^{-1}$) is given by IPCC Eq. 10.4:
+
+$$NE_a = C_a \times NE_m$$
+
+where $C_a$ is a dimensionless activity coefficient that accounts for the terrain and movement patterns of the animal (e.g. 0.00 for housed animals, 0.17 for animals on flat pasture, 0.36 for hilly terrain).
+
+## Net Energy for Growth
+
+The net energy required for growth ($NE_g$, MJ head$^{-1}$ day$^{-1}$) is given by IPCC Eq. 10.6:
+
+$$NE_g = 22.02 \times \left(\frac{BW}{C \times MW}\right)^{0.75} \times WG^{1.097}$$
+
+where $WG$ is the mean daily weight gain (kg head$^{-1}$ day$^{-1}$), $MW$ is the mature body weight (kg), and $C$ is a sex/body condition coefficient (0.8 for females, 1.0 for castrates, 1.2 for bulls). $NE_g = 0$ when $WG \leq 0$ or $MW \leq 0$.
+
+## Net Energy for Lactation
+
+The daily net energy for milk production ($NE_l$, MJ head$^{-1}$ day$^{-1}$) is given by IPCC Eq. 10.8:
+
+$$NE_l = \text{Milk} \times (1.47 + 0.40 \times \text{MilkFat})$$
+
+where Milk is the daily milk yield (kg head$^{-1}$ day$^{-1}$) and MilkFat is the fat content (%). For non-lactating sub-categories, set Milk = 0.
+
+## Net Energy for Work
+
+The net energy for draft work ($NE_w$, MJ head$^{-1}$ day$^{-1}$) is given by IPCC Eq. 10.11:
+
+$$NE_w = 0.10 \times NE_m \times \text{WorkHours}$$
+
+where WorkHours is the mean number of hours of draft work per day.
+
+## Net Energy for Pregnancy
+
+The net energy allocated to fetal growth during pregnancy ($NE_p$, MJ head$^{-1}$ day$^{-1}$) is given by IPCC Eq. 10.13:
+
+$$NE_p = C_p \times NE_m$$
+
+where $C_p$ is a coefficient for the energy cost of pregnancy (0.10 for cattle). The parameter `pct_calving` can pro-rate $C_p$ when not all females in a sub-category are pregnant in the same year ($0 \leq \text{pct\_calving} \leq 1$).
+
+## Energy Ratios: REM and REG
+
+The ratio of net energy for maintenance to digestible energy consumed ($REM$) is given by IPCC Eq. 10.14:
+
+$$REM = 1.123 - \frac{4.092 \times 10^{-3} \times DE_\%}{1} + \frac{1.126 \times 10^{-5} \times DE_\%^2}{1} - \frac{25.4}{DE_\%}$$
+
+The ratio of net energy for growth to digestible energy consumed ($REG$) is given by IPCC Eq. 10.15:
+
+$$REG = 1.164 - \frac{5.160 \times 10^{-3} \times DE_\%}{1} + \frac{1.308 \times 10^{-5} \times DE_\%^2}{1} - \frac{37.4}{DE_\%}$$
+
+where $DE_\%$ is the digestible energy expressed as a percentage of gross energy. Both equations are undefined at $DE_\% = 0$ (division by zero) — the tool validates $DE_\% > 0$ before running any simulation.
+
+## Gross Energy Intake
+
+The mean daily gross energy intake ($GE$, MJ head$^{-1}$ day$^{-1}$) is given by IPCC Eq. 10.16:
+
+$$GE = \frac{(NE_m + NE_a + NE_l + NE_w + NE_p) / REM + NE_g / REG}{DE_\% / 100}$$
+
+## Enteric Fermentation Emission Factor
+
+The per-head per-day methane emission factor for enteric fermentation ($EF_1$, kg CH$_4$ head$^{-1}$ day$^{-1}$) is given by IPCC Eq. 10.21:
+
+$$EF_1 = \frac{GE \times Y_m}{55.65}$$
+
+where $Y_m$ is the methane conversion factor (fraction of gross energy in feed converted to methane, expressed as %) and 55.65 MJ kg$^{-1}$ is the energy content of methane. The annual per-sub-category enteric emission is:
+
+$$E_{\text{enteric}} = EF_1 \times N \times 365 / 1000 \quad \text{(tonnes CH}_4\text{ yr}^{-1}\text{)}$$
+
+## Nitrogen Excretion
+
+The daily nitrogen excretion rate ($N_{\text{ex}}$, kg N head$^{-1}$ day$^{-1}$) follows IPCC Eq. 10.31:
+
+$$N_{\text{ex}} = N_{\text{intake}} - N_{\text{retained}}$$
+
+Nitrogen intake from feed is:
+
+$$N_{\text{intake}} = \frac{GE}{18.45} \times \frac{\text{CP\%}}{6.25 \times 100}$$
+
+Nitrogen retained in body tissue and milk is calculated separately. For milk, the nitrogen content uses the **Jones factor for casein (6.38)** — distinct from the generic protein factor (6.25) used for feed and body tissue (IPCC 2006 Eq. 10.32A):
+
+$$N_{\text{milk}} = \frac{\text{Milk} \times \text{MilkProtein\%}}{6.38 \times 100}$$
+
+The annual nitrogen excreted per sub-category ($N_{\text{ex,annual}}$, kg N yr$^{-1}$) is:
+
+$$N_{\text{ex,annual}} = N_{\text{ex}} \times N \times 365$$
+
+## Volatile Solids and Manure CH$_4$
+
+Volatile solids excreted daily ($VS$, kg VS head$^{-1}$ day$^{-1}$) are derived from feed intake and digestibility (IPCC Eq. 10.22). The manure CH$_4$ emission factor (kg CH$_4$ head$^{-1}$ yr$^{-1}$) is given by IPCC Eq. 10.23--10.24:
+
+$$EF_{\text{mm,CH}_4} = VS \times 365 \times B_o \times 0.67 \times \sum_s \left( MS_s \times MCF_s \right)$$
+
+where $B_o$ is the maximum methane producing capacity (m$^3$ CH$_4$ kg$^{-1}$ VS), $0.67$ is the density of methane (kg m$^{-3}$), $MS_s$ is the fraction of manure managed in system $s$, and $MCF_s$ is the methane conversion factor for system $s$ (fraction of $B_o$). The tool supports up to 13 MMS categories (IPCC 2006 Table 10.17; 2019 Refinement Table 10.17A). Per-MMS uncertainty in $MCF$ and fractions is sampled independently.
+
+## Manure Management N$_2$O (Direct)
+
+Direct N$_2$O emissions from manure management are given by IPCC Eq. 10.25--10.28:
+
+$$E_{\text{direct,mm}} = N_{\text{ex,annual}} \times EF_3 \times \frac{44}{28} \quad \text{(kg N}_2\text{O yr}^{-1}\text{)}$$
+
+where $EF_3$ is the emission factor for direct N$_2$O (kg N$_2$O-N kg$^{-1}$ N) and 44/28 converts N$_2$O-N to N$_2$O. For mixed MMS systems, $EF_3$ is computed as the weighted average of per-MMS factors:
+
+$$EF_3 = \sum_s MS_s \times EF_{3,s}$$
+
+## Manure Management N$_2$O (Indirect)
+
+Indirect N$_2$O from managed manure arises from two pathways (IPCC Eq. 10.29--10.31):
+
+\textbf{Atmospheric deposition} of volatilised N:
+$$E_{\text{vol,mm}} = N_{\text{ex,annual}} \times \text{Frac\_GasMS} \times EF_4 \times \frac{44}{28}$$
+
+\textbf{Leaching and runoff}:
+$$E_{\text{leach,mm}} = N_{\text{ex,annual}} \times \text{Frac\_LEACH} \times EF_5 \times \frac{44}{28}$$
+
+where $EF_4$ (kg N$_2$O-N kg$^{-1}$ NH$_3$-N + NO$_x$-N deposited) and $EF_5$ (kg N$_2$O-N kg$^{-1}$ N leached/runoff) are from IPCC Table 11.3; Frac\_GasMS and Frac\_LEACH are country- or region-specific fractions.
+
+## Pasture/Range/Paddock N$_2$O (Direct)
+
+The nitrogen deposited on pasture by grazing animals ($F_{\text{PRP}}$) is calculated as:
+
+$$F_{\text{PRP}} = N_{\text{ex,annual}} \times \text{Frac\_PRP}$$
+
+where Frac\_PRP is the fraction of the year animals spend on pasture. Direct N$_2$O from pasture is given by IPCC Eq. 10.33:
+
+$$E_{\text{direct,PRP}} = F_{\text{PRP}} \times EF_{3,\text{PRP}} \times \frac{44}{28}$$
+
+where $EF_{3,\text{PRP}}$ is the emission factor for direct N$_2$O from PRP (IPCC Table 10.21; typical range 0.007--0.060 kg N$_2$O-N kg$^{-1}$ N).
+
+## Pasture N$_2$O (Indirect)
+
+Indirect N$_2$O from pasture deposition follows IPCC Eq. 10.34, using the same pathway structure as managed manure:
+
+$$E_{\text{indirect,PRP}} = F_{\text{PRP}} \times \left( \text{Frac\_GasPRP} \times EF_4 + \text{Frac\_LEACH\_H} \times EF_5 \right) \times \frac{44}{28}$$
+
+## GWP-Based CO$_2$eq Conversion
+
+All emission pathways are converted to CO$_2$ equivalents using Global Warming Potentials (GWP). The tool supports three IPCC assessment report baselines:
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Basis} & \textbf{CH$_4$ GWP} & \textbf{N$_2$O GWP} & \textbf{Reference} \\
+\midrule
+AR4 (100-yr) & 25 & 298 & IPCC AR4, Table 2.14 \\
+AR5 (100-yr) & 28 & 265 & IPCC AR5, Table 8.7 \\
+AR6 (100-yr) & 27.0 & 273 & IPCC AR6, Table 7.SM.7 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Total CO$_2$eq = (total CH$_4$ tonnes $\times$ GWP$_{\text{CH}_4}$) + (total N$_2$O tonnes $\times$ GWP$_{\text{N}_2\text{O}}$).
+
+\newpage
+
+# Monte Carlo Uncertainty Analysis
+
+## IPCC Approach 2 Rationale
+
+The IPCC (2006) Volume 1, Chapter 3 defines two approaches to quantifying inventory uncertainty:
+
+- **Approach 1 (error propagation):** Combines individual parameter uncertainties using simple algebraic rules. Suitable when the emission equation is a product or sum of independent terms. Underestimates uncertainty when equations are non-linear or inputs are correlated.
+
+- **Approach 2 (Monte Carlo simulation):** Propagates uncertainty through the full equation chain by repeatedly sampling all parameters from their distributions. Exact for any equation structure. Recommended for Tier 2 livestock inventories because the GE equation chain is non-linear in $BW$, $WG$, and $DE_\%$.
+
+This tool implements Approach 2. The simulation samples all input parameters simultaneously for each iteration, evaluates the full equation chain from $NE_m$ through to total CO$_2$eq, and records the output. The resulting distribution of outputs characterises the uncertainty.
+
+## Probability Distributions
+
+Each parameter is assigned a probability distribution reflecting the state of knowledge about its true value. The tool supports:
+
+\begin{center}
+\begin{tabular}{p{2.8cm} p{4.5cm} p{4.5cm}}
+\toprule
+\textbf{Distribution} & \textbf{Parameterisation} & \textbf{Typical use} \\
+\midrule
+Normal & mean $\mu$, SD $\sigma$ & Body weight, milk yield, population counts with symmetric survey error \\[4pt]
+Lognormal & log-mean, log-SD (fitted from mean and CV\%) & Skewed parameters where negative values are impossible; milk yield in heterogeneous herds \\[4pt]
+PERT & minimum, most-likely, maximum & Emission factors with expert-elicited bounds; EF3\_PRP, EF4, EF5 \\[4pt]
+Uniform & lower, upper & Parameters with only plausible range known; MMS fractions \\[4pt]
+Triangular & minimum, most-likely, maximum & Similar to PERT but with sharper tails \\[4pt]
+Constant & fixed value & Parameters treated as known exactly (uncertainty\_pct = 0) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+When the user supplies `uncertainty_pct` (a symmetric 95\% half-width as a percentage of the mean), the tool derives the distribution parameters as:
+
+$$\sigma = \frac{\text{uncertainty\_pct} \times \mu}{100 \times 1.96}$$
+
+for a normal distribution, or equivalent transformations for lognormal and PERT.
+
+## Correlated Sampling (Gaussian Copula)
+
+When parameters are correlated (e.g. body weight and mature weight are positively correlated; diet quality and methane conversion factor may be negatively correlated), ignoring correlation underestimates or overestimates combined uncertainty.
+
+The tool uses a **Gaussian copula** to impose a desired correlation structure while preserving the marginal distributions of each parameter. The procedure is:
+
+1. Draw $n_{\text{iter}}$ samples from a multivariate normal distribution $\mathbf{Z} \sim \mathcal{N}(\mathbf{0}, \boldsymbol{\Sigma})$, where $\boldsymbol{\Sigma}$ is the target correlation matrix (with unit variances on the diagonal).
+2. Transform each column $Z_j$ to uniform margins via $U_j = \Phi(Z_j)$, where $\Phi$ is the standard normal CDF.
+3. Apply the inverse CDF of the target marginal distribution to obtain samples $X_j = F_j^{-1}(U_j)$.
+
+The Cholesky decomposition of $\boldsymbol{\Sigma}$ is used in step 1. The tool validates that the supplied matrix is positive definite before proceeding; if not, it falls back to uncorrelated sampling.
+
+Separate correlation matrices are maintained for:
+
+- **Activity data** ($N$, $BW$, $WG$, $MW$, Milk, DE\_pct, etc.)
+- **Emission factors** (Ym, Bo, MCF, EF3, EF4, EF5, EF3\_PRP, etc.)
+
+## Simulation Procedure
+
+For each Monte Carlo iteration $i = 1, \ldots, n_{\text{iter}}$:
+
+1. Sample all parameters from their distributions (with correlation structure if supplied).
+2. For each cattle sub-category $k$:
+   a. Compute $NE_m^{(k)}$, $NE_a^{(k)}$, $NE_g^{(k)}$, $NE_l^{(k)}$, $NE_w^{(k)}$, $NE_p^{(k)}$.
+   b. Compute $REM^{(k)}$ and $REG^{(k)}$ from $DE_\%^{(k)}$.
+   c. Compute $GE^{(k)}$, $EF_1^{(k)}$, $N_{\text{ex}}^{(k)}$, $VS^{(k)}$.
+   d. Compute emission totals for all six pathways.
+3. Sum across all sub-categories to obtain national pathway totals and total CO$_2$eq.
+4. Record all outputs for iteration $i$.
+
+After all iterations, compute summary statistics from the distribution of recorded outputs.
+
+## Recommended Iteration Count and Convergence
+
+Monte Carlo estimates converge as $n_{\text{iter}} \to \infty$. For practical use:
+
+- **1,000 iterations** — suitable only for a quick test run to verify the model runs without errors. Do not report results from 1,000 iterations.
+- **10,000 iterations** — minimum recommended for any result intended for use. Convergence is generally adequate for inventories with up to 5 sub-categories and 30 parameters.
+- **25,000–30,000 iterations** — recommended for final reporting, especially when correlations are enabled or the inventory has many sub-categories or asymmetric distributions.
+- **50,000 iterations** — high-precision run; use when the 95\% CI bounds need to be stable to two significant figures.
+
+**Convergence check:** Re-run with a different random seed (e.g. 123 and 456). If the CV\% changes by more than 1–2 percentage points, increase the number of iterations.
+
+\newpage
+
+# Uncertainty Metrics
+
+The following metrics are reported for each emission pathway and for the total CO$_2$eq:
+
+## 95\% Confidence Interval
+
+The 95\% CI is defined as the 2.5th and 97.5th percentiles of the Monte Carlo output distribution:
+
+$$\text{CI}_{95} = [Q_{0.025},\ Q_{0.975}]$$
+
+This is a simulation-based (quantile) interval — it does not assume a normal distribution and is therefore valid for asymmetric emission distributions.
+
+## Coefficient of Variation
+
+The coefficient of variation (CV\%) expresses uncertainty relative to the mean:
+
+$$\text{CV\%} = \frac{\sigma}{\bar{x}} \times 100$$
+
+where $\sigma$ is the standard deviation and $\bar{x}$ is the mean of the Monte Carlo output distribution. CV\% is the primary metric used in IPCC Table 3.3 uncertainty reporting. It is undefined (reported as NA) when the mean emission is zero (e.g. pasture N$_2$O for fully housed systems).
+
+## Margin of Error
+
+The margin of error (MoE\%) is the half-width of the 95\% CI expressed as a percentage of the mean:
+
+$$\text{MoE\%} = \frac{Q_{0.975} - Q_{0.025}}{2 \times \bar{x}} \times 100$$
+
+Unlike CV\%, MoE\% is derived from the quantiles of the actual distribution and correctly captures skewness. For a perfectly normal distribution, MoE\% $\approx 1.96 \times$ CV\%.
+
+## IPCC Table 3.3 Format
+
+IPCC (2006) Volume 1, Table 3.3 requires reporting uncertainty for each emission category as follows:
+
+| Source / Sink Category | Emission (Gg CO$_2$eq) | AD Uncertainty (\%) | EF Uncertainty (\%) | Combined Uncertainty (\%) |
+|---|---|---|---|---|
+| Enteric fermentation CH$_4$ | ... | CV\% from AD-only run | CV\% from EF-only run | CV\% from combined run |
+| ... | | | | |
+
+The tool generates this table automatically after each simulation run.
+
+\newpage
+
+# Uncertainty Decomposition
+
+To separate the contributions of activity data (AD) uncertainty and emission factor (EF) uncertainty to the combined uncertainty, the tool performs three simulation runs:
+
+1. **Combined run** — all parameters varied according to their distributions. This is the primary result.
+2. **AD-only run** — emission factors fixed at their central values ($\sigma = 0$); only AD parameters vary. CV\% from this run = AD uncertainty contribution.
+3. **EF-only run** — AD parameters fixed at their central values; only emission factors vary. CV\% from this run = EF uncertainty contribution.
+
+This approach correctly handles multi-group inventories by running all three simulations through the full multi-sub-category equation chain and aggregating to national totals before computing metrics.
+
+The decomposition reveals whether uncertainty reduction efforts should focus on improving animal population surveys (AD) or on refining emission factor estimates (EF).
+
+\newpage
+
+# Sensitivity Analysis
+
+Sensitivity analysis identifies which input parameters have the greatest influence on the total emission estimate. The tool implements two complementary methods.
+
+## Standardised Regression Coefficients (SRC)
+
+SRC is based on fitting a multiple linear regression of the standardised output on all standardised inputs:
+
+$$Y^* = \beta_0 + \sum_j \beta_j X_j^* + \varepsilon$$
+
+where $Y^* = (Y - \bar{Y})/\sigma_Y$ and $X_j^* = (X_j - \bar{X}_j)/\sigma_{X_j}$. The SRC for parameter $j$ is the coefficient $\beta_j$ from this regression.
+
+Properties:
+- A positive SRC indicates that higher values of the parameter produce higher emissions.
+- The magnitude $|\beta_j|$ reflects the relative importance of parameter $j$.
+- SRC values range from approximately $-1$ to $+1$ when a single parameter dominates.
+- The $R^2$ of the regression indicates what fraction of the total variance in the output is explained by the linear model. High $R^2$ ($>$ 0.9) indicates SRC is a reliable measure; low $R^2$ suggests non-linearity.
+- SRC requires only a single regression fit, making it computationally efficient for any number of parameters.
+
+## Partial Rank Correlation Coefficients (PRCC)
+
+PRCC is a rank-based method that is robust to non-linearity and non-normal distributions:
+
+1. Replace all input columns and the output column with their ranks.
+2. For each parameter $j$:
+   a. Regress $\text{rank}(X_j)$ on all other ranked inputs; compute residuals $e_{X_j}$.
+   b. Regress $\text{rank}(Y)$ on all other ranked inputs; compute residuals $e_Y$.
+   c. $\text{PRCC}_j = \text{cor}(e_{X_j},\ e_Y)$.
+
+PRCC measures the unique rank-correlation between each input and the output after removing the shared linear effect of all other inputs. It is more appropriate than SRC when the relationship between inputs and output is monotone but non-linear, or when input distributions are strongly skewed.
+
+**Computational note:** PRCC requires one regression fit per parameter. For large inventories (more than 40 combined parameters across all sub-categories), PRCC computation can take several minutes. In this case, the tool automatically falls back to SRC for the aggregate sensitivity result; PRCC remains available for individual sub-category analyses.
+
+## Tornado Chart Interpretation
+
+The tornado chart displays the top parameters ranked by $|\text{SRC}|$ or $|\text{PRCC}|$:
+
+- **Green bars** (positive coefficient) — increasing this parameter increases total emissions; reduction in uncertainty would directly reduce total emission uncertainty.
+- **Red bars** (negative coefficient) — increasing this parameter decreases total emissions.
+- **Dark (slate) bars** — IPCC-defined coefficients that cannot be improved by the national inventory compiler (e.g. GWP values, Bo, MCF default values). Uncertainty in these parameters is irreducible without IPCC guidance changes.
+- **Bright (green/red) bars** — user-reducible parameters where better national data could meaningfully reduce inventory uncertainty.
+
+\newpage
+
+# Correlation Structure
+
+## Activity Data Correlations
+
+Correlations between activity data parameters (e.g. body weight and mature weight, milk yield and milk fat content) are specified via a user-supplied correlation matrix in the \texttt{AD\_Correlations} sheet of the uploaded template, or computed automatically from a multi-year time series (\texttt{Parameter\_TimeSeries} sheet) using Pearson product-moment correlation.
+
+## Emission Factor Correlations
+
+Emission factors that are structurally linked (e.g. EF4 is applied to volatilised N, which is also affected by Frac\_GasMS) can be assigned correlations via the \texttt{EF\_Correlations} sheet.
+
+## IPCC-Guidance Preset
+
+The tool provides an **IPCC-guidance preset** correlation matrix as a middle ground between full independence and user-specified correlations. This preset assigns positive correlations to structurally linked pairs documented in IPCC guidance (e.g. body weight and mature weight; milk yield and milk fat content). All other pairs are set to zero. This is appropriate when no empirical correlation data are available but the inventory compiler wants to avoid the unrealistic assumption of full independence.
+
+## Gaussian Copula Implementation
+
+The correlated sampling procedure uses the Cholesky decomposition of the correlation matrix $\boldsymbol{\Sigma}$. If $\boldsymbol{\Sigma} = \mathbf{L}\mathbf{L}^\top$, then $\mathbf{Z} = \mathbf{L}\mathbf{U}$, where $\mathbf{U}$ is a matrix of independent standard-normal draws, gives multivariate normal draws with the target correlation structure. After transformation to uniform margins via $\Phi(\cdot)$, the inverse CDF of each target distribution is applied.
+
+If the supplied correlation matrix is not positive definite (a common issue with manually entered or imputed matrices), the tool issues a warning and falls back to uncorrelated sampling.
+
+\newpage
+
+# Validation and Quality Assurance
+
+The tool includes a QA/QC module that checks loaded parameter data for the following conditions before simulation:
+
+- **Error** — simulation cannot proceed: negative population counts; $DE_\% \leq 0$; missing required parameters; probability bounds that produce undefined distributions.
+- **Warning** — simulation proceeds but results should be checked: implausible parameter values (e.g. $BW > 1500$ kg or $BW < 50$ kg for cattle); $Y_m > 12\%$ (above IPCC upper limit); MMS fractions not summing to 1.0.
+- **Info** — advisory only: parameters auto-filled from IPCC defaults because no country-specific value was supplied.
+
+Auto-filled parameters are displayed in an **Auto-filled parameters** panel in Tab 1 immediately after data upload. These should be reviewed and replaced with country-specific values wherever possible, as they directly affect emission estimates and their uncertainty.
+
+\newpage
+
+# References
+
+\hangindent=1.5em
+\noindent Frey, H.C., and Rhodes, D.S. (1998). Characterizing, Simulating, and Analyzing Variability and Uncertainty: An Illustration of Methods Using an Air Toxics Emissions Example. *Human and Ecological Risk Assessment*, 4(4), 762--797.
+
+\vspace{6pt}
+\hangindent=1.5em
+\noindent IPCC (2006). 2006 IPCC Guidelines for National Greenhouse Gas Inventories. Volume 1: General Guidance and Reporting, Chapter 3: Uncertainties. Eggleston, H.S., Buendia, L., Miwa, K., Ngara, T., and Tanabe, K. (Eds). IGES, Japan.
+
+\vspace{6pt}
+\hangindent=1.5em
+\noindent IPCC (2006). 2006 IPCC Guidelines for National Greenhouse Gas Inventories. Volume 4: Agriculture, Forestry and Other Land Use, Chapter 10: Emissions from Livestock and Manure Management. IGES, Japan.
+
+\vspace{6pt}
+\hangindent=1.5em
+\noindent IPCC (2019). 2019 Refinement to the 2006 IPCC Guidelines for National Greenhouse Gas Inventories. Volume 4: Agriculture, Forestry and Other Land Use. Calvo Buendia, E., Tanabe, K., Kranjc, A., et al. (Eds). IPCC, Switzerland.
+
+\vspace{6pt}
+\hangindent=1.5em
+\noindent Jones, D.B. (1931). Factors for Converting Percentages of Nitrogen in Foods and Feeds into Percentages of Proteins. *USDA Circular* No. 183. United States Department of Agriculture, Washington, D.C.
+
+\vspace{6pt}
+\hangindent=1.5em
+\noindent Karimi-Zindashty, Y., MacDonald, J.D., Nitschelm, J., Del Grosso, S.J., and Desjardins, R.L. (2012). Sources of uncertainty in the Canadian national livestock greenhouse gas inventory. *Journal of Agricultural Science*, 150(6), 677--690.
+
+\vspace{6pt}
+\hangindent=1.5em
+\noindent Milne, E., Sessitsch, A., Wilson, J., et al. (2014). Estimating uncertainty in pasture-based dairy CH$_4$ emissions using Monte Carlo simulation. *Animal*, 8(2), 313--320.
+
+\vspace{6pt}
+\hangindent=1.5em
+\noindent Monni, S., Syri, S., and Savolainen, I. (2007). Uncertainties in the Finnish greenhouse gas emission inventory. *Environmental Science and Policy*, 7(2), 87--98.
+
+\vspace{6pt}
+\hangindent=1.5em
+\noindent Penman, J., Kruger, D., Galbally, I., Hiraishi, T., Nyenzi, B., Emmanuel, S., Buendia, L., Hoppaus, R., Martinsen, T., Meijer, J., Miwa, K., and Tanabe, K. (2000). *Good Practice Guidance and Uncertainty Management in National Greenhouse Gas Inventories*. IPCC/OECD/IEA/IGES, Hayama, Japan.
+
+\vspace{6pt}
+\hangindent=1.5em
+\noindent Saltelli, A., Ratto, M., Andres, T., Campolongo, F., Cariboni, J., Gatelli, D., Saisana, M., and Tarantola, S. (2008). *Global Sensitivity Analysis: The Primer*. Wiley, Chichester.
+
+\vspace{6pt}
+\hangindent=1.5em
+\noindent IPCC (2021). Climate Change 2021: The Physical Science Basis. Contribution of Working Group I to the Sixth Assessment Report. Table 7.SM.7: GWP values. Cambridge University Press.
+
+---
+
+\vspace{12pt}
+\begin{center}
+\textcolor{cgiargreen}{\rule{14cm}{0.5pt}}\\[4pt]
+\textcolor{darkgrey}{\small\textit{This document was prepared by CIAT / CGIAR Alliance — ClimateActionNetZero.}}\\
+\textcolor{darkgrey}{\small\textit{Funded by the Global Methane Hub. Version 1.0, May 2026.}}\\
+\textcolor{cgiargreen}{\rule{14cm}{0.5pt}}
+\end{center}
