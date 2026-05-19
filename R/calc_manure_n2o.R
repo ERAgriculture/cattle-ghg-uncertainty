@@ -10,7 +10,7 @@
 # Weight-gain N retention uses the simplified coefficient 0.032 (Monni
 # 2007 / IPCC software approximation of Eq 10.33; the full Eq 10.33A
 # requires protein-content data not in the standard input set).
-calc_n_excretion <- function(ge, CP, milk_yield = 0, pct_lactating = 0,
+calc_n_excretion <- function(ge, CP, milk_yield = 0, pct_calving = 0,
                               weight_gain = 0, MilkPR = 3.3) {
   # IPCC 2006 Eq 10.32 / IPCC 2019 Refinement Eq 10.32A:
   #   N_intake = (GE / 18.45) × (CP% / 100) / 6.25
@@ -30,11 +30,11 @@ calc_n_excretion <- function(ge, CP, milk_yield = 0, pct_lactating = 0,
   N_intake <- DMI * (CP / 100) / 6.25
 
   N_retained <- 0
-  if (milk_yield > 0 && pct_lactating > 0) {
-    # Eq 10.32A: milk_yield is daily kg per LACTATING animal; pct_lactating
+  if (milk_yield > 0 && pct_calving > 0) {
+    # Eq 10.32A: milk_yield is daily kg per lactating animal; pct_calving
     # averages across the sub-category. MilkPR is in % (e.g. 3.3); /6.38
     # converts kg protein → kg N.
-    N_retained <- milk_yield * pct_lactating * MilkPR / 100 / 6.38
+    N_retained <- milk_yield * pct_calving * MilkPR / 100 / 6.38
   }
   if (weight_gain > 0) {
     N_retained <- N_retained + weight_gain * 0.032

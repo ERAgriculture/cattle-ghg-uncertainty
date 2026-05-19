@@ -108,8 +108,8 @@ generate_timeseries_template <- function(filepath) {
 
   col_guide <- data.frame(
     # R1.6: IPCC-aligned names
-    Parameter = c("year", "N", "W", "MW",
-                  "WG", "Milk", "Fat", "pct_lactating",
+    Parameter = c("year", "N", "BW", "MW",
+                  "WG", "Milk", "Fat", "pct_calving",
                   "DE", "CP", "MilkPR",
                   "Cfi", "Ca", "C", "Cp", "hours"),
     Unit = c("(non-numeric)", "head", "kg", "kg",
@@ -144,7 +144,7 @@ generate_timeseries_template <- function(filepath) {
   wr(35, 2, "WHICH COLUMNS TO INCLUDE", s_h2)
   wr(35, 3,
      paste("Most users will only have reliable time series for cattle_pop and possibly",
-           "live_weight or milk_yield. That is perfectly fine — include those columns only.",
+           "BW or milk_yield. That is perfectly fine — include those columns only.",
            "The tool will set the correlation to 0 for all other pairs.",
            "\n\nIf your param_specs has Cfi, Ca, C_growth, or Cp as activity_data parameters",
            "and you suspect these vary correlated with your population data",
@@ -179,8 +179,8 @@ generate_timeseries_template <- function(filepath) {
                           gridLines = TRUE)
 
   # R1.6: IPCC-aligned names
-  params <- c("N", "W", "MW", "WG",
-              "Milk", "Fat", "pct_lactating", "DE",
+  params <- c("N", "BW", "MW", "WG",
+              "Milk", "Fat", "pct_calving", "DE",
               "CP", "MilkPR")
 
   units <- c("head", "kg", "kg", "kg/day",
@@ -189,12 +189,12 @@ generate_timeseries_template <- function(filepath) {
 
   descriptions <- c(
     "No. of animals",
-    "Avg. live body weight",
+    "Avg. body weight (BW)",
     "Mature body weight",
     "Daily weight gain",
     "Daily milk yield per cow",
     "Milk fat content",
-    "Fraction of cows lactating",
+    "Fraction calving (calves/females/year)",
     "Digestible energy",
     "Crude protein in diet",
     "Milk protein content"
@@ -241,12 +241,12 @@ generate_timeseries_template <- function(filepath) {
     year         = years,
     N            = round(c(4320000, 4410000, 4480000, 4530000, 4490000,
                             4560000, 4620000, 4670000, 4720000, 4790000)),
-    W            = round(c(278, 275, 272, 270, 274, 271, 268, 273, 276, 274), 1),
+    BW           = round(c(278, 275, 272, 270, 274, 271, 268, 273, 276, 274), 1),
     MW           = round(c(302, 300, 300, 299, 301, 300, 298, 301, 302, 300), 1),
     WG           = round(c(0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00), 2),
     Milk         = round(c(3.9, 4.1, 4.0, 3.8, 4.2, 4.0, 3.9, 4.1, 4.0, 4.3), 2),
     Fat          = round(c(3.9, 4.0, 4.1, 3.9, 4.0, 4.0, 4.1, 4.0, 3.9, 4.1), 2),
-    pct_lactating= round(c(0.59, 0.61, 0.60, 0.58, 0.62, 0.60, 0.59, 0.61, 0.60, 0.62), 3),
+    pct_calving  = round(c(0.59, 0.61, 0.60, 0.58, 0.62, 0.60, 0.59, 0.61, 0.60, 0.62), 3),
     DE           = round(c(54.5, 55.0, 55.5, 54.0, 55.5, 55.0, 54.5, 56.0, 55.0, 55.5), 1),
     CP           = round(c(9.8, 10.0, 10.2, 9.6, 10.3, 10.0, 9.9, 10.4, 10.1, 10.2), 1),
     MilkPR       = round(c(3.2, 3.3, 3.3, 3.2, 3.4, 3.3, 3.2, 3.4, 3.3, 3.4), 2)

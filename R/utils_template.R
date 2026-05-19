@@ -56,17 +56,23 @@ PARAM_ALIASES <- c(
   "Frac_LEACH"   = "Frac_LEACH_H",
   # R1.6 — full IPCC alignment per IPCC Inventory Software v2.95
   "cattle_pop"   = "N",
-  "live_weight"  = "W",
   "mature_weight"= "MW",
   "weight_gain"  = "WG",
   "milk_yield"   = "Milk",
   "milk_fat"     = "Fat",
   "protein_milk" = "MilkPR",
   "C_growth"     = "C",
-  # Andreas 2026-05 #6: IPCC mixes "W" (Eq 10.3) and "BW" (Eq 10.6, 10.17).
-  # Accept "BW" as an upload-only alias for the canonical "W" so users
-  # familiar with the "BW" convention can use it without confusion.
-  "BW"           = "W"
+  # Andreas 2026-05 #6 (final rename 2026-05-19): canonical name is now
+  # "BW" (matches IPCC Eq 10.6 / 10.17 / 10.18 — see Vol 4 Ch 10 p.17).
+  # Legacy "W" and "live_weight" still accepted on upload.
+  "W"            = "BW",
+  "live_weight"  = "BW",
+  # Andreas 2026-05 #9 (final consolidation 2026-05-19): the previous
+  # `pct_lactating` parameter is consolidated into `pct_calving` —
+  # IPCC's "Percent of females that give birth in a year" (Vol 4 Ch 10
+  # p.20 of the 2019 Refinement; used to weight Cpregnancy in Eq 10.13).
+  "pct_lactating" = "pct_calving",
+  "pct_pregnant"  = "pct_calving"
 )
 
 # ---------------------------------------------------------------------------
@@ -78,8 +84,8 @@ PARAM_CATALOGUE <- data.frame(
   # Older names (cattle_pop, live_weight, DE_pct, etc.) are auto-renamed by
   # parse_uploaded_template via PARAM_ALIASES so legacy templates still work.
   parameter = c(
-    "N","W","MW","WG",
-    "Milk","Fat","pct_lactating","DE",
+    "N","BW","MW","WG",
+    "Milk","Fat","pct_calving","DE",
     "Cfi","Ca","C","Cp","hours","CP",
     "Ym","Bo","ASH","UE",
     "EF3_PRP","EF3_S","Frac_GASMS","EF4","EF5","Frac_LEACH_H",
@@ -90,9 +96,9 @@ PARAM_CATALOGUE <- data.frame(
     "Average live body weight of the animals",
     "Mature (adult) body weight of the animals",
     "Average daily weight gain — set 0 for non-growing (adult) animals",
-    "Daily milk yield per LACTATING cow (not sub-category-average — the tool multiplies by pct_lactating internally). Set 0 for sub-categories that do not lactate.",
+    "Daily milk yield per lactating cow (not sub-category-average — the tool multiplies by pct_calving internally). Set 0 for sub-categories that do not lactate.",
     "Fat content of milk (% by weight)",
-    "Fraction of cows currently lactating (0 to 1)",
+    "Fraction of females that give birth in a year (0 to 1) — IPCC 2019 Vol 4 Ch 10 p.20; weights NEL, NEp, and nitrogen excretion.",
     "Digestible energy as a percentage of gross energy — typical range 45-75%",
     "Maintenance energy coefficient — depends on sex and lactation status (IPCC Table 10.4)",
     "Activity coefficient for locomotion energy — depends on feeding situation (IPCC Table 10.5)",
@@ -201,12 +207,12 @@ PARAM_CATALOGUE <- data.frame(
   # Format: "<symbol> — <full name in IPCC software>"
   ipcc_software_name = c(
     "N(T) — Annual Average Population (head)",
-    "W — Live weight (kg) [also TAM = Typical Animal Mass]",
+    "BW — Body weight (kg) [also TAM = Typical Animal Mass; IPCC Eq 10.3/10.6/10.17/10.18]",
     "(MW) — Mature body weight, used in NEg equation",
     "WG — Daily weight gain (Average Daily Feed Intake tab)",
     "Milk — Average daily milk production (kg/day)",
     "Fat — Fat content of milk (% by weight)",
-    "(% lactating) — derived from herd-structure data",
+    "pct_calving — Fraction of females that give birth in a year (IPCC 2019 Vol 4 Ch 10 p.20)",
     "DE% — Feed digestibility (%)",
     "Cfi — Coefficient for calculating Net Energy for Maintenance",
     "Ca — Activity coefficient",
@@ -934,14 +940,14 @@ generate_template_openxlsx <- function(filepath, include_example,
   # Andreas 2026-05 #22e: added cattle_type / aggregation_level / sub_category
   # so users can supply per-group time series instead of a single inventory-wide
   # series. Leave them blank to apply the row to all groups.
-  ts_params <- c("N", "W", "MW", "WG",
-                 "Milk", "Fat", "pct_lactating", "DE",
+  ts_params <- c("N", "BW", "MW", "WG",
+                 "Milk", "Fat", "pct_calving", "DE",
                  "CP", "MilkPR")
   ts_units <- c("head", "kg", "kg", "kg/day",
                 "kg/head/day", "%", "fraction (0-1)", "%", "%", "%")
-  ts_desc  <- c("No. of animals", "Avg. live body weight", "Mature body weight",
+  ts_desc  <- c("No. of animals", "Avg. body weight (BW)", "Mature body weight",
                 "Daily weight gain", "Daily milk yield per cow", "Milk fat content",
-                "Fraction of cows lactating", "Digestible energy",
+                "Fraction calving (calves/females/year)", "Digestible energy",
                 "Crude protein in diet", "Milk protein content")
   ts_all_cols  <- c("cattle_type", "aggregation_level", "sub_category",
                     "year", ts_params)
@@ -1029,12 +1035,12 @@ generate_template_openxlsx <- function(filepath, include_example,
       year         = 2013:2022,
       N            = c(4320000, 4410000, 4480000, 4530000, 4490000,
                        4560000, 4620000, 4670000, 4720000, 4790000),
-      W            = c(278, 275, 272, 270, 274, 271, 268, 273, 276, 274),
+      BW           = c(278, 275, 272, 270, 274, 271, 268, 273, 276, 274),
       MW           = c(302, 300, 300, 299, 301, 300, 298, 301, 302, 300),
       WG           = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
       Milk         = c(3.9, 4.1, 4.0, 3.8, 4.2, 4.0, 3.9, 4.1, 4.0, 4.3),
       Fat          = c(3.9, 4.0, 4.1, 3.9, 4.0, 4.0, 4.1, 4.0, 3.9, 4.1),
-      pct_lactating= c(0.59, 0.61, 0.60, 0.58, 0.62, 0.60, 0.59, 0.61, 0.60, 0.62),
+      pct_calving  = c(0.59, 0.61, 0.60, 0.58, 0.62, 0.60, 0.59, 0.61, 0.60, 0.62),
       DE           = c(54.5, 55.0, 55.5, 54.0, 55.5, 55.0, 54.5, 56.0, 55.0, 55.5),
       CP           = c(9.8, 10.0, 10.2, 9.6, 10.3, 10.0, 9.9, 10.4, 10.1, 10.2),
       MilkPR       = c(3.2, 3.3, 3.3, 3.2, 3.4, 3.3, 3.2, 3.4, 3.3, 3.4),
@@ -1197,7 +1203,7 @@ generate_template_openxlsx <- function(filepath, include_example,
            use=c("Large populations, body weights, symmetric uncertainty",
                  "Non-negative parameters with near-symmetric uncertainty",
                  "Emission factors, ratios — strictly positive, possible right tail",
-                 "Fractions 0-1: pct_lactating, Cp",
+                 "Fractions 0-1: pct_calving, Cp",
                  "Expert-elicited min/mode/max: Ca, C_growth, DE_pct",
                  "IPCC coefficients: Cfi, Ym, Bo, EF3_PRP — recommended for most EFs",
                  "Only bounds known, no preferred value",
@@ -1432,7 +1438,7 @@ parse_uploaded_template <- function(path) {
   }
   expected_param_names <- c("year",
                             # New IPCC-aligned names
-                            "N", "W", "Milk", "DE", "CP", "MW", "WG", "Fat",
+                            "N", "BW", "Milk", "DE", "CP", "MW", "WG", "Fat",
                             # Legacy fallbacks
                             "cattle_pop", "live_weight", "milk_yield",
                             "DE_pct", "CP_pct")

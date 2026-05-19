@@ -5,7 +5,7 @@
 ASYMMETRIC_PARAMS <- c("EF3_PRP", "EF3_S", "EF4", "EF5",
                         "Frac_LEACH_H", "Frac_GASMS",
                         "Frac_GASM_PRP", "Frac_LEACH_PRP")
-FRACTION_PARAMS   <- c("pct_lactating", "ASH", "UE",
+FRACTION_PARAMS   <- c("pct_calving", "ASH", "UE",
                         "Frac_GASMS", "Frac_LEACH_H",
                         "Frac_GASM_PRP", "Frac_LEACH_PRP")
 

@@ -201,32 +201,32 @@ sample_per_mms_param <- function(mms_rows, value_col, lower_col, upper_col,
 # the spec are silently dropped.
 #
 # Existing pairs (kept from the inline observer that had the post-R1.6 bug):
-#   W <-> MW (0.85), W <-> WG (0.40),
-#   Milk <-> Fat (-0.30), Milk <-> pct_lactating (0.20),
+#   BW <-> MW (0.85), BW <-> WG (0.40),
+#   Milk <-> Fat (-0.30), Milk <-> pct_calving (0.20),
 #   DE <-> CP (0.50), DE <-> Ym (-0.40)
 # New in Round 7:
 #   Cfi <-> Ca (0.60)         R1.15: structural breed/physiology pairing
-#   N   <-> W  (0.30)         T4.3: cross-block AD <-> coefficient pair
+#   N   <-> BW (0.30)         T4.3: cross-block AD <-> coefficient pair
 #
 # Note: the post-Round-4 IPCC rename means the documented pairs use the new
 # variable names directly (DE not DE_pct, Ym not Ym_pct, CP not CP_pct).
 # Legacy aliases are accepted via the lookup helper below.
 PRESET_PAIRS <- list(
-  list(a = "W",    b = "MW",            rho = 0.85),
-  list(a = "W",    b = "WG",            rho = 0.40),
+  list(a = "BW",   b = "MW",            rho = 0.85),
+  list(a = "BW",   b = "WG",            rho = 0.40),
   list(a = "Milk", b = "Fat",           rho = -0.30),
-  list(a = "Milk", b = "pct_lactating", rho = 0.20),
+  list(a = "Milk", b = "pct_calving",   rho = 0.20),
   list(a = "DE",   b = "CP",            rho = 0.50),
   list(a = "DE",   b = "Ym",            rho = -0.40),
   list(a = "Cfi",  b = "Ca",            rho = 0.60),
-  list(a = "N",    b = "W",             rho = 0.30)
+  list(a = "N",    b = "BW",            rho = 0.30)
 )
 
 # Legacy alias table — accept Round-3 names so the helper finds pairs even if
 # the user uploaded a pre-rename template.
 .PRESET_ALIASES <- list(
   DE_pct = "DE", Ym_pct = "Ym", CP_pct = "CP",
-  cattle_pop = "N", live_weight = "W", mature_weight = "MW",
+  cattle_pop = "N", live_weight = "BW", mature_weight = "MW",
   weight_gain = "WG", milk_yield = "Milk", milk_fat = "Fat"
 )
 

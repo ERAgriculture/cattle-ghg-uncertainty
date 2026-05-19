@@ -61,12 +61,11 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
   # R1.6: full IPCC variable rename — look up new IPCC names first, fall back to legacy
   results <- ghg_emissions_vec(
     cattle_pop    = get_param_alt("N",       "cattle_pop",    0),
-    live_weight   = get_param_alt("W",       "live_weight",   275),
+    live_weight   = get_param_alt("BW",      "live_weight",   275),
     weight_gain   = get_param_alt("WG",      "weight_gain",   0),
     mature_weight = get_param_alt("MW",      "mature_weight", 300),
     milk_yield    = get_param_alt("Milk",    "milk_yield",    0),
     milk_fat      = get_param_alt("Fat",     "milk_fat",      4),
-    pct_lactating = get_param("pct_lactating", 1),
     hours         = get_param("hours", 0),
     DE            = get_param_alt("DE",      "DE_pct",        55),
     Cfi           = get_param("Cfi", 0.322),
@@ -102,7 +101,7 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     # the adjustment inert (matches the IPCC formula's neutral baseline).
     # The old global Tw argument was retained as a fallback only.
     Tw          = get_param("Tw", 20),
-    pct_calving = pct_calving,
+    pct_calving = get_param("pct_calving", pct_calving),
     frac_gas_values   = frac_gas_values,
     frac_leach_values = frac_leach_values,
     # Andreas 2026-05 follow-up (C4 / C6): per-iteration per-MMS matrices

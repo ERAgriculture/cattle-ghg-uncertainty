@@ -561,7 +561,7 @@ app_ui <- function() {
                     "This is the recommended option whenever you have ≥5 years of data."),
             tags$li(tags$strong("IPCC-guidance preset:"),
                     " applies a sparse correlation matrix containing only well-documented structural pairs ",
-                    "(e.g. W ↔ MW, Milk ↔ Fat). ",
+                    "(e.g. BW ↔ MW, Milk ↔ Fat).",
                     "All other pairs are zero. A good middle ground when you have no time series but want some realism beyond full independence."),
             tags$li(tags$strong("Advanced — manual entry:"),
                     " upload a CSV with expert estimates of pairwise correlations. ",
@@ -597,7 +597,7 @@ app_ui <- function() {
               radioButtons("corr_group_scope", "Apply correlations within:",
                            choices = c(
                              "All AD parameters"                     = "all",
-                             "Population-related only (N, W, MW, WG)" = "population",
+                             "Population-related only (N, BW, MW, WG)" = "population",
                              "Intake / feed-quality only (DE_pct, CP_pct, Cfi, Ca, etc.)"      = "intake"
                            ),
                            selected = "all"),
@@ -608,7 +608,7 @@ app_ui <- function() {
               div(class = "info-panel",
                   tags$strong("IPCC-guidance preset: "),
                   "applies a sparse correlation matrix with only well-documented structural pairs ",
-                  "(e.g. W ↔ MW, Milk ↔ Fat). ",
+                  "(e.g. BW ↔ MW, Milk ↔ Fat).",
                   "All other pairs are zero. Use this when you have no time series but want some realism beyond independence.")
             ),
             conditionalPanel(

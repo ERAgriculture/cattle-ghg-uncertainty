@@ -637,10 +637,10 @@ app_server <- function(input, output, session) {
   # T4.1 / Round 7 R1.15: IPCC-guidance preset — sparse matrix with documented
   # structural pairs only. After Round 7 the preset operates on the **unified**
   # set of all parameter names (AD + coefficients) so cross-block pairs
-  # like N <-> W (T4.3) flow correctly. Bug fixed in Round 7: prior code
+  # like N <-> BW (T4.3) flow correctly. Bug fixed in Round 7: prior code
   # filtered to activity_data names, which after R1.6 left only `N` and made
   # the preset matrix 1x1 (effectively a no-op for documented pairs like
-  # W <-> MW that are coefficients post-rename).
+  # BW <-> MW that are coefficients post-rename).
   observeEvent(input$corr_mode, {
     if (input$corr_mode == "preset") {
       all_names <- if (!is.null(rv$param_specs))

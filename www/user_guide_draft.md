@@ -47,7 +47,7 @@ The tool covers:
 
 Before opening the tool, assemble the following:
 
-1. **Activity data**: For each animal sub-category, the population (N), live weight (W or BW), weight gain (WG), milk yield (for dairy), milk fat %, digestible energy (DE%), manure management system (MMS) fractions, and other Tier 2 inputs.
+1. **Activity data**: For each animal sub-category, the population (N), body weight (BW), weight gain (WG), milk yield (for dairy), milk fat %, digestible energy (DE%), manure management system (MMS) fractions, and other Tier 2 inputs.
 
 2. **Uncertainty ranges**: For each parameter, an estimate of its uncertainty — typically either:
    - A percentage uncertainty (e.g. ±20% representing the half-width of a 95% confidence interval), or
@@ -68,8 +68,8 @@ The template has the following key columns in the **Parameters** sheet:
 | `cattle_type` | Broad cattle category | `dairy`, `non_dairy` |
 | `aggregation_level` | Production system or region name | `Highland smallholder dairy` |
 | `sub_category` | Animal sub-group | `cows`, `heifers`, `calves_female` |
-| `parameter` | Parameter code (see Definitions tab) | `N`, `W`, `Ym`, `DE`, `Bo` |
-| `mean` | Central estimate (point value from your inventory) | `450` (for W in kg) |
+| `parameter` | Parameter code (see Definitions tab) | `N`, `BW`, `Ym`, `DE`, `Bo` |
+| `mean` | Central estimate (point value from your inventory) | `450` (for BW in kg) |
 | `distribution` | Uncertainty distribution shape | `normal`, `triangular`, `pert`, `uniform`, `lognormal` |
 | `uncertainty_pct` | Symmetric ±% half-width of 95% CI | `20` |
 | `lower` | Lower bound (alternative to uncertainty_pct) | `360` |
@@ -92,7 +92,7 @@ Each sub-category needs its own rows for all relevant parameters. The values of 
 
 Uncertainty estimates can be derived from several sources:
 
-**For activity data (N, W, milk yields):**
+**For activity data (N, BW, milk yields):**
 - **Survey-based estimates**: If populations are estimated from livestock surveys, the survey sampling error provides a direct estimate of uncertainty. The 95% confidence interval from a survey translates directly to the `lower` and `upper` bounds (or to `uncertainty_pct` if symmetric).
 - **Expert elicitation**: Ask the data provider to give a range within which they are 95% confident the true value falls.
 - **IPCC defaults**: IPCC 2019 Refinement Chapter 11 provides uncertainty ranges for key emission factors (EF3, EF4, EF5, and Frac parameters). Use these as the starting point if no country-specific data is available.
@@ -110,14 +110,14 @@ The tool offers five distribution shapes:
 
 | Distribution | Shape | Best for |
 |---|---|---|
-| **Normal** | Symmetric bell curve | Activity data (N, W) where the mean is well-known and errors are random |
+| **Normal** | Symmetric bell curve | Activity data (N, BW) where the mean is well-known and errors are random |
 | **PERT** | Smooth bounded curve | Emission factors where you have a min, mode, and max (preferred for skewed EFs) |
 | **Triangular** | Peaked triangle | Situations with a clear most-likely value and known hard limits |
 | **Uniform** | Flat (equal probability) | When all values in a range are equally likely; very conservative |
 | **Lognormal** | Right-skewed | Strictly positive values where uncertainty is proportionally larger at lower values (e.g. Bo, CH₄ yields) |
 
 **Recommended defaults:**
-- Use **Normal** for population (N) and live weight (W) — these are typically measured with roughly symmetric errors
+- Use **Normal** for population (N) and body weight (BW) — these are typically measured with roughly symmetric errors
 - Use **PERT or Lognormal** for emission factors (Ym, Bo, MCF, EF3–EF5, Frac parameters) — these are bounded below at zero and often have right-skewed uncertainty
 - Use **Uniform** as a conservative fallback when you only know the plausible range
 
@@ -202,7 +202,7 @@ You can edit values directly in the table. Clicking a cell opens an edit field.
 ### 5.2 Quick-set buttons
 
 Two quick-set buttons are available for rapid exploration:
-- **Set all activity data to Normal ±15%**: Sets N, W, and other activity data parameters to a Normal distribution with ±15% uncertainty. Click again to undo.
+- **Set all activity data to Normal ±15%**: Sets N, BW, and other activity data parameters to a Normal distribution with ±15% uncertainty. Click again to undo.
 - **Set all coefficients to PERT**: Sets emission factors and other coefficients to PERT distribution. Click again to undo.
 
 These are useful for a first exploratory run. Refine individual parameters before your final analysis.
@@ -318,7 +318,7 @@ The tornado chart ranks parameters by their contribution to total uncertainty. T
 
 Each bar is labelled with:
 - **Cattle type and sub-category**: e.g. `dairy | cows`
-- **Parameter name**: e.g. `Ym` (methane conversion factor), `N` (population), `W` (live weight)
+- **Parameter name**: e.g. `Ym` (methane conversion factor), `N` (population), `BW` (body weight)
 
 This labelling allows you to identify not just _which parameter_ is most sensitive, but _for which animal group_ — critical information for directing future data collection efforts.
 
@@ -391,7 +391,7 @@ Key parameter codes used in the tool:
 | Code | Full name | Unit | IPCC equation |
 |---|---|---|---|
 | N | Animal population | head | Eq. 10.1 |
-| W (or BW) | Live weight | kg | Eq. 10.3 |
+| BW | Body weight | kg | Eq. 10.3 |
 | WG | Daily weight gain | kg/day | Eq. 10.3 |
 | Milk | Milk production per lactating animal | kg/day | Eq. 10.4 |
 | Fat | Milk fat content | % | Eq. 10.4 |
@@ -424,7 +424,7 @@ To illustrate the workflow, the following example uses the Country X built-in da
 
 **Step 2 — QA/QC**: Go to Tab 2. All parameters should pass or show only Info flags. The Info flags for EF3/EF4/EF5 cite older benchmark sources; for this hypothetical example, the values match IPCC 2019 defaults.
 
-**Step 3 — Uncertainty**: Go to Tab 3. Note that activity data (N, W, Milk, WG, Fat) use Normal distributions and coefficients (Ym, DE, Bo, etc.) use PERT or lognormal distributions.
+**Step 3 — Uncertainty**: Go to Tab 3. Note that activity data (N, BW, Milk, WG, Fat) use Normal distributions and coefficients (Ym, DE, Bo, etc.) use PERT or lognormal distributions.
 
 **Step 4 — Correlations**: Go to Tab 4. Select "From template (auto)" — the example dataset includes a 5-year time series from which a correlation matrix is computed automatically.
 
@@ -432,7 +432,7 @@ To illustrate the workflow, the following example uses the Country X built-in da
 
 **Step 6 — Results**: After ~30 seconds, the results appear. Note the 95% CI and MoE%. Click "Run Diagnostic" to confirm convergence.
 
-**Step 7 — Sensitivity**: Go to Tab 6. The tornado chart shows which parameters drive most uncertainty. In this example, Ym and W for cows are typically the dominant contributors.
+**Step 7 — Sensitivity**: Go to Tab 6. The tornado chart shows which parameters drive most uncertainty. In this example, Ym and BW for cows are typically the dominant contributors.
 
 **Step 8 — Report**: Go to Tab 7. Download the Excel report to see the full IPCC Table 3.3 output.
 
