@@ -1,6 +1,7 @@
 compute_diag_trace <- function(co2e, n_checkpoints = 200L) {
-  n   <- length(co2e)
-  idx <- unique(round(seq(1, n, length.out = n_checkpoints)))
+  n      <- length(co2e)
+  start  <- min(50L, n)
+  idx    <- unique(round(seq(start, n, length.out = n_checkpoints)))
   cs  <- cumsum(co2e)
   list(
     iter         = idx,

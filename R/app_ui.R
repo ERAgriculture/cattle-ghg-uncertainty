@@ -828,7 +828,7 @@ app_ui <- function() {
             condition = "output.has_diagnostics == true",
             div(style = "text-align:center; margin: 12px 0 4px 0;",
               actionButton("toggle_diagnostics",
-                           label = tagList(icon("stethoscope"), " Run Diagnostic"),
+                           label = tagList(icon("magnifying-glass"), " Run Diagnostic"),
                            class = "btn btn-danger",
                            style = "font-weight:600; padding:8px 28px; font-size:0.95rem;")
             )
@@ -841,7 +841,7 @@ app_ui <- function() {
               style = "border:2px solid #EF4444; margin-bottom:4px;",
               bslib::card_header(
                 div(style = "display:flex; align-items:center; gap:8px;",
-                    icon("stethoscope", style = "color:#EF4444;"),
+                    icon("magnifying-glass", style = "color:#EF4444;"),
                     tags$strong("Simulation Diagnostics"),
                     tags$span(
                       style = paste0("font-size:0.75rem; color:#6B6B6B; background:#F3F4F6;",
@@ -857,7 +857,13 @@ app_ui <- function() {
                     "All three quality checks should be ", tags$strong("green (Pass)"),
                     " before submitting results. If any show ",
                     tags$strong("Warn"), " or ", tags$strong("Fail"),
-                    ", go back to the Simulate tab, increase the number of iterations, and re-run."),
+                    ", go back to the Simulate tab, increase the number of iterations, and re-run.",
+                    tags$br(),
+                    tags$em(style = "color:#555; font-size:0.85rem;",
+                            icon("circle-info", style = "font-size:0.8rem;"),
+                            " Note: this tool uses ", tags$strong("independent Monte Carlo"), " — not MCMC. ",
+                            "Each iteration is drawn independently, so there are no chains, no warmup, and no burn-in. ",
+                            "The diagnostics above replace the multi-chain Gelman-Rubin checks used in Bayesian MCMC.")),
                 div(style = "margin-top:14px;",
                     uiOutput("diag_badges")),
                 bslib::card(

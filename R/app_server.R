@@ -1551,8 +1551,10 @@ app_server <- function(input, output, session) {
                y0 = tr$final_hi, y1 = tr$final_hi,
                line = list(color = "#3B82F6", dash = "dot", width = 1))
         ),
-        legend = list(orientation = "h", y = -0.22),
-        margin = list(t = 10, b = 20)
+        legend = list(x = 0.75, y = 0.98, xanchor = "left", yanchor = "top",
+                      bgcolor = "rgba(255,255,255,0.85)",
+                      bordercolor = "#E0DDD5", borderwidth = 1),
+        margin = list(t = 10, b = 10)
       )
   })
   outputOptions(output, "convergence_plot", suspendWhenHidden = FALSE)
