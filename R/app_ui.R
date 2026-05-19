@@ -391,13 +391,32 @@ app_ui <- function() {
       icon = icon("check-square"),
       div(class = "info-panel", style = "margin: 16px;",
           tags$strong("What to do: "),
-          "After loading data, review these automated quality checks. Each row flags a specific check for one parameter. ",
-          tags$strong("Missing"), " (amber) = the parameter was not in your upload and was auto-filled from the IPCC default — verify or replace with country data. ",
-          tags$strong("Fail"), " (red) = the value or bounds will likely cause an error in the simulation. ",
-          tags$strong("Warn"), " (amber) = the value is unusual compared with IPCC defaults or Penman/Monni uncertainty references -- investigate and document. ",
-          tags$strong("Info"), " (blue) = informational only — typically for emission factor parameters (EF3, EF4, EF5, Frac_*) where country-specific overrides are expected and the IPCC benchmark is a Monni-2007 / Penman-2000 mid-point, not a fixed table value. No action required unless the deviation is very large. ",
-          tags$strong("Pass"), " (green) = check satisfied. ",
-          "Fix any fails before running the simulation. Warnings are advisory -- document your justification for large deviations from IPCC defaults. ",
+          "After loading data, review these automated quality checks. Each row flags a specific check for one parameter.",
+          tags$br(), tags$br(),
+          div(style = "display:flex; flex-direction:column; gap:7px; margin-bottom:10px;",
+            div(
+              tags$span(style = "display:inline-block; min-width:74px; font-weight:600; color:#92400E; background:#FEF3C7; border:1px solid #F59E0B; border-radius:4px; padding:1px 8px; margin-right:8px; text-align:center;", "Missing"),
+              tags$strong("(amber)"), " — the parameter was not in your upload and was auto-filled from the IPCC default. Verify or replace with country-specific data."
+            ),
+            div(
+              tags$span(style = "display:inline-block; min-width:74px; font-weight:600; color:#991B1B; background:#FEE2E2; border:1px solid #EF4444; border-radius:4px; padding:1px 8px; margin-right:8px; text-align:center;", "Fail"),
+              tags$strong("(red)"), " — the value or bounds will likely cause an error in the simulation."
+            ),
+            div(
+              tags$span(style = "display:inline-block; min-width:74px; font-weight:600; color:#92400E; background:#FEF3C7; border:1px solid #F59E0B; border-radius:4px; padding:1px 8px; margin-right:8px; text-align:center;", "Warn"),
+              tags$strong("(amber)"), " — the value is unusual compared with IPCC defaults or Penman/Monni uncertainty references. Investigate and document."
+            ),
+            div(
+              tags$span(style = "display:inline-block; min-width:74px; font-weight:600; color:#1E40AF; background:#DBEAFE; border:1px solid #3B82F6; border-radius:4px; padding:1px 8px; margin-right:8px; text-align:center;", "Info"),
+              tags$strong("(blue)"), " — informational only. Typically for emission factor parameters (EF3, EF4, EF5, Frac_*) where country-specific overrides are expected and the IPCC benchmark is a Monni-2007 / Penman-2000 mid-point, not a fixed table value. No action required unless the deviation is very large."
+            ),
+            div(
+              tags$span(style = "display:inline-block; min-width:74px; font-weight:600; color:#166534; background:#DCFCE7; border:1px solid #22C55E; border-radius:4px; padding:1px 8px; margin-right:8px; text-align:center;", "Pass"),
+              tags$strong("(green)"), " — check satisfied."
+            )
+          ),
+          "Fix any ", tags$strong("Fails"), " before running the simulation. ",
+          tags$strong("Warnings"), " are advisory — document your justification for large deviations from IPCC defaults.",
           tags$br(), tags$br(),
           tags$strong("Auto-filled parameters: "),
           "If any parameters were absent from your upload, an ",
