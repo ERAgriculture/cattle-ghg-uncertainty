@@ -19,6 +19,8 @@ app_server <- function(input, output, session) {
     sim_error = NULL,
     comparison_result = NULL,
     comparison_sensitivity = NULL,
+    diagnostics      = NULL,
+    show_diagnostics = FALSE,
     upload_status = NULL,   # NULL | list(type = "success"|"error", message = "...")
     has_custom_upload = FALSE,
     sim_view = "settings"   # R1.5: "settings" or "results" — drives Tab 5 panel toggle
@@ -1111,7 +1113,28 @@ app_server <- function(input, output, session) {
             rv$sim_log <- paste0(rv$sim_log, "Source selection: ",
                                  paste(srcs, collapse = ", "), "\n")
           }
-          rv$mc_results <- sim_result
+          rv$mc_results        <- sim_result
+          rv$show_diagnostics  <- FALSE
+
+          local({
+            co2e <- sim_result$inventory$total_co2e
+            n    <- length(co2e)
+            n2   <- floor(n / 2L)
+            h1   <- co2e[seq_len(n2)]
+            h2   <- co2e[seq(n2 + 1L, n)]
+            om   <- mean(co2e)
+            oci  <- quantile(co2e, c(0.025, 0.975), names = FALSE)
+            ci1  <- quantile(h1,   c(0.025, 0.975), names = FALSE)
+            ci2  <- quantile(h2,   c(0.025, 0.975), names = FALSE)
+            rv$diagnostics <- list(
+              n            = n,
+              mcse_pct     = (sd(co2e) / om) / sqrt(n) * 100,
+              drift_pct    = abs(mean(h1) - mean(h2)) / om * 100,
+              ci_drift_pct = mean(abs(ci1 - ci2) / pmax(abs(oci), .Machine$double.eps)) * 100,
+              skew_val     = mean(((co2e - om) / sd(co2e))^3),
+              trace        = compute_diag_trace(co2e)
+            )
+          })
 
           # ---- Stage 3: uncertainty metrics ----
           setProgress(0.40, detail = "Computing uncertainty metrics...")
@@ -1425,6 +1448,114 @@ app_server <- function(input, output, session) {
       plotly::layout(title = "Uncertainty Decomposition (CV %)",
                      yaxis = list(title = "CV (%)"))
   })
+
+  # ---- Simulation diagnostics ----
+
+  observeEvent(input$toggle_diagnostics, {
+    rv$show_diagnostics <- !rv$show_diagnostics
+  })
+
+  output$has_diagnostics <- reactive({ !is.null(rv$diagnostics) })
+  outputOptions(output, "has_diagnostics", suspendWhenHidden = FALSE)
+
+  output$show_diagnostics <- reactive({ isTRUE(rv$show_diagnostics) })
+  outputOptions(output, "show_diagnostics", suspendWhenHidden = FALSE)
+
+  output$diag_badges <- renderUI({
+    req(rv$diagnostics)
+    d <- rv$diagnostics
+
+    mcse_s  <- if (d$mcse_pct     <  0.5) "pass" else if (d$mcse_pct     < 1)  "warn" else "fail"
+    drift_s <- if (d$drift_pct    <  2.0) "pass" else if (d$drift_pct    < 5)  "warn" else "fail"
+    ci_s    <- if (d$ci_drift_pct <  5.0) "pass" else if (d$ci_drift_pct < 10) "warn" else "fail"
+
+    skew_label <- if (abs(d$skew_val) < 0.5) "symmetric"
+                  else if (d$skew_val  > 0)   "right-skewed (expected)"
+                  else                          "left-skewed"
+    skew_note  <- if (abs(d$skew_val) > 3) " — extreme, check draws" else ""
+
+    bslib::layout_columns(
+      col_widths = NULL,
+      make_diag_badge(
+        "Precision (MCSE)",
+        paste0("Monte Carlo Standard Error: measures how much the reported mean would shift if ",
+               "you re-ran with a different random seed. Formula: CV% ÷ √n. ",
+               "Aim for < 0.5% (green). At 10,000 iterations a CV of 20% gives MCSE = 0.2%, which is fine. ",
+               "At 1,000 iterations it would be 0.6% — borderline."),
+        sprintf("%.2f%% of mean", d$mcse_pct),
+        mcse_s
+      ),
+      make_diag_badge(
+        "Mean Stability",
+        paste0("Compares the average emission from the first half of iterations to the second half. ",
+               "If they agree closely, the sample is large enough. Aim for < 2% difference (green). ",
+               "A difference > 5% means your results depend on which random draws happened early vs late."),
+        sprintf("%.1f%% drift (1st vs 2nd half)", d$drift_pct),
+        drift_s
+      ),
+      make_diag_badge(
+        "95% CI Stability",
+        paste0("Compares the 95% confidence interval bounds from the first half vs the second half of iterations. ",
+               "Percentile estimates are noisier than means and need more iterations to stabilise. ",
+               "Aim for < 5% drift (green). If this fails, increase iterations significantly (try 30,000+)."),
+        sprintf("%.1f%% drift (1st vs 2nd half)", d$ci_drift_pct),
+        ci_s
+      ),
+      make_diag_badge(
+        "Distribution Skew",
+        paste0("Measures the asymmetry of the simulated emission distribution. ",
+               "Positive (right-skewed) is normal and expected when emission factors follow lognormal distributions — this is not a problem. ",
+               "Values beyond ±3 may indicate extreme outlier draws; if so, review your input uncertainty bounds."),
+        sprintf("%.2f (%s%s)", d$skew_val, skew_label, skew_note),
+        "info"
+      )
+    )
+  })
+
+  output$convergence_plot <- plotly::renderPlotly({
+    req(rv$diagnostics)
+    tr <- rv$diagnostics$trace
+    plotly::plot_ly() |>
+      plotly::add_ribbons(
+        x = tr$iter, ymin = tr$running_lo, ymax = tr$running_hi,
+        fillcolor = "rgba(59,130,246,0.12)",
+        line = list(color = "transparent"),
+        showlegend = FALSE, hoverinfo = "skip"
+      ) |>
+      plotly::add_lines(
+        x = tr$iter, y = tr$running_mean,
+        line = list(color = "#2D6A4F", width = 2.5),
+        name = "Running mean"
+      ) |>
+      plotly::add_lines(
+        x = tr$iter, y = tr$running_lo,
+        line = list(color = "#3B82F6", width = 1.5, dash = "dash"),
+        name = "Running 2.5th pct"
+      ) |>
+      plotly::add_lines(
+        x = tr$iter, y = tr$running_hi,
+        line = list(color = "#3B82F6", width = 1.5, dash = "dash"),
+        name = "Running 97.5th pct"
+      ) |>
+      plotly::layout(
+        xaxis  = list(title = "Iteration number"),
+        yaxis  = list(title = "Total CO₂eq (t)"),
+        shapes = list(
+          list(type = "line", x0 = min(tr$iter), x1 = max(tr$iter),
+               y0 = tr$final_mean, y1 = tr$final_mean,
+               line = list(color = "#1B4332", dash = "dash", width = 1.5)),
+          list(type = "line", x0 = min(tr$iter), x1 = max(tr$iter),
+               y0 = tr$final_lo, y1 = tr$final_lo,
+               line = list(color = "#3B82F6", dash = "dot", width = 1)),
+          list(type = "line", x0 = min(tr$iter), x1 = max(tr$iter),
+               y0 = tr$final_hi, y1 = tr$final_hi,
+               line = list(color = "#3B82F6", dash = "dot", width = 1))
+        ),
+        legend = list(orientation = "h", y = -0.22),
+        margin = list(t = 10, b = 20)
+      )
+  })
+  outputOptions(output, "convergence_plot", suspendWhenHidden = FALSE)
 
   # Andreas 2026-05 #32, C2: aggregate by_system results by user-chosen level
   # (cattle_type / aggregation_level / sub_category). sys_name encodes

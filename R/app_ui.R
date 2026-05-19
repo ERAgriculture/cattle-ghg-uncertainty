@@ -822,6 +822,67 @@ app_ui <- function() {
               )
             )
           ),
+
+          # ---- Diagnostic trigger button (appears after simulation runs) ----
+          conditionalPanel(
+            condition = "output.has_diagnostics == true",
+            div(style = "text-align:center; margin: 12px 0 4px 0;",
+              actionButton("toggle_diagnostics",
+                           label = tagList(icon("stethoscope"), " Run Diagnostic"),
+                           class = "btn btn-danger",
+                           style = "font-weight:600; padding:8px 28px; font-size:0.95rem;")
+            )
+          ),
+
+          # ---- Collapsible diagnostic panel ----
+          conditionalPanel(
+            condition = "output.show_diagnostics == true",
+            bslib::card(
+              style = "border:2px solid #EF4444; margin-bottom:4px;",
+              bslib::card_header(
+                div(style = "display:flex; align-items:center; gap:8px;",
+                    icon("stethoscope", style = "color:#EF4444;"),
+                    tags$strong("Simulation Diagnostics"),
+                    tags$span(
+                      style = paste0("font-size:0.75rem; color:#6B6B6B; background:#F3F4F6;",
+                                     "border:1px solid #E0DDD5; border-radius:4px; padding:1px 8px;"),
+                      "Monte Carlo quality checks"
+                    )
+                )
+              ),
+              bslib::card_body(
+                div(class = "info-panel",
+                    icon("circle-info"),
+                    " These checks tell you whether your simulation ran long enough to produce trustworthy results. ",
+                    "All three quality checks should be ", tags$strong("green (Pass)"),
+                    " before submitting results. If any show ",
+                    tags$strong("Warn"), " or ", tags$strong("Fail"),
+                    ", go back to the Simulate tab, increase the number of iterations, and re-run."),
+                div(style = "margin-top:14px;",
+                    uiOutput("diag_badges")),
+                bslib::card(
+                  style = "margin-top:18px; border:1px solid #E0DDD5;",
+                  bslib::card_header(
+                    div(style = "display:flex; align-items:center; gap:6px;",
+                        "Convergence trace",
+                        bslib::tooltip(
+                          span(icon("circle-question"), style = "color:#6B6B6B; cursor:help;"),
+                          paste0("This plot shows how the running mean (dark green) and the 95% confidence interval bounds (blue dashes) ",
+                                 "evolve as more iterations are added. If the lines flatten out well before the last iteration, ",
+                                 "the simulation has converged. If the lines are still changing near the right edge of the plot, ",
+                                 "you need more iterations."),
+                          placement = "right"
+                        )
+                    )
+                  ),
+                  bslib::card_body(
+                    plotly::plotlyOutput("convergence_plot", height = "260px")
+                  )
+                )
+              )
+            )
+          ),
+
           # Andreas 2026-05 #32, C2: aggregation level selector — default to
           # cattle_type (IPCC reporting convention: dairy / other cattle), with
           # optional drill-down to aggregation_level (production system) or
