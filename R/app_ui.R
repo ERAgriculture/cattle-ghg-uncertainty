@@ -117,23 +117,17 @@ app_ui <- function() {
                 tags$tr(
                   tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "5"),
                   tags$td(style = "padding: 8px; border: 1px solid #E0DDD5; font-weight: 600; color: #2D6A4F;", "Simulate"),
-                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "Choose number of iterations, GWP version, and click Run"),
-                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "1-2 min")
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "Choose number of iterations, GWP version, and click Run — results (emission distributions, 95% CI, decomposition) appear in the same tab"),
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "5-7 min")
                 ),
                 tags$tr(style = "background: #FAFAF7;",
                   tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "6"),
-                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5; font-weight: 600; color: #2D6A4F;", "Results"),
-                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "View emission distributions, uncertainty ranges (95% CI), and decomposition"),
-                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "5 min")
-                ),
-                tags$tr(
-                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "7"),
                   tags$td(style = "padding: 8px; border: 1px solid #E0DDD5; font-weight: 600; color: #2D6A4F;", "Sensitivity"),
                   tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "Identify which parameters contribute most to uncertainty (tornado chart)"),
                   tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "5 min")
                 ),
-                tags$tr(style = "background: #FAFAF7;",
-                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "8"),
+                tags$tr(
+                  tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "7"),
                   tags$td(style = "padding: 8px; border: 1px solid #E0DDD5; font-weight: 600; color: #2D6A4F;", "IPCC Report"),
                   tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "Download results formatted as IPCC Table 3.3 for your inventory submission"),
                   tags$td(style = "padding: 8px; border: 1px solid #E0DDD5;", "2 min")
