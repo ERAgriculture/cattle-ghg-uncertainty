@@ -1731,6 +1731,9 @@ app_server <- function(input, output, session) {
       class = "compact stripe"
     )
   })
+  # Render eagerly at startup so the table is cached in the browser and
+  # visible even when the server is busy running a simulation.
+  outputOptions(output, "definitions_table", suspendWhenHidden = FALSE)
 
   # T8.4 / Round 6a #8: per-source histograms embedded in IPCC Report.
   # Bug fix: previous version referenced `inv$enteric_ch4_total` etc., but the
