@@ -1746,6 +1746,56 @@ app_server <- function(input, output, session) {
   })
 
   # Helper: pick the right sensitivity dataset.
+  # Extract the group prefix from a labelled sensitivity variable name.
+  # Column format: "cattle_type | sub_category – parameter"
+  .sens_group <- function(var_name) {
+    parts <- strsplit(var_name, " – ", fixed = TRUE)[[1]]
+    if (length(parts) >= 2) trimws(parts[1]) else "(ungrouped)"
+  }
+
+  # Render a group-filter dropdown once a simulation result is available.
+  output$sens_group_filter_ui <- renderUI({
+    sens <- rv$sensitivity
+    if (is.null(sens)) return(NULL)
+    df <- if (!is.null(sens$src) && is.data.frame(sens$src) && nrow(sens$src) > 0)
+      sens$src else sens$prcc
+    if (is.null(df) || !"variable" %in% names(df)) return(NULL)
+
+    groups <- unique(sapply(df$variable, .sens_group))
+    if (length(groups) <= 1) return(NULL)   # single group — no filter needed
+
+    div(style = "min-width: 280px;",
+      tags$label("Animal groups shown", class = "control-label"),
+      div(style = "display: flex; gap: 6px; align-items: center;",
+        selectizeInput("sens_groups",
+          label   = NULL,
+          choices = groups,
+          selected = groups,
+          multiple = TRUE,
+          options  = list(placeholder = "Select groups…",
+                          plugins     = list("remove_button"))
+        ),
+        div(style = "white-space: nowrap;",
+          actionLink("sens_groups_all",  "All",  style = "font-size:0.8rem;"),
+          tags$span(" | ", style = "font-size:0.8rem; color:#888;"),
+          actionLink("sens_groups_none", "None", style = "font-size:0.8rem;")
+        )
+      )
+    )
+  })
+
+  observeEvent(input$sens_groups_all, {
+    sens <- rv$sensitivity
+    if (is.null(sens)) return()
+    df <- if (!is.null(sens$src) && is.data.frame(sens$src)) sens$src else sens$prcc
+    if (is.null(df)) return()
+    groups <- unique(sapply(df$variable, .sens_group))
+    updateSelectizeInput(session, "sens_groups", selected = groups)
+  })
+  observeEvent(input$sens_groups_none, {
+    updateSelectizeInput(session, "sens_groups", selected = character(0))
+  })
+
   # T7.2: now also recomputes per-source sensitivity on demand (against the
   # selected output column) using the cached samples.
   active_sensitivity <- reactive({
@@ -1761,14 +1811,30 @@ app_server <- function(input, output, session) {
     first_sys <- base$by_system[[1]]
 
     if (src == "total_co2e") {
-      if (view == "without" && !is.null(rv$comparison_sensitivity))
-        return(rv$comparison_sensitivity)
-      return(rv$sensitivity)
+      raw <- if (view == "without" && !is.null(rv$comparison_sensitivity))
+        rv$comparison_sensitivity else rv$sensitivity
+    } else if (!src %in% names(first_sys$results)) {
+      raw <- rv$sensitivity
+    } else {
+      raw <- sensitivity_analysis(first_sys$samples,
+                                  first_sys$results[[src]],
+                                  method = "both")
     }
-    if (!src %in% names(first_sys$results)) return(rv$sensitivity)
-    sensitivity_analysis(first_sys$samples,
-                         first_sys$results[[src]],
-                         method = "both")
+
+    # Group filter — only apply when the dropdown is rendered (multi-group runs).
+    sel_groups <- input$sens_groups
+    if (is.null(raw) || is.null(sel_groups)) return(raw)
+
+    filter_sens_df <- function(df) {
+      if (is.null(df) || !is.data.frame(df) || !"variable" %in% names(df)) return(df)
+      keep <- sapply(df$variable, .sens_group) %in% sel_groups
+      df[keep, , drop = FALSE]
+    }
+    structure(
+      list(src  = filter_sens_df(raw$src),
+           prcc = filter_sens_df(raw$prcc)),
+      message = attr(raw, "message")
+    )
   })
 
   output$tornado_chart <- plotly::renderPlotly({

@@ -2,18 +2,12 @@
 # run_qaqc() returns a tidy data.frame: one row per (group x parameter x check)
 
 # C1: IPCC-aligned names; legacy names auto-renamed by parse_uploaded_template
-ASYMMETRIC_PARAMS <- c("EF3_PRP", "EF3_S", "EF4", "EF5", "Frac_LEACH_H")
+ASYMMETRIC_PARAMS <- c("EF3_PRP", "EF3_S", "EF4", "EF5",
+                        "Frac_LEACH_H", "Frac_GASMS",
+                        "Frac_GASM_PRP", "Frac_LEACH_PRP")
 FRACTION_PARAMS   <- c("pct_lactating", "ASH", "UE",
                         "Frac_GASMS", "Frac_LEACH_H",
                         "Frac_GASM_PRP", "Frac_LEACH_PRP")
-
-# Andreas 2026-05 #25: parameters whose benchmark default is not directly an
-# IPCC table value but a Monni-2007 / Penman-2000 mid-point. Deviation from the
-# catalogue default for these is informational, not a failure, because country-
-# specific overrides are expected and the benchmark is approximate.
-MONNI_BENCHMARK_PARAMS <- c("EF3_PRP", "EF3_S", "EF4", "EF5",
-                             "Frac_LEACH_H", "Frac_GASMS",
-                             "Frac_GASM_PRP", "Frac_LEACH_PRP")
 
 run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global") {
   ps <- param_specs
@@ -161,34 +155,24 @@ run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global"
 
     # ------------------------------------------------------------------
     # Check 5: benchmark deviation from IPCC default
-    # Andreas 2026-05 #25: for parameters whose benchmark is a Monni-2007 /
-    # Penman-2000 mid-point (EF3, EF4, EF5, Frac_*), downgrade fail→info
-    # and warn→info because country-specific overrides are expected.
-    # For parameters whose benchmark is a direct IPCC table value (W, Milk,
-    # DE, Ym, Bo, etc.) the original fail/warn levels still apply.
+    # Benchmarks for all parameters are now sourced from IPCC 2006/2019
+    # guideline tables (see PARAM_CATALOGUE$ipcc_ref). Country-specific
+    # overrides are always expected — flag large deviations as warn/fail
+    # so the user documents the source, not as errors requiring correction.
     # ------------------------------------------------------------------
     if (!is.na(ipcc_def) && ipcc_def != 0 && !is.na(mu)) {
       pct_dev <- abs(mu - ipcc_def) / abs(ipcc_def) * 100
-      is_monni <- p %in% MONNI_BENCHMARK_PARAMS
       if (pct_dev > 200) {
-        sev <- if (is_monni) "info" else "fail"
-        suffix <- if (is_monni)
-          " — benchmark is a Monni-2007/Penman-2000 mid-point; country-specific overrides are expected."
-        else " Verify the value or document the country-specific source."
-        add(grp, p, "benchmark_deviation", sev,
-            sprintf("Mean (%.4g) deviates %.0f%% from IPCC default (%.4g).%s",
-                    mu, pct_dev, ipcc_def, suffix))
+        add(grp, p, "benchmark_deviation", "fail",
+            sprintf("Mean (%.4g) deviates %.0f%% from IPCC guideline default (%.4g). Verify the value or document the country-specific source.",
+                    mu, pct_dev, ipcc_def))
       } else if (pct_dev > 50) {
-        sev <- if (is_monni) "info" else "warn"
-        suffix <- if (is_monni)
-          " — Monni-2007/Penman-2000 benchmark, informational only."
-        else " Large deviation — please document the source."
-        add(grp, p, "benchmark_deviation", sev,
-            sprintf("Mean (%.4g) deviates %.0f%% from IPCC default (%.4g).%s",
-                    mu, pct_dev, ipcc_def, suffix))
+        add(grp, p, "benchmark_deviation", "warn",
+            sprintf("Mean (%.4g) deviates %.0f%% from IPCC guideline default (%.4g). Large deviation — please document the source.",
+                    mu, pct_dev, ipcc_def))
       } else {
         add(grp, p, "benchmark_deviation", "pass",
-            sprintf("Mean (%.4g) within 50%% of IPCC default (%.4g)", mu, ipcc_def))
+            sprintf("Mean (%.4g) within 50%% of IPCC guideline default (%.4g)", mu, ipcc_def))
       }
     }
 
@@ -244,9 +228,9 @@ run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global"
     }
 
     # ------------------------------------------------------------------
-    # Check 6: asymmetric bound warning for EF3/EF4/EF5/Frac_LEACH
-    # These parameters have strongly right-skewed uncertainty per Penman et al.
-    # (2000) and Monni et al. (2007); symmetric bounds underestimate upper tail.
+    # Check 6: asymmetric bound check for right-skewed IPCC parameters
+    # EF3, EF4, EF5 and Frac_* have right-skewed uncertainty documented in
+    # IPCC 2006/2019 guideline tables; symmetric bounds underestimate upper tail.
     # ------------------------------------------------------------------
     if (p %in% ASYMMETRIC_PARAMS && !is.na(lo) && !is.na(hi) && !is.na(mu) && mu > 0) {
       lower_span <- mu - lo
@@ -256,7 +240,7 @@ run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global"
         if (ratio < 1.5) {
           add(grp, p, "asymmetric_bounds", "warn",
               sprintf(
-                "%s has right-skewed uncertainty per Penman et al. (2000)/Monni et al. (2007). Detected near-symmetric bounds (upper span / lower span = %.1f). Consider using the recommended asymmetric bounds from the blank template.",
+                "%s has right-skewed uncertainty (IPCC 2006/2019 guideline tables). Detected near-symmetric bounds (upper span / lower span = %.1f). Consider using the IPCC-recommended asymmetric bounds from the blank template.",
                 p, ratio))
         } else {
           add(grp, p, "asymmetric_bounds", "pass",

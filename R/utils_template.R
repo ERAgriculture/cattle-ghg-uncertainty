@@ -135,8 +135,8 @@ PARAM_CATALOGUE <- data.frame(
     10, 15, 10, 30, 20, 10, 20, 15,   # cattle_pop..DE_pct
     30, 30, 30, 10, 20, 15,            # Cfi, Ca, C_growth, Cp, hours, CP_pct
     8, 20, 25, 25,                     # Ym_pct, Bo, ash, UE
-    NA, NA, 40, NA, NA, NA,           # EF3_PRP, EF3_S, Frac_GASMS, EF4, EF5, Frac_LEACH_H (asymmetric — use bounds)
-    50, 50,                            # Frac_GASM_PRP, Frac_LEACH_PRP (IPCC 2019 Table 11.3, ±50%)
+    NA, NA, NA, NA, NA, NA,           # EF3_PRP, EF3_S, Frac_GASMS, EF4, EF5, Frac_LEACH_H (asymmetric — use IPCC bounds)
+    NA, NA,                            # Frac_GASM_PRP, Frac_LEACH_PRP (IPCC 2019 Table 11.3 — asymmetric bounds)
     10, 25),                           # MilkPR, Tw
   suggested_distribution = c(
     "normal","normal","normal","pert","normal","normal","beta","normal",
@@ -145,21 +145,24 @@ PARAM_CATALOGUE <- data.frame(
     "pert","pert","pert","lognormal","lognormal","lognormal",
     "pert","pert",
     "normal","normal"),
-  # Absolute lower/upper bounds for asymmetric parameters (Monni et al. 2007 / IPCC GPG).
+  # Absolute lower/upper bounds for asymmetric parameters — sourced from IPCC 2006/2019 Refinement.
   # These override the symmetric ±pct formula in the Excel template.
+  # Sources: EF3_PRP/EF3_S → IPCC 2019 Table 10.21; EF4/EF5 → IPCC 2006 Table 11.3;
+  #          Frac_GASMS/Frac_LEACH_H → IPCC 2019 Table 10.22;
+  #          Frac_GASM_PRP/Frac_LEACH_PRP → IPCC 2019 Table 11.3.
   suggested_lower_bound = c(
     NA, NA, NA, NA, NA, NA, NA, NA,
     NA, NA, NA, NA, NA, NA,
     NA, NA, NA, NA,
-    0.003, 0.001, NA, 0.0043, 0.0015, 0.006,  # EF3_PRP, EF3_S, EF4, EF5, Frac_LEACH_H
-    NA, NA,
+    0.007, 0.001, 0.10, 0.002, 0.0005, 0.010,  # EF3_PRP, EF3_S, Frac_GASMS, EF4, EF5, Frac_LEACH_H
+    0.05, 0.05,                                  # Frac_GASM_PRP, Frac_LEACH_PRP
     NA, NA),
   suggested_upper_bound = c(
     NA, NA, NA, NA, NA, NA, NA, NA,
     NA, NA, NA, NA, NA, NA,
     NA, NA, NA, NA,
-    0.040, 0.025, NA, 0.020, 0.0225, 0.054,  # EF3_PRP, EF3_S, EF4, EF5, Frac_LEACH_H
-    NA, NA,
+    0.060, 0.025, 0.40, 0.020, 0.025, 0.100,  # EF3_PRP, EF3_S, Frac_GASMS, EF4, EF5, Frac_LEACH_H
+    0.50, 0.80,                                # Frac_GASM_PRP, Frac_LEACH_PRP
     NA, NA),
   # D1: IPCC convention adopted — only cattle_pop is true Activity Data;
   # everything else is a "coefficient" (combines into the per-head emission factor)
@@ -626,11 +629,11 @@ generate_template_openxlsx <- function(filepath, include_example,
                  0.02, 0.005, 0.20, 0.010, 0.0075, 0.02,   # EF3_PRP, EF3_S, Frac_GASMS, EF4, EF5, Frac_LEACH_H
                  0.21, 0.30,                                # Frac_GASM_PRP, Frac_LEACH_PRP
                  3.3, 20)                                   # MilkPR, Tw
-  # Corrected example uncertainties per Penman et al. (2000) / Monni et al. (2007).
+  # Example uncertainties — asymmetric parameters use IPCC 2006/2019 bounds (lower/upper pre-filled).
   # NA = asymmetric parameter; lower_bound/upper_bound are pre-filled from catalogue instead.
   ex_unc <- c(10,15,10,30,20,10,20,15, 30,30,30,10,20,15, 8,20,25,25,
-              NA,NA,40,NA,NA,NA,    # EF3_PRP, EF3_S, Frac_GASMS, EF4, EF5, Frac_LEACH_H
-              50,50,                # Frac_GASM_PRP, Frac_LEACH_PRP
+              NA,NA,NA,NA,NA,NA,    # EF3_PRP, EF3_S, Frac_GASMS, EF4, EF5, Frac_LEACH_H (IPCC bounds)
+              NA,NA,                # Frac_GASM_PRP, Frac_LEACH_PRP (IPCC 2019 Table 11.3 bounds)
               10, 25)               # MilkPR, Tw
 
   for (i in seq_len(n_params)) {

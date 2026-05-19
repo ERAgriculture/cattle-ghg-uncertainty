@@ -235,12 +235,18 @@ app_ui <- function() {
               tags$li("Monte Carlo: Approach 2 from IPCC 2006 Vol 1 Ch 3, with optional Gaussian copula correlations across activity data and coefficients."),
               tags$li("Sensitivity: Standardised regression coefficients (SRC) and partial rank correlation (PRCC) on the sampled inputs vs each output.")
             ),
-            div(style = "margin-top: 16px;",
+            div(style = "margin-top: 16px; display: flex; gap: 12px; flex-wrap: wrap;",
               tags$a(
                 href = "methodology.pdf",
                 download = "IPCC_Tier2_Livestock_GHG_Methodology.pdf",
                 class = "btn btn-success",
                 icon("file-pdf"), " Download full methodology (PDF)"
+              ),
+              tags$a(
+                href = "user_guide_draft.md",
+                download = "IPCC_Tier2_Livestock_GHG_UserGuide.md",
+                class = "btn btn-outline-success",
+                icon("book"), " Download user guide (draft)"
               )
             )
           )
@@ -1039,7 +1045,7 @@ app_ui <- function() {
             "For most livestock inventories both methods give similar rankings. ",
             "Use PRCC as a cross-check when SRC rankings seem counterintuitive or when distributions are highly asymmetric."),
         uiOutput("sens_view_toggle"),
-        div(style = "margin: 0 16px 12px 16px;",
+        div(style = "margin: 0 16px 12px 16px; display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end;",
             selectInput("sens_source", "Output variable",
                         choices = c(
                           "Total CO₂eq (all sources)"             = "total_co2e",
@@ -1050,7 +1056,9 @@ app_ui <- function() {
                           "Pasture deposition N₂O direct"         = "direct_n2o_prp_total",
                           "Pasture deposition N₂O indirect"       = "indirect_n2o_prp_total"
                         ),
-                        selected = "total_co2e", width = "360px")),
+                        selected = "total_co2e", width = "340px"),
+            uiOutput("sens_group_filter_ui")
+        ),
         bslib::layout_columns(
           col_widths = c(6, 6),
           bslib::card(
