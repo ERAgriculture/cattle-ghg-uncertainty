@@ -1474,7 +1474,20 @@ app_server <- function(input, output, session) {
                   else                          "left-skewed"
     skew_note  <- if (abs(d$skew_val) > 3) " — extreme, check draws" else ""
 
-    bslib::layout_columns(
+    iter_warning <- if (d$n < 10000) {
+      div(style = paste0("background:#FEF3C7; border-left:4px solid #F59E0B;",
+                         "padding:10px 14px; border-radius:4px; margin-bottom:12px;",
+                         "font-size:0.88rem; color:#92400E;"),
+          icon("triangle-exclamation"),
+          tags$strong(sprintf(" %s iterations used.", format(d$n, big.mark = ","))),
+          " Tail percentile estimates (2.5th / 97.5th) can still be noisy at this sample size.",
+          " For submission-quality results, consider re-running with at least 10,000 iterations."
+      )
+    } else NULL
+
+    tagList(
+      iter_warning,
+      bslib::layout_columns(
       col_widths = NULL,
       make_diag_badge(
         "Precision (MCSE)",
@@ -1510,6 +1523,7 @@ app_server <- function(input, output, session) {
         "info"
       )
     )
+    )  # tagList
   })
 
   output$convergence_plot <- plotly::renderPlotly({
