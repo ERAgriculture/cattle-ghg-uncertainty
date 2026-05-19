@@ -5,10 +5,12 @@ format_ipcc_table <- function(uncertainty_decomposition, country = "", year = ""
   ad_only <- uncertainty_decomposition$ad_only
   ef_only <- uncertainty_decomposition$ef_only
 
-  get_cv <- function(df, var) {
+  # IPCC 2006 Vol 1 Ch 3 Table 3.3 defines "% uncertainty" as the half-width of
+  # the 95% confidence interval divided by the mean — i.e. moe_pct, not cv_pct.
+  get_moe <- function(df, var) {
     row <- df[df$variable == var, ]
     if (nrow(row) == 0) return(NA)
-    round(row$cv_pct, 1)
+    round(row$moe_pct, 1)
   }
 
   # Andreas 2026-05 #36, C10: pasture direct + indirect must appear as
@@ -29,9 +31,9 @@ format_ipcc_table <- function(uncertainty_decomposition, country = "", year = ""
       "Total CH₄", "Total N₂O", "Total CO₂eq"
     ),
     Gas = c("CH₄", "CH₄", "N₂O", "N₂O", "N₂O", "N₂O", "CH₄", "N₂O", "CO₂eq"),
-    `AD uncertainty (%)`       = sapply(vars, function(v) get_cv(ad_only, v)),
-    `EF uncertainty (%)`       = sapply(vars, function(v) get_cv(ef_only, v)),
-    `Combined uncertainty (%)` = sapply(vars, function(v) get_cv(combined, v)),
+    `AD uncertainty (%)`       = sapply(vars, function(v) get_moe(ad_only, v)),
+    `EF uncertainty (%)`       = sapply(vars, function(v) get_moe(ef_only, v)),
+    `Combined uncertainty (%)` = sapply(vars, function(v) get_moe(combined, v)),
     check.names = FALSE,
     stringsAsFactors = FALSE,
     row.names = NULL

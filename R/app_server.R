@@ -35,7 +35,8 @@ app_server <- function(input, output, session) {
     if (isTRUE(rv$has_custom_upload)) {
       showModal(modalDialog(
         title = "Discard custom upload?",
-        paste0("Loading the ", tools::toTitleCase(input$country),
+        paste0("Loading the ",
+               if (input$country == "uganda") "Country X" else "Country Y",
                " example will overwrite your uploaded data. Proceed?"),
         footer = tagList(
           modalButton("Keep my upload"),
@@ -1206,20 +1207,28 @@ app_server <- function(input, output, session) {
           # than rankings for the first group only.
           .aggregate_sensitivity <- function(by_system, total_co2e) {
             if (length(by_system) == 0) return(NULL)
-            if (length(by_system) == 1) {
-              samp <- by_system[[1]]$samples
-              if (is.null(samp) || ncol(samp) == 0) return(NULL)
-              return(sensitivity_analysis(samp, total_co2e, method = "both"))
+            # B1: prefix every column with "cattle_type | sub_category – " so the
+            # tornado shows which animal group each parameter belongs to, not just
+            # the bare parameter name. This lets users see "dairy | cows – Ym" vs
+            # "dairy | heifers – Ym" and target research at the right sub-category.
+            make_prefix <- function(sn) {
+              parts <- strsplit(sn, "||", fixed = TRUE)[[1]]
+              ct   <- trimws(parts[1L])
+              subc <- trimws(parts[length(parts)])
+              paste0(ct, " | ", subc)
             }
-            blocks <- lapply(names(by_system), function(sn) {
+            label_samples <- function(sn) {
               samp <- by_system[[sn]]$samples
               if (is.null(samp) || ncol(samp) == 0) return(NULL)
-              # Use the sub-category segment (last "||"-delimited part) as prefix
-              label <- trimws(tail(strsplit(sn, "||", fixed = TRUE)[[1]], 1L))
-              colnames(samp) <- paste0(label, ".", colnames(samp))
+              colnames(samp) <- paste0(make_prefix(sn), " – ", colnames(samp))
               samp
-            })
-            blocks <- Filter(Negate(is.null), blocks)
+            }
+            if (length(by_system) == 1) {
+              samp <- label_samples(names(by_system)[[1]])
+              if (is.null(samp)) return(NULL)
+              return(sensitivity_analysis(samp, total_co2e, method = "both"))
+            }
+            blocks <- Filter(Negate(is.null), lapply(names(by_system), label_samples))
             if (length(blocks) == 0) return(NULL)
             sensitivity_analysis(do.call(cbind, blocks), total_co2e, method = "both")
           }
