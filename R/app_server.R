@@ -26,6 +26,11 @@ app_server <- function(input, output, session) {
     sim_view = "settings"   # R1.5: "settings" or "results" — drives Tab 5 panel toggle
   )
 
+  # B4: Home page Resources link
+  observeEvent(input$goto_resources, {
+    bslib::nav_select(id = "nav", selected = "Resources", session = session)
+  })
+
   # --- DATA INPUT ---
 
   # T1.1 fix: when the user has a custom upload loaded and re-touches the country

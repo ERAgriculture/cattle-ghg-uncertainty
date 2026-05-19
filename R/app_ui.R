@@ -45,14 +45,41 @@ app_ui <- function() {
         # Hero section
         div(
           style = "background: linear-gradient(135deg, #1B4332 0%, #2D6A4F 50%, #40916C 100%);
-                   color: white; border-radius: 16px; padding: 48px 40px; margin-bottom: 32px;
+                   color: white; border-radius: 16px; padding: 48px 40px; margin-bottom: 0;
                    position: relative; overflow: hidden;",
           h1("IPCC Tier 2 Livestock GHG Uncertainty Calculator",
              style = "font-size: 2rem; font-weight: 700; margin-bottom: 12px;"),
           p("Monte Carlo uncertainty analysis for national cattle methane and nitrous oxide inventories.",
             style = "font-size: 1.1rem; opacity: 0.9; margin-bottom: 8px;"),
-          p("Developed by CIAT/CGIAR Alliance | Funded by Global Methane Hub",
+          p("Developed by CGIAR Alliance of Bioversity International and CIAT | Funded by Global Methane Hub",
             style = "font-size: 0.9rem; opacity: 0.7;")
+        ),
+        # B3: logo bar — place logo files in www/ and replace img(src=...) tags
+        div(
+          style = "display:flex; align-items:center; justify-content:center; gap:32px;
+                   background:#FFFFFF; border: 1px solid #E0DDD5; border-top: none;
+                   border-radius: 0 0 16px 16px; padding: 14px 24px; margin-bottom: 32px;",
+          # Alliance Bioversity-CIAT logo — replace src when file is in www/
+          tags$img(src = "alliance_logo.png",
+                   alt = "Alliance of Bioversity International and CIAT",
+                   style = "height:40px; max-width:160px; object-fit:contain;",
+                   onerror = "this.style.display='none'; this.nextSibling.style.display='inline-block';"),
+          tags$span("Alliance Bioversity-CIAT",
+                    style = "display:none; font-size:0.85rem; color:#444; font-weight:600;"),
+          # CGIAR logo — replace src when file is in www/
+          tags$img(src = "cgiar_logo.png",
+                   alt = "CGIAR",
+                   style = "height:40px; max-width:120px; object-fit:contain;",
+                   onerror = "this.style.display='none'; this.nextSibling.style.display='inline-block';"),
+          tags$span("CGIAR",
+                    style = "display:none; font-size:0.85rem; color:#444; font-weight:600;"),
+          # Funder logo placeholder — to be confirmed at June 2026 inception meeting
+          tags$img(src = "gmh_logo.png",
+                   alt = "Global Methane Hub",
+                   style = "height:40px; max-width:160px; object-fit:contain;",
+                   onerror = "this.style.display='none'; this.nextSibling.style.display='inline-block';"),
+          tags$span("Global Methane Hub",
+                    style = "display:none; font-size:0.85rem; color:#444; font-weight:600;")
         ),
 
         # What this tool does
@@ -139,7 +166,12 @@ app_ui <- function() {
                 tags$strong("Quick start: "),
                 "To try the tool immediately, go to ",
                 tags$strong("1. Data Input"), ", select 'Country X (hypothetical dairy)', then go to ",
-                tags$strong("5. Simulate"), " and click 'Run Monte Carlo Simulation'.")
+                tags$strong("5. Simulate"), " and click 'Run Monte Carlo Simulation'."),
+            br(),
+            div(style = "text-align: center;",
+                actionButton("goto_resources", "Methodology, user guide & downloads →",
+                             class = "btn btn-outline-success",
+                             style = "font-size:0.95rem; padding: 10px 24px;"))
           )
         ),
 
