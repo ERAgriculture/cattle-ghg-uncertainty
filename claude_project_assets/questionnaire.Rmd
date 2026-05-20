@@ -21,11 +21,9 @@ header-includes:
   - \usepackage{hyperref}
   - \usepackage{setspace}
   - \usepackage{caption}
-  - \usepackage{tabularx}
   - \definecolor{cgiargreen}{RGB}{45,106,79}
   - \definecolor{lightgreen}{RGB}{216,243,220}
   - \definecolor{darkgrey}{RGB}{60,60,60}
-  - \definecolor{amber}{RGB}{180,100,0}
   - \setlength{\headheight}{14pt}
   - \pagestyle{fancy}
   - \fancyhf{}
@@ -46,190 +44,143 @@ linestretch: 1.2
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
-\vspace{0.4cm}
+Fill this out **before** opening the Translator on [claude.ai](https://claude.ai/project/019e4594-d13d-761e-a6fb-71e242eb9804). When you start the chat, paste the contents of this filled page as your first message — Claude will use it to skip the warm-up questions and go straight to inspecting your data.
 
-\begin{center}
-\textcolor{cgiargreen}{\rule{14cm}{1.5pt}}\\[6pt]
-\textcolor{cgiargreen}{\large\textbf{Version 1.0 — May 2026}}\\[4pt]
-\textcolor{darkgrey}{Fill this out before opening the Translator}\\[4pt]
-\textcolor{cgiargreen}{\rule{14cm}{1.5pt}}
-\end{center}
+*Save this file as `my_inventory_questionnaire.docx` and type your answers directly into the form below. Italic lines are guidance and can be left in place.*
 
-\vspace{0.4cm}
-
-\noindent Fill this out \textbf{before} opening the Translator on \href{https://claude.ai/project/019e4594-d13d-761e-a6fb-71e242eb9804}{claude.ai}. When you start the chat, paste this whole filled page as your first message — Claude will use it to skip the warm-up questions and go straight to inspecting your data.
-
-\noindent \textit{Save this file as \texttt{my\_inventory\_questionnaire.docx} and edit your answers in place. Italic guidance lines can be left as-is.}
-
-\vspace{0.2cm}
-
-\hrule
-\vspace{0.3cm}
+---
 
 # 1. Country and inventory year
 
-\noindent\textbf{Country:} \dotfill\\
-\textbf{Inventory year being prepared:} \dotfill
+- **Country:** ______________________________________________________
+
+- **Inventory year being prepared:** ______________________________________________________
 
 # 2. IPCC guidelines version
 
 Tick one:
 
-\begin{itemize}
-  \item[$\square$] \textbf{IPCC 2006 Guidelines} (still the default reporting requirement in many countries)
-  \item[$\square$] \textbf{IPCC 2019 Refinement} (newer; updated emission factors, more manure systems)
-\end{itemize}
+- [ ] **IPCC 2006 Guidelines** (still the default reporting requirement in many countries)
+- [ ] **IPCC 2019 Refinement** (newer; updated emission factors, more manure systems)
 
-\noindent\textit{If unsure, ask your national focal point or pick 2006 — the app accepts both.}
+*If unsure, ask your national focal point or pick 2006 — the app accepts both.*
 
 # 3. Cattle sub-categories
 
-\noindent\textit{List the sub-categories your inventory splits cattle into and the approximate head count of each. You can use any names — Claude will map them to the app's controlled vocabulary.}
+*List the sub-categories your inventory splits cattle into and the approximate head count of each. You can use any names — Claude will map them to the app's controlled vocabulary.*
 
-\vspace{0.2cm}
+| Sub-category name | Head count | Sex (M/F/mix) | Age class (adult / 1–3yr / calf) |
+|-------------------|------------|---------------|-----------------------------------|
+|                   |            |               |                                   |
+|                   |            |               |                                   |
+|                   |            |               |                                   |
+|                   |            |               |                                   |
+|                   |            |               |                                   |
 
-\begin{tabularx}{\linewidth}{|X|X|c|c|}
-\hline
-\textbf{Sub-category name} & \textbf{Head count} & \textbf{Sex (M/F/mix)} & \textbf{Age class} \\ \hline
- & & & \\[10pt] \hline
- & & & \\[10pt] \hline
- & & & \\[10pt] \hline
- & & & \\[10pt] \hline
- & & & \\[10pt] \hline
-\end{tabularx}
-
-\vspace{0.2cm}
-
-\noindent\textit{Example: dairy cows | 500,000 | F | adult \quad | \quad breeding bulls | 12,000 | M | adult}
+*Example row: dairy cows | 500,000 | F | adult*
 
 # 4. Manure management
 
-\noindent\textit{For each sub-category, roughly what \% of manure goes to each system? Per sub-category, the \% must sum to 100. Recognised systems:}
+*For each sub-category, roughly what % of manure goes to each system? Per sub-category, the percentages must sum to 100. Recognised systems:*
 
-\begin{itemize}
-  \setlength\itemsep{0pt}
-  \item \texttt{pasture}, \texttt{daily\_spread}, \texttt{solid\_storage}, \texttt{solid\_storage\_covered}\textsuperscript{*}, \texttt{dry\_lot}, \texttt{deep\_bedding}
-  \item \texttt{liquid\_slurry}, \texttt{lagoon}, \texttt{composting}, \texttt{anaerobic\_digester}\textsuperscript{*}, \texttt{aerobic\_treatment}\textsuperscript{*}, \texttt{burned\_for\_fuel}\textsuperscript{*}
-\end{itemize}
+- `pasture`, `daily_spread`, `solid_storage`, `solid_storage_covered`\*, `dry_lot`, `deep_bedding`
+- `liquid_slurry`, `lagoon`, `composting`, `anaerobic_digester`\*, `aerobic_treatment`\*, `burned_for_fuel`\*
 
-\noindent\textit{\textsuperscript{*}available only when IPCC version = 2019 Refinement.}
+*\*available only when IPCC version = 2019 Refinement.*
 
-\vspace{0.2cm}
+| Sub-category | System 1 (%) | System 2 (%) | System 3 (%) | System 4 (%) |
+|--------------|--------------|--------------|--------------|--------------|
+|              |              |              |              |              |
+|              |              |              |              |              |
+|              |              |              |              |              |
 
-\begin{tabularx}{\linewidth}{|X|X|X|X|X|}
-\hline
-\textbf{Sub-category} & \textbf{System 1 (\%)} & \textbf{System 2 (\%)} & \textbf{System 3 (\%)} & \textbf{System 4 (\%)} \\ \hline
- & & & & \\[10pt] \hline
- & & & & \\[10pt] \hline
- & & & & \\[10pt] \hline
-\end{tabularx}
-
-\vspace{0.2cm}
-
-\noindent\textit{Example: dairy cows: pasture 40\%, solid\_storage 35\%, liquid\_slurry 15\%, lagoon 10\% (sums to 100).}
-
-\newpage
+*Example: dairy cows: pasture 40%, solid_storage 35%, liquid_slurry 15%, lagoon 10% (sums to 100).*
 
 # 5. Data fields you have
 
-\noindent\textit{Tick the parameters for which you have country-specific values. Unticked parameters will be filled with IPCC defaults and flagged amber in the app's QA/QC tab for review.}
+*Tick the parameters for which you have country-specific values. Unticked parameters will be filled with IPCC defaults and flagged amber in the app's QA/QC tab for review.*
 
-\vspace{0.2cm}
+**Activity data (the population number)**
 
-\noindent\textbf{Activity data (the population number)}\\
-\begin{itemize}
-  \setlength\itemsep{0pt}
-  \item[$\square$] Animal population (head count) — \textbf{strongly recommended}
-\end{itemize}
+- [ ] Animal population (head count) — **strongly recommended**
 
-\noindent\textbf{Animal characteristics}\\
-\begin{itemize}
-  \setlength\itemsep{0pt}
-  \item[$\square$] Body weight (kg) — \texttt{BW}
-  \item[$\square$] Mature body weight (kg) — \texttt{MW}
-  \item[$\square$] Daily weight gain (kg/day) — \texttt{WG}
-  \item[$\square$] Fraction of females calving in the year — \texttt{pct\_calving}
-\end{itemize}
+**Animal characteristics**
 
-\noindent\textbf{Production (dairy only)}\\
-\begin{itemize}
-  \setlength\itemsep{0pt}
-  \item[$\square$] Daily milk yield per lactating cow (kg/day) — \texttt{Milk}
-  \item[$\square$] Milk fat content (\%) — \texttt{Fat}
-  \item[$\square$] Milk protein content (\%) — \texttt{MilkPR}
-\end{itemize}
+- [ ] Body weight (kg) — `BW`
+- [ ] Mature body weight (kg) — `MW`
+- [ ] Daily weight gain (kg/day) — `WG`
+- [ ] Fraction of females calving in the year — `pct_calving`
 
-\noindent\textbf{Feed}\\
-\begin{itemize}
-  \setlength\itemsep{0pt}
-  \item[$\square$] Digestible energy of feed (\% of gross energy) — \texttt{DE}
-  \item[$\square$] Crude protein in feed (\%) — \texttt{CP}
-\end{itemize}
+**Production (dairy only)**
 
-\noindent\textbf{Climate (optional)}\\
-\begin{itemize}
-  \setlength\itemsep{0pt}
-  \item[$\square$] Mean winter temperature (°C) — \texttt{Tw}
-\end{itemize}
+- [ ] Daily milk yield per lactating cow (kg/day) — `Milk`
+- [ ] Milk fat content (%) — `Fat`
+- [ ] Milk protein content (%) — `MilkPR`
 
-\noindent\textbf{IPCC equation coefficients} \textit{(rarely measured locally; leave unticked unless your country has a published value)}\\
-\begin{itemize}
-  \setlength\itemsep{0pt}
-  \item[$\square$] \texttt{Cfi}, \texttt{Ca}, \texttt{C}, \texttt{Cp}, \texttt{Ym}, \texttt{Bo}, \texttt{ASH}, \texttt{UE}
-  \item[$\square$] N\textsubscript{2}O emission factors (\texttt{EF3\_PRP}, \texttt{EF3\_S}, \texttt{EF4}, \texttt{EF5})
-  \item[$\square$] Volatilisation / leaching fractions (\texttt{Frac\_GASMS}, \texttt{Frac\_LEACH\_H}, \texttt{Frac\_GASM\_PRP}, \texttt{Frac\_LEACH\_PRP})
-\end{itemize}
+**Feed**
+
+- [ ] Digestible energy of feed (% of gross energy) — `DE`
+- [ ] Crude protein in feed (%) — `CP`
+
+**Climate (optional)**
+
+- [ ] Mean winter temperature (°C) — `Tw`
+
+**IPCC equation coefficients** *(rarely measured locally; leave unticked unless your country has a published value)*
+
+- [ ] `Cfi`, `Ca`, `C`, `Cp`, `Ym`, `Bo`, `ASH`, `UE`
+- [ ] N~2~O emission factors (`EF3_PRP`, `EF3_S`, `EF4`, `EF5`)
+- [ ] Volatilisation / leaching fractions (`Frac_GASMS`, `Frac_LEACH_H`, `Frac_GASM_PRP`, `Frac_LEACH_PRP`)
 
 # 6. Where do your uncertainty estimates come from?
 
-\noindent Tick one (or combine if different sources for different parameters):
+Tick one (or combine if different sources for different parameters):
 
-\begin{itemize}
-  \setlength\itemsep{0pt}
-  \item[$\square$] \textbf{(a) No uncertainty estimates} — use IPCC suggested $\pm\%$ from the catalogue
-  \item[$\square$] \textbf{(b) Expert judgement $\pm\%$} — I'll write a single $\pm\%$ next to each value
-  \item[$\square$] \textbf{(c) Measured confidence intervals} — I have explicit lower/upper bounds (or ± with sample size)
-  \item[$\square$] \textbf{(d) A mix} — I'll specify per parameter
-\end{itemize}
+- [ ] **(a) No uncertainty estimates** — use IPCC suggested ±% from the catalogue
+- [ ] **(b) Expert judgement ±%** — I'll write a single ±% next to each value
+- [ ] **(c) Measured confidence intervals** — I have explicit lower / upper bounds (or ± with sample size)
+- [ ] **(d) A mix** — I'll specify per parameter
 
 # 7. Time series (optional)
 
-\begin{itemize}
-  \item[$\square$] I have annual data for \textbf{5 or more years} that the app can use to estimate correlations between parameters.
-\end{itemize}
+- [ ] I have annual data for **5 or more years** that the app can use to estimate correlations between parameters.
 
-\noindent\textbf{Earliest year:} \dotfill\quad \textbf{Latest year:} \dotfill
+- **Earliest year:** _____________   **Latest year:** _____________
 
-\noindent\textbf{Parameters covered (tick):}
-
-\begin{itemize}
-  \setlength\itemsep{0pt}
-  \item[$\square$] N \quad $\square$ BW \quad $\square$ MW \quad $\square$ WG \quad $\square$ Milk
-  \item[$\square$] Fat \quad $\square$ pct\_calving \quad $\square$ DE \quad $\square$ CP \quad $\square$ MilkPR
-\end{itemize}
+- **Parameters covered (tick all that apply):**
+    - [ ] N
+    - [ ] BW
+    - [ ] MW
+    - [ ] WG
+    - [ ] Milk
+    - [ ] Fat
+    - [ ] pct_calving
+    - [ ] DE
+    - [ ] CP
+    - [ ] MilkPR
 
 # 8. File(s) you'll upload
 
-\noindent\textit{List the file names and a one-line description of what's in each.}
+*List the file names and a one-line description of what's in each.*
 
-\vspace{0.3cm}
-\noindent 1. \dotfill\\[6pt]
-2. \dotfill\\[6pt]
-3. \dotfill
+1. ______________________________________________________
+
+2. ______________________________________________________
+
+3. ______________________________________________________
 
 # 9. Anything else you want Claude to know
 
-\noindent\textit{Free-form note: anything unusual about your data, sub-category definitions specific to your country, or known quirks. Optional.}
+*Free-form note: anything unusual about your data, sub-category definitions specific to your country, or known quirks. Optional.*
 
-\vspace{0.3cm}
-\noindent\dotfill\\[8pt]
-\dotfill\\[8pt]
-\dotfill\\[8pt]
-\dotfill
+______________________________________________________
 
-\vspace{0.5cm}
+______________________________________________________
 
-\begin{center}
-\textcolor{cgiargreen}{\rule{14cm}{0.6pt}}\\[4pt]
-\textbf{That's it.} Paste this filled page into the Translator and attach your files. Claude will take it from here.
-\end{center}
+______________________________________________________
+
+______________________________________________________
+
+---
+
+**That's it.** Paste this filled page into the Translator and attach your data files. Claude will take it from here.

@@ -23,8 +23,6 @@ header-includes:
   - \definecolor{cgiargreen}{RGB}{45,106,79}
   - \definecolor{lightgreen}{RGB}{216,243,220}
   - \definecolor{darkgrey}{RGB}{60,60,60}
-  - \definecolor{amber}{RGB}{180,100,0}
-  - \definecolor{infoBlue}{RGB}{30,80,160}
   - \setlength{\headheight}{14pt}
   - \pagestyle{fancy}
   - \fancyhf{}
@@ -45,17 +43,6 @@ linestretch: 1.15
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```
 
-\vspace{0.4cm}
-
-\begin{center}
-\textcolor{cgiargreen}{\rule{14cm}{1.5pt}}\\[6pt]
-\textcolor{cgiargreen}{\large\textbf{Version 1.0 — May 2026}}\\[4pt]
-\textcolor{darkgrey}{Developed under the Global Methane Hub initiative}\\[4pt]
-\textcolor{cgiargreen}{\rule{14cm}{1.5pt}}
-\end{center}
-
-\vspace{0.6cm}
-
 # A free AI assistant for translating your data into the app template
 
 Filling the app's input template by hand can take several hours when your raw data isn't already in the right shape. The **GMH Uncertainty Translator** is a free Claude.ai assistant — loaded with the IPCC parameter catalogue, the template schema, and a library of mapping examples — that turns your own Excel or CSV files into a ready-to-upload template in roughly **10 minutes**. No installation, no payment.
@@ -64,90 +51,82 @@ Filling the app's input template by hand can take several hours when your raw da
 
 You will need:
 
-\begin{enumerate}
-  \item Your raw inventory data file(s) — Excel, CSV, or even a PDF / screenshot of a table.
-  \item The filled \textbf{Pre-flight Questionnaire} (downloaded from the app's Resources tab).
-  \item About 10 minutes.
-\end{enumerate}
+1. Your raw inventory data file(s) — Excel, CSV, or even a PDF / screenshot of a table.
+2. The filled **Pre-flight Questionnaire** (downloaded from the app's Resources tab).
+3. About 10 minutes.
+
+## What the questionnaire is — and what your data file is
+
+The Translator chat has **two distinct inputs** that you must not confuse:
+
+- The **pre-flight questionnaire** is a one-page form (`.docx`) that you download, fill out, and then **copy-paste as text** into the chat box. It tells Claude about your inventory (country, year, sub-categories, manure systems, data fields, etc.) in one go, so the conversation can skip past warm-up questions and go straight to your data.
+- Your **raw data file(s)** are what you **attach** to the chat using the paperclip icon. These are the actual numbers (population, body weight, milk yield, ...) that Claude maps into the template.
+
+In short: questionnaire = text you paste, data = file you attach.
 
 ## Step-by-step
 
 ### 1. Open claude.ai and sign in (free)
 
-Go to \textbf{\href{https://claude.ai}{claude.ai}} and click \textit{Sign up} if you don't already have an account. The free tier is enough for this task. You can sign in with Google, email, or Apple — no payment details required.
+Go to **[claude.ai](https://claude.ai)** and click *Sign up* if you don't already have an account. The free tier is enough for this task. You can sign in with Google, email, or Apple — no payment details required.
 
 ### 2. Open the Translator Project
 
-Click the shared link:
-\textbf{\href{https://claude.ai/project/019e4594-d13d-761e-a6fb-71e242eb9804}{GMH Uncertainty Translator}}
+Click the shared link: **[GMH Uncertainty Translator](https://claude.ai/project/019e4594-d13d-761e-a6fb-71e242eb9804)**
 
 You'll land in a chat window pre-loaded with the parameter catalogue, template schema, and mapping examples. Claude already knows everything it needs to translate your data.
 
 ### 3. Paste the filled questionnaire as your first message
 
-\textbf{This is text you paste, not a file you upload.} Open the questionnaire (\texttt{.docx}), select everything, copy, and paste it into the chat box at the bottom of the Translator window. Click send.
+**This is text you paste, not a file you upload.** Open your filled `questionnaire.docx`, select everything (Ctrl+A), copy (Ctrl+C), and paste (Ctrl+V) into the chat box at the bottom of the Translator window. Click send.
 
 Claude reads the whole questionnaire, briefly summarises back what it understood about your inventory (country, year, sub-categories, MMS systems, etc.), and then asks you to attach your raw data file(s).
 
-\noindent\textit{Why a questionnaire? Without it, Claude has to ask you six warm-up questions one-by-one before it can do anything useful. The questionnaire gives Claude all those answers up front, so the conversation can go straight to inspecting your data.}
+*Why a questionnaire? Without it, Claude has to ask you six warm-up questions one-by-one before it can do anything useful. The questionnaire gives Claude all those answers up front, so the conversation can go straight to inspecting your data.*
 
 ### 4. Upload your raw data file(s)
 
-\textbf{This is a file upload}, not text. Click the \textbf{paperclip icon} in the chat input box, select your file(s) — \texttt{.xlsx}, \texttt{.csv}, \texttt{.pdf}, or images of tables all work — and send. Claude will inspect the file, propose a column mapping, and ask you to confirm anything ambiguous.
+**This is a file upload**, not text. Click the **paperclip icon** in the chat input box, select your file(s) — `.xlsx`, `.csv`, `.pdf`, or images of tables all work — and send. Claude will inspect the file, propose a column mapping, and ask you to confirm anything ambiguous.
 
 ### 5. Answer Claude's clarification questions
 
 You'll typically see 2–5 short questions, e.g.:
 
-\begin{itemize}
-  \item ``Your column \texttt{weight} — is this body weight (current) or mature weight (adult target)?''
-  \item ``Your milk yield column is in litres — should I convert to kg using $\times 1.03$, or treat 1 L = 1 kg?''
-\end{itemize}
+- *"Your column `weight` — is this body weight (current) or mature weight (adult target)?"*
+- *"Your milk yield column is in litres — should I convert to kg using ×1.03, or treat 1 L = 1 kg?"*
 
 Answer in plain language. Claude will adjust and re-confirm.
 
 ### 6. Receive the filled template
 
-When Claude is satisfied, it will produce \textbf{\texttt{filled\_template\_for\_app.xlsx}} as a downloadable file. Click the download icon next to it in the chat.
+When Claude is satisfied, it will produce **`filled_template_for_app.xlsx`** as a downloadable file. Click the download icon next to it in the chat.
 
 ### 7. Upload into the Cattle Uncertainty App
 
-In the app's \textbf{Data Input} tab:
+In the app's **Data Input** tab:
 
-\begin{enumerate}
-  \item Click \textit{Upload your filled template (.xlsx)}.
-  \item Select \texttt{filled\_template\_for\_app.xlsx}.
-\end{enumerate}
+1. Click *Upload your filled template (.xlsx)*.
+2. Select `filled_template_for_app.xlsx`.
 
-The app will validate the file and load it. Any issues appear in the \textbf{QA/QC} tab — \textcolor{cgiargreen}{green} = OK, \textcolor{amber}{amber} = review, \textcolor{red}{red} = fix.
+The app will validate the file and load it. Any issues appear in the **QA/QC** tab — green = OK, amber = review, red = fix.
 
 You are now ready to run the uncertainty simulation.
 
-\newpage
-
 ## Tips for a smooth session
 
-\begin{itemize}
-  \item \textbf{Be specific.} ``Population in column B is total dairy cattle in 2022'' beats ``B is animals''.
-  \item \textbf{Tell Claude when something is wrong.} If a unit conversion looks off, just say ``wait — that should be 275 kg, not 599 kg'' and Claude will fix it.
-  \item \textbf{Ask Claude to explain.} ``Why did you set Ym = 6.5?'' is a fine question — it will cite the IPCC table.
-  \item \textbf{Don't worry about advanced parameters.} The 16 IPCC coefficients (\texttt{Cfi}, \texttt{Ca}, \texttt{Ym}, \texttt{EF3}, ...) ship with sensible defaults. You only need to provide them if you have country-specific measurements.
-\end{itemize}
+- **Be specific.** "Population in column B is total dairy cattle in 2022" beats "B is animals".
+- **Tell Claude when something is wrong.** If a unit conversion looks off, just say *"wait — that should be 275 kg, not 599 kg"* and Claude will fix it.
+- **Ask Claude to explain.** *"Why did you set Ym = 6.5?"* is a fine question — it will cite the IPCC table.
+- **Don't worry about advanced parameters.** The 16 IPCC coefficients (`Cfi`, `Ca`, `Ym`, `EF3`, ...) ship with sensible defaults. You only need to provide them if you have country-specific measurements.
 
 ## When the AI gets it wrong
 
 The Translator is a helper, not an oracle. Always:
 
-\begin{itemize}
-  \item \textbf{Spot-check} the key numbers (population, body weight, milk yield) by comparing with your original file.
-  \item \textbf{Watch the QA/QC tab} for amber and red flags after upload — those highlight values outside IPCC ranges.
-  \item \textbf{Tell us} when something is off. Use the in-app Feedback tab to report mistranslations so we can improve the prompt.
-\end{itemize}
+- **Spot-check** the key numbers (population, body weight, milk yield) by comparing with your original file.
+- **Watch the QA/QC tab** for amber and red flags after upload — those highlight values outside IPCC ranges.
+- **Tell us** when something is off. Use the in-app Feedback tab to report mistranslations so we can improve the prompt.
 
-\vspace{0.5cm}
+---
 
-\begin{center}
-\textcolor{cgiargreen}{\rule{14cm}{0.6pt}}
-\end{center}
-
-\textit{Produced by the CGIAR Alliance, Climate Action–Net Zero Initiative, Project D614 — GMH Emissions Uncertainty. Questions: \href{mailto:M.Lolita@cgiar.org}{M.Lolita@cgiar.org}.}
+*Produced by the CGIAR Alliance, Climate Action–Net Zero Initiative, Project D614 — GMH Emissions Uncertainty. Questions: [M.Lolita@cgiar.org](mailto:M.Lolita@cgiar.org).*
