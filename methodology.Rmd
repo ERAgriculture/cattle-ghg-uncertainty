@@ -119,7 +119,7 @@ Table \ref{tab:params} lists all parameters used in the calculation chain, their
 \texttt{Milk} & Daily milk yield & kg/head/d & 4.0 (Africa) & Eq.~10.8; Annex 10A.1 / 10A.2 & Normal/Lognormal \\
 \texttt{MilkFat} & Milk fat content & \% & 4.0 & Eq.~10.8; Annex 10A.1 & Normal \\
 \texttt{pct\_calving} & Fraction of females calving / yr & — & 0.60 & 2019 Refinement Vol.4 Ch.10 §10.5 & Beta \\
-\texttt{MilkPR} & Milk protein content & \% & 3.3 & Eq.~10.33; Table 10.11 (Updated) — uses 6.38 conversion & Normal \\
+\texttt{MilkPR} & Milk protein content & \% & 3.3 ($\approx 1.9 + 0.4 \times$ \%Fat) & Eq.~10.33 (uses 6.38 milk-protein-to-N); Annex 10A.1--10A.3 & Normal \\
 \texttt{WorkHours} & Daily draft hours & h/head/d & 0 (non-draft) & Eq.~10.11 & Constant \\
 \texttt{Cp} & Pregnancy coefficient & — & 0.10 (cattle) & Eq.~10.13; Table 10.7 (Updated) & Constant \\
 \texttt{DE\_pct} & Digestible energy (\% of GE) & \% & 55.0 (Africa) & Eq.~10.14--16; Annex 10A & Normal \\

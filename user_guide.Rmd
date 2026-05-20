@@ -150,7 +150,7 @@ WG & Average daily weight gain — set 0 for non-growing adults & kg/day & 0 & $
 Milk & Daily milk yield per \textit{lactating} animal (not sub-category average; tool multiplies by pct\_calving internally). Set 0 for non-dairy sub-categories. & kg/head/day & 4.0 & $\pm$20\% & Normal & Eq. 10.8 \\
 Fat & Fat content of milk & \% & 4.0 & $\pm$10\% & Normal & Eq. 10.8 \\
 pct\_calving & Fraction of females that give birth in a year (0–1). Weights net energy for lactation, pregnancy, and N excretion. & fraction & 0.60 & $\pm$20\% & Beta & 2019 Ref. Ch. 10 p.20 \\
-MilkPR & Protein content of milk — feeds the milk-N term in Eq. 10.33 (N retention rates for cattle, where the 6.38 milk-protein-to-N conversion is defined) & \% & 3.3 & $\pm$10\% & Normal & Eq. 10.33; Table 10.11 \\
+MilkPR & Protein content of milk — feeds the milk-N term in Eq. 10.33 (N retention rates for cattle, where the 6.38 milk-protein-to-N conversion is defined). The 2019 Refinement gives the relation \%MilkPR $= 1.9 + 0.4\times$\%Fat (so 4\% fat $\to$ 3.5\% protein); illustrative values are tabulated in Annex 10A.1 / 10A.2 / 10A.3. & \% & 3.3 & $\pm$10\% & Normal & Eq. 10.33; Annex 10A.1–10A.3 \\
 \addlinespace[4pt]
 \multicolumn{7}{l}{\textbf{\textcolor{cgiargreen}{Energy coefficients}}} \\
 \addlinespace[2pt]

@@ -67,15 +67,18 @@ sub_pars <- list(
   )
 )
 
-# Common parameters (IPCC defaults — Andreas didn't supply these)
+# Common parameters - IPCC 2019 Refinement aggregated defaults.
+# Reproducing exactly the diagnostic baseline used in the May 2026 IPCC
+# alignment audit; switch EF3_PRP/EF4/EF5/Frac_LEACH_PRP to 2006 values
+# (0.02/0.010/0.0075/0.30) to reproduce pre-audit numbers.
 common <- list(
   MW = 600,    # mature cow weight, dairy
   Ym = 6.5,    # methane conversion factor (IPCC Africa default)
-  Bo = 0.13,   # cattle dairy, IPCC 2019 Africa
+  Bo = 0.13,   # cattle dairy, IPCC 2019R Vol.4 Ch.10 Table 10.16(a) "Other regions" low-productivity
   ASH = 0.08, UE = 0.04,
-  EF3_PRP = 0.02, EF4 = 0.010, EF5 = 0.0075,
-  Frac_GASMS = 0.20, Frac_LEACH_H = 0.02,
-  Frac_GASM_PRP = 0.21, Frac_LEACH_PRP = 0.30
+  EF3_PRP = 0.004, EF4 = 0.010, EF5 = 0.011,   # 2019R aggregated (Ch.11 Tables 11.1, 11.3)
+  Frac_GASMS = 0.21, Frac_LEACH_H = 0.02,       # 2019R Ch.11 Table 11.3 / Ch.10 Table 10.23
+  Frac_GASM_PRP = 0.21, Frac_LEACH_PRP = 0.24   # 2019R Ch.11 Table 11.3 (wet climate; dry = 0)
 )
 
 # Intensive dairy MMS allocation — Andreas didn't share this for sure.

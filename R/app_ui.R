@@ -256,19 +256,39 @@ app_ui <- function() {
           bslib::card_header(h4("Useful resources", style = "margin: 0;")),
           bslib::card_body(
             tags$h5("Methodological foundations"),
+            tags$p(style = "font-size: 0.9em; color: #555; margin-bottom: 8px;",
+                   "The six IPCC chapters that underpin the calculations and uncertainty methodology of this tool. Links open the official PDFs on the IPCC-NGGIP site."),
             tags$ul(
-              tags$li(tags$a(href = "https://www.ipcc-nggip.iges.or.jp/public/2006gl/vol4.html",
-                             target = "_blank",
-                             "IPCC 2006 Guidelines — Volume 4 (AFOLU), Chapters 10 & 11")),
-              tags$li(tags$a(href = "https://www.ipcc-nggip.iges.or.jp/public/2019rf/vol4.html",
-                             target = "_blank",
-                             "2019 Refinement to the 2006 IPCC Guidelines — Volume 4")),
-              tags$li(tags$a(href = "https://www.ipcc-nggip.iges.or.jp/public/2006gl/vol1.html",
-                             target = "_blank",
-                             "IPCC 2006 Guidelines — Volume 1, Chapter 3 (Uncertainties)")),
-              tags$li(tags$a(href = "https://www.ipcc-nggip.iges.or.jp/public/2019rf/vol1.html",
-                             target = "_blank",
-                             "2019 Refinement to the 2006 IPCC Guidelines — Volume 1, Chapter 3 (Uncertainties)"))
+              tags$li(tags$strong("Vol. 4 (AFOLU) — Livestock & Manure Management:"),
+                      tags$ul(
+                        tags$li(tags$a(href = "https://www.ipcc-nggip.iges.or.jp/public/2006gl/pdf/4_Volume4/V4_10_Ch10_Livestock.pdf",
+                                       target = "_blank",
+                                       "IPCC 2006 Guidelines — Vol. 4, Chapter 10 (Emissions from Livestock and Manure Management)")),
+                        tags$li(tags$a(href = "https://www.ipcc-nggip.iges.or.jp/public/2019rf/pdf/4_Volume4/19R_V4_Ch10_Livestock.pdf",
+                                       target = "_blank",
+                                       "2019 Refinement — Vol. 4, Chapter 10 (Updated livestock equations, MMS table 10.17, Bo table 10.16a, Ym table 10.12)"))
+                      )
+              ),
+              tags$li(tags$strong("Vol. 4 (AFOLU) — Managed Soils (N₂O from soils, including PRP):"),
+                      tags$ul(
+                        tags$li(tags$a(href = "https://www.ipcc-nggip.iges.or.jp/public/2006gl/pdf/4_Volume4/V4_11_Ch11_N2O&CO2.pdf",
+                                       target = "_blank",
+                                       "IPCC 2006 Guidelines — Vol. 4, Chapter 11 (N₂O Emissions from Managed Soils, CO₂ from Lime/Urea)")),
+                        tags$li(tags$a(href = "https://www.ipcc-nggip.iges.or.jp/public/2019rf/pdf/4_Volume4/19R_V4_Ch11_Soils_N2O_CO2.pdf",
+                                       target = "_blank",
+                                       "2019 Refinement — Vol. 4, Chapter 11 (Updated EF3_PRP table 11.1, EF4/EF5/FracGASM/FracLEACH-(H) table 11.3)"))
+                      )
+              ),
+              tags$li(tags$strong("Vol. 1 — Uncertainty methodology (Approach 1 vs Approach 2):"),
+                      tags$ul(
+                        tags$li(tags$a(href = "https://www.ipcc-nggip.iges.or.jp/public/2006gl/pdf/1_Volume1/V1_3_Ch3_Uncertainties.pdf",
+                                       target = "_blank",
+                                       "IPCC 2006 Guidelines — Vol. 1, Chapter 3 (Uncertainties)")),
+                        tags$li(tags$a(href = "https://www.ipcc-nggip.iges.or.jp/public/2019rf/pdf/1_Volume1/19R_V1_Ch03_Uncertainties.pdf",
+                                       target = "_blank",
+                                       "2019 Refinement — Vol. 1, Chapter 3 (Uncertainties; including §3.2.2.4 on temporal correlation of EFs)"))
+                      )
+              )
             ),
             tags$h5("Activity data guidance"),
             tags$ul(

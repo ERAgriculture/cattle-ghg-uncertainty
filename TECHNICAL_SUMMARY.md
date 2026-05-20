@@ -204,7 +204,7 @@ These are the exact strings the model looks for. Any row whose `parameter` colum
 | `Cp` | Pregnancy coefficient | dimensionless | **IPCC Table 10.7** = 0.10 for pregnant animals |
 | `hours` | Daily work hours (draft animals only) | hours/day | 0 for non-draft; farm surveys |
 | `CP_pct` | Crude protein content of diet | % | Feed lab analyses; IPCC Worksheet 10.3 approx 8–18 % |
-| `protein_milk` | Protein content of milk | % | IPCC 2019 nitrogen excretion (Eq 10.32A); default 3.3 % |
+| `protein_milk` | Protein content of milk | % | Feeds the milk-N term in IPCC Vol.4 Ch.10 Eq 10.33 (N retention for cattle, where the 6.38 milk-protein-to-N conversion is defined); default 3.3 % |
 
 #### Emission factors (EF) — 9 parameters; sampled independently or with uniform equicorrelation
 
@@ -214,11 +214,11 @@ These are the exact strings the model looks for. Any row whose `parameter` colum
 | `Bo` | Maximum CH4 producing capacity of manure | m3 CH4/kg VS | **IPCC Table 10.16**: cattle Africa 0.10, W. Europe dairy 0.24, buffalo 0.10 |
 | `ash` | Ash content of manure | fraction | IPCC Eq 10.24 footnote = 0.08 |
 | `UE` | Urinary energy as fraction of GE | fraction | IPCC Eq 10.24 footnote = 0.04 |
-| `EF3_PRP` | N2O EF for dung/urine deposited on pasture | kg N2O-N / kg N | **IPCC Table 11.1** = 0.02; 2019 Refinement: 0.004 wet / 0.010 dry; asymmetric bounds: [0.003, 0.040] |
-| `Frac_GASM` | Fraction of manure N volatilised as NH3/NOx | fraction | **IPCC Table 10.22** — varies by MMS (0.07–0.48); app default 0.20 |
-| `EF4` | N2O EF for atmospheric N deposition | kg N2O-N / kg N | **IPCC Table 11.3** = 0.010; asymmetric bounds: [0.0043, 0.020] |
-| `EF5` | N2O EF for N leaching/runoff | kg N2O-N / kg N | **IPCC Table 11.3** = 0.0075; asymmetric bounds: [0.0015, 0.0225] |
-| `Frac_LEACH` | Fraction of managed N lost through leaching | fraction | **IPCC Table 11.3** = 0.30 wet / 0 dry; app default 0.02; asymmetric bounds: [0.006, 0.054] |
+| `EF3_PRP` | N2O EF for dung/urine deposited on pasture | kg N2O-N / kg N | **IPCC Vol.4 Ch.11 Table 11.1**: 2006 = 0.02; 2019R EF3_PRP,CPP for cattle/poultry/pigs: aggregated = 0.004 (wet = 0.006, dry = 0.002); asymmetric bounds approx: [0.000, 0.014] |
+| `Frac_GASM` | Fraction of manure N volatilised as NH3/NOx | fraction | **IPCC Vol.4 Ch.10 Table 10.22** varies by MMS (0.07–0.48); aggregated FracGASM in Ch.11 Table 11.3: 2019R = 0.21, 2006 = 0.20 |
+| `EF4` | N2O EF for atmospheric N deposition | kg N2O-N / kg N | **IPCC Vol.4 Ch.11 Table 11.3**: 2006 = 0.010; 2019R aggregated = 0.010 (wet = 0.014, dry = 0.005); bounds approx [0.002, 0.018] |
+| `EF5` | N2O EF for N leaching/runoff | kg N2O-N / kg N | **IPCC Vol.4 Ch.11 Table 11.3**: 2006 = 0.0075; 2019R = 0.011; bounds approx [0.000, 0.020] |
+| `Frac_LEACH` | Fraction of managed N lost through leaching | fraction | **IPCC Vol.4 Ch.11 Table 11.3** FracLEACH-(H) (wet climate only): 2006 = 0.30; 2019R = 0.24; dry climate = 0. App default for MS-side `Frac_LEACH_H` = 0.02 (from Vol.4 Ch.10 Table 10.23) |
 
 **Asymmetric parameters:** EF3\_PRP, EF4, EF5, and Frac\_LEACH have strongly right-skewed uncertainty per Penman et al. (2000) and Monni et al. (2007). Their `suggested_lower_bound` and `suggested_upper_bound` in `PARAM_CATALOGUE` override the symmetric +/- % formula. The QA/QC module (§7.5) warns if symmetric bounds are detected for these parameters.
 
@@ -476,7 +476,7 @@ N_PRP = Nex x pct_pasture
 N2O_direct_PRP = N_PRP x EF3_PRP x (44/28)    [kg N2O/head/year]
 ```
 
-`EF3_PRP` = 0.02 default (IPCC Table 11.1). 2019 Refinement splits by climate: 0.004 (wet) / 0.010 (dry).
+`EF3_PRP` 2006 default = 0.02 (cattle, poultry, pigs combined, IPCC Vol.4 Ch.11 Table 11.1). 2019 Refinement EF3_PRP,CPP for cattle/poultry/pigs: aggregated = 0.004; wet climate = 0.006; dry climate = 0.002. For sheep and other animals 2019R EF3_PRP,SO = 0.003 (no climate disaggregation).
 
 ### 3.16 Indirect N2O from PRP — Ch 11
 **R:** `calc_indirect_n2o_prp()` in `R/calc_manure_n2o.R`
@@ -955,7 +955,8 @@ Total CO2eq (AR5, GWP CH4=28) = 23 767 x 28 = 665 476 tonnes CO2eq/year
 | IPCC 2006, Vol 4, Ch 10, Tables 10A.1–10A.2 | LW, MW, WG defaults |
 | IPCC 2006, Vol 4, Ch 11, Table 11.1 | EF3\_PRP |
 | IPCC 2006, Vol 4, Ch 11, Table 11.3 | EF4, EF5, Frac\_LEACH |
-| IPCC 2019 Refinement, Vol 4, Ch 10 | Updated MCF, EF3\_PRP, Ym values; protein\_milk (Eq 10.32A) |
+| IPCC 2019 Refinement, Vol 4, Ch 10 | Updated MCF (Table 10.17), Ym (Table 10.12), N retention Eq 10.33 (defines the 6.38 milk-protein-to-N factor used with `protein_milk`) |
+| IPCC 2019 Refinement, Vol 4, Ch 11 | Updated EF3\_PRP (Table 11.1: aggregated 0.004; wet 0.006; dry 0.002), EF4 (aggregated 0.010; wet 0.014; dry 0.005), EF5 (0.011), FracGASM (0.21), FracLEACH-(H) (0.24 wet, 0 dry) |
 | IPCC 2006, Vol 1, Ch 3 | Uncertainty methodology (Approach 2 = Monte Carlo) |
 | Penman et al. (2000) | Suggested uncertainty ranges for IPCC livestock parameters; asymmetric bounds for EF3\_PRP, EF4, EF5, Frac\_LEACH |
 | Monni et al. (2007) | Uncertainty ranges for cattle GHG emission factors; basis for QA/QC benchmark check |
