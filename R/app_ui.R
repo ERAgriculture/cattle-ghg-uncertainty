@@ -1030,32 +1030,51 @@ app_ui <- function() {
               # identical, so the toggle is meaningless).
               uiOutput("run_comparison_ui")
             ),
-            # Round 9: trend-only settings (year-correlation mode + optional
-            # CSV override). Visible only when 'trend' is picked on Home.
+            # Round 9: trend-only settings (year-correlation mode).
+            # Visible only when 'trend' is picked on Home.
+            # 2026-05 UX overhaul: the "optional separate CSV override" section
+            # was removed — the Parameter_TimeSeries sheet in the main upload is
+            # now the single source of trend data. Each radio choice carries
+            # its own tooltip with concrete "when to pick this" guidance.
             conditionalPanel(
               condition = "input.analysis_mode == 'trend'",
               hr(),
-              radioButtons("year_corr", "Year-to-year correlation",
+              radioButtons("year_corr",
+                            label = tagList(
+                              "Year-to-year correlation ",
+                              bslib::tooltip(
+                                span(icon("circle-question"),
+                                     style = "color:#2D6A4F; cursor:help; vertical-align:middle;"),
+                                "How should the IPCC coefficients (Cfi, Ca, Ym, Bo, MCF, EF3, EF4, EF5, …) move from one year to the next within a single Monte Carlo iteration? IPCC V1 Ch3 §3.2.3 (Trend section) says emission factors are typically estimated once and reused across years, so the default is full correlation. Activity data (N, BW, Milk, …) are always re-estimated each year regardless of this setting.",
+                                placement = "right"
+                              )
+                            ),
                             choices = c(
                               "Fully correlated coefficients (IPCC 2019 default)" = "full",
                               "Partial (AR(1), ρ=0.7)"                       = "partial",
                               "Independent (no year-to-year correlation)"         = "none"),
                             selected = "full"),
-              div(style = "font-size:0.78rem; color:#666; margin-top:-6px; margin-bottom:8px;",
-                  tags$em("IPCC 2019 §3.2.2.4: emission factor uncertainties tend to be fully correlated across years, while activity data are usually re-estimated annually. The default reuses the same coefficient draws every year so the trend reflects AD changes only.")),
+              div(class = "small text-muted",
+                  style = "margin-top:-4px; margin-bottom:8px; font-size:0.82rem; line-height:1.45;",
+                  tags$ul(style = "padding-left:18px; margin:0;",
+                    tags$li(tags$strong("Fully correlated coefficients (IPCC 2019 default)"),
+                            " — same coefficient draw is reused for every year within one Monte Carlo iteration. ",
+                            "Trend uncertainty then reflects only the year-to-year changes in your activity data ",
+                            "(N, BW, Milk, …); coefficient uncertainty cancels because Ym is the same in 2010 and 2022. ",
+                            tags$em("Pick this if your emission factors are IPCC defaults or come from a single estimation programme reused across the whole inventory series.")),
+                    tags$li(tags$strong("Partial (AR(1), ρ=0.7)"),
+                            " — coefficient draws drift slowly between years (last year's value gets 70% weight, a fresh draw 30%). ",
+                            tags$em("Pick this if your emission factors are re-estimated periodically but neighbouring years share most of the same observational basis "),
+                            "— e.g. your country reviewed Ym every 5 years and the value drifted slightly each time."),
+                    tags$li(tags$strong("Independent (no year-to-year correlation)"),
+                            " — coefficient draws are sampled fresh each year. Maximises the EF contribution to trend uncertainty. ",
+                            tags$em("Pick this only if you genuinely re-measured every emission factor every year with fully new field data "),
+                            "— rarely realistic for a national inventory.")
+                  )),
               div(style = "font-size:0.78rem; color:#92400E; background:#FEF3C7; padding:6px 10px; border-radius:4px; margin-bottom:8px;",
                   icon("info-circle"),
                   tags$em(" Trend mode runs n_iter simulations ", tags$strong("per year"),
-                          " — total compute = n_iter × number of years.")),
-              tags$details(
-                tags$summary(tags$strong("Optional: override with separate CSV")),
-                div(style = "padding: 6px 0;",
-                    fileInput("trend_upload",
-                      "Upload multi-year CSV (year, parameter, mean, uncertainty_pct)",
-                      accept = c(".csv")),
-                    div(style = "font-size:0.78rem; color:#666;",
-                        tags$em("If a CSV is uploaded here, it takes precedence over the template's Parameter_TimeSeries sheet for this run.")))
-              )
+                          " — total compute = n_iter × number of years."))
             ),
             hr(),
             # Round 9: route the Run button by mode. Single-year shows the

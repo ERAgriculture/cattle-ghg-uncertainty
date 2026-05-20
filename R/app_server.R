@@ -2370,20 +2370,16 @@ app_server <- function(input, output, session) {
       {
         tryCatch({
           setProgress(0.03, detail = "Preparing trend data...")
-          # R2.3: prefer the Parameter_TimeSeries already parsed from the main
-          # template (rv$population) so the user does not have to upload a
-          # separate CSV. The CSV input remains as an explicit override for
-          # users who want to bring different trend data.
-          df <- if (!is.null(input$trend_upload) &&
-                    !is.null(input$trend_upload$datapath) &&
-                    nzchar(input$trend_upload$datapath)) {
-            read.csv(input$trend_upload$datapath, stringsAsFactors = FALSE)
-          } else if (!is.null(rv$population) && ncol(rv$population) >= 2) {
+          # Trend data is read exclusively from the Parameter_TimeSeries sheet
+          # of the main upload (rv$population). The previous "optional separate
+          # CSV override" file input was removed in the May 2026 UX overhaul --
+          # one source of trend data is clearer for users.
+          df <- if (!is.null(rv$population) && ncol(rv$population) >= 2) {
             trend_df_from_population(rv$population, rv$param_specs)
           } else {
-            stop("No time-series data available. Either load a template that ",
-                 "includes a Parameter_TimeSeries sheet (or one of the built-in ",
-                 "examples), or upload a long-format CSV here.")
+            stop("No time-series data available. Load a template that includes ",
+                 "a Parameter_TimeSeries sheet, or pick one of the built-in ",
+                 "Country X / Country Y examples on Tab 1.")
           }
           # Round 9: trend uses the same n_iter slider as single-year. Source
           # selection from Tab 5 also applies — trend now honours
