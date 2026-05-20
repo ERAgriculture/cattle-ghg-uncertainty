@@ -1,5 +1,7 @@
 # Correlation Handling in the IPCC Tier 2 Uncertainty Calculator
 
+> **Changelog (May 2026 audit re-review):** Structural-defaults preset values revisited as an IPCC reviewer. **DE ↔ Ym strengthened from −0.40 to −0.50** (matches IPCC 2019 Refinement Eq 10.21 and Niu et al. 2018 / Hristov et al. 2013 meta-analyses). **Cfi ↔ Ca lowered from 0.60 to 0.30** (the original 0.60 estimation-covariance argument does not apply — Cfi and Ca are independent inputs in IPCC Eq 10.3 / 10.4, not jointly estimated). The earlier **N ↔ BW = 0.30** pair was removed (no defensible cross-country source). The resulting preset matrix is positive-definite without nearest-PD repair (smallest eigenvalue 0.06).
+
 ## 1. Why correlations matter
 
 When two input parameters tend to move in the same direction — for instance, when cattle populations are high, body weights tend to be lower due to grazing pressure — sampling them independently produces Monte Carlo draws that do not reflect reality. Independent sampling assigns equal probability to a draw where both are at their upper extremes as to a draw where one is high and the other low. If the true relationship is negative, the independent assumption inflates uncertainty. If the relationship is positive, it deflates it.

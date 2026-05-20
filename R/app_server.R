@@ -667,9 +667,9 @@ app_server <- function(input, output, session) {
       }
       rv$corr_matrix <- preset
       showNotification(
-        sprintf("Loaded structural-defaults preset correlation matrix (%d-parameter scope).",
+        sprintf("Loaded structural-defaults preset (%d parameters). May 2026 re-review: DE↔Ym=−0.50, Cfi↔Ca=0.30.",
                 nrow(preset)),
-        type = "message", duration = 4)
+        type = "message", duration = 6)
     } else if (input$corr_mode == "none") {
       # Don't wipe an uploaded matrix — just don't apply it (sim observer reads input$corr_mode)
     }
@@ -841,6 +841,20 @@ app_server <- function(input, output, session) {
   observe({
     rv$ef_corr_matrix <- ef_corr_reactive()
   })
+
+  # 2026-05 UX overhaul: live "Currently:" captions under each block-rho slider.
+  # Translates the numeric rho into a plain-language band so non-statisticians
+  # can read the slider state without consulting docs.
+  .rho_band <- function(rho) {
+    if (is.null(rho) || !is.finite(rho)) return("")
+    if (rho == 0)         return("Currently: 0.00 — independent within the block (no shared bias assumed).")
+    if (rho <= 0.15)      return(sprintf("Currently: %.2f — weak shared bias.", rho))
+    if (rho <= 0.35)      return(sprintf("Currently: %.2f — moderate shared bias (typical when one literature dominates).", rho))
+                          sprintf("Currently: %.2f — strong shared bias (requires documented justification).", rho)
+  }
+  output$ef_rho_energy_interp   <- renderText(.rho_band(input$ef_rho_energy))
+  output$ef_rho_manureCH_interp <- renderText(.rho_band(input$ef_rho_manureCH))
+  output$ef_rho_manureN_interp  <- renderText(.rho_band(input$ef_rho_manureN))
 
   output$ef_corr_heatmap <- plotly::renderPlotly({
     mat <- ef_corr_reactive()

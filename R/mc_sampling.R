@@ -330,19 +330,30 @@ sample_per_mms_param <- function(mms_rows, value_col, lower_col, upper_col,
 # correlation. The pair was Round-7 T4.3 expert judgement, not IPCC guidance.
 PRESET_PAIRS <- list(
   list(a = "BW",   b = "MW",          rho =  0.85,
-       source = "Growth-curve asymptote relation (Brody 1945); reused in IPCC Eq 10.3 net-energy parameterisation"),
+       source = "Growth-curve asymptote relation (Brody 1945); reused in IPCC Eq 10.3 net-energy parameterisation. High value assumes BW and MW come from the same livestock census; if sourced from independent surveys, ~0.5 is more typical."),
   list(a = "BW",   b = "WG",          rho =  0.40,
-       source = "IPCC Eq 10.6 (NEg scales with BW^0.75 x WG^1.097); estimation correlation"),
+       source = "IPCC Eq 10.6 (NEg scales with BW^0.75 x WG^1.097); joint regression estimation correlation. Published range 0.30-0.50 (NRC 2001 energy-balance studies)."),
   list(a = "Milk", b = "Fat",         rho = -0.30,
-       source = "Milk dilution effect, dairy genetics literature (Wilmink 1987, VandeHaar 1998)"),
+       source = "Milk dilution effect, dairy genetics literature (Wilmink 1987; VandeHaar 1998). Within-herd literature -0.20 to -0.40; 0.30 is the midpoint."),
   list(a = "Milk", b = "pct_calving", rho =  0.20,
-       source = "Reproductive-yield linkage; expert judgement"),
+       source = "Herd-management intensity linkage (expert judgement). Conservative: Milk is per-lactating animal in the IPCC equation, so the link is weaker than at herd-aggregate level."),
   list(a = "DE",   b = "CP",          rho =  0.50,
-       source = "Forage-quality co-variation (NRC 2001)"),
-  list(a = "DE",   b = "Ym",          rho = -0.40,
-       source = "IPCC 2019 Refinement Eq 10.21 — Ym depends on diet quality"),
-  list(a = "Cfi",  b = "Ca",          rho =  0.60,
-       source = "Estimation covariance from IPCC Eq 10.3 / Eq 10.4 fit on shared dataset")
+       source = "Forage-quality co-variation across feed types (NRC 2001; INRA; Feedipedia). High-quality forages have both high DE and high CP; cross-feedstuff correlations 0.4-0.7."),
+  # 2026-05 audit re-review: strengthened from -0.40 to -0.50. IPCC 2019
+  # Refinement Eq 10.21 makes Ym an explicit decreasing function of DE
+  # (with NDF, EE). Observational meta-analyses (Niu et al. 2018 Global
+  # Change Biology; Hristov et al. 2013) show a stronger negative cross-
+  # diet correlation than -0.40, closer to the equation slope.
+  list(a = "DE",   b = "Ym",          rho = -0.50,
+       source = "IPCC 2019 Refinement Eq 10.21 (Ym decreases with DE) + meta-analysis (Niu et al. 2018 GCB; Hristov et al. 2013). Strengthened from -0.40 in May 2026 audit re-review."),
+  # 2026-05 audit re-review: lowered from 0.60 to 0.30. The previous 0.60
+  # value invoked an "estimation covariance" between intercept (Cfi) and
+  # slope (Ca) of a shared regression -- but Cfi and Ca are treated as
+  # independent inputs in IPCC Eq 10.3 / 10.4 (NEm = Cfi*BW^0.75 and
+  # NEa = Ca*NEm), not jointly fit. 0.30 captures the weak "both
+  # energy-equation constants" linkage without overstating.
+  list(a = "Cfi",  b = "Ca",          rho =  0.30,
+       source = "Weak linkage as both are energy-equation constants in IPCC Eq 10.3 / 10.4 (expert judgement). Lowered from 0.60 in May 2026 audit re-review: the original estimation-covariance justification does not apply because Cfi and Ca are independent inputs in the IPCC formula, not jointly estimated.")
 )
 
 # Legacy alias table — accept Round-3 names so the helper finds pairs even if

@@ -84,6 +84,18 @@ PARAM_ALIASES <- c(
   "Ym_pct"       = "Ym",
   "Frac_GASM"    = "Frac_GASMS",
   "Frac_LEACH"   = "Frac_LEACH_H",
+  # IPCC alignment audit (2026-05): the managed-storage (MS) and pasture (PRP)
+  # leaching/volatilisation fractions are conceptually distinct (Vol.4 Ch.10
+  # Eq. 10.26/10.28 for MS vs Vol.4 Ch.11 Eq. 11.9/11.10 for PRP). The legacy
+  # names "Frac_GASMS" and "Frac_LEACH_H" are the MS-side parameters;
+  # "Frac_GASM_PRP" / "Frac_LEACH_PRP" are the PRP-side parameters. The new
+  # canonical names exposed in the methodology and user guide are
+  # "Frac_LeachMS" / "Frac_GasMS" / "Frac_LeachPRP" / "Frac_GasPRP" — accept
+  # them as aliases here so docs and templates stay in sync.
+  "Frac_LeachMS"  = "Frac_LEACH_H",
+  "Frac_GasMS"    = "Frac_GASMS",
+  "Frac_LeachPRP" = "Frac_LEACH_PRP",
+  "Frac_GasPRP"   = "Frac_GASM_PRP",
   # R1.6 — full IPCC alignment per IPCC Inventory Software v2.95
   "cattle_pop"   = "N",
   "mature_weight"= "MW",
@@ -140,16 +152,16 @@ PARAM_CATALOGUE <- data.frame(
     "Maximum CH₄ producing capacity of manure (IPCC Table 10.16)",
     "Ash content of manure — IPCC default 0.08 (Eq 10.24 footnote)",
     "Urinary energy as fraction of gross energy — IPCC default 0.04 (Eq 10.24 footnote)",
-    "N₂O emission factor for dung/urine deposited on pasture (IPCC Table 11.1)",
+    "N₂O emission factor for dung/urine on pasture (IPCC Vol.4 Ch.11 Table 11.1). 2019R EF3_PRP,CPP for cattle/poultry/pigs: aggregated 0.004; wet climate 0.006; dry climate 0.002. 2006 = 0.02.",
     "N₂O emission factor for managed manure storage — weighted-average broadcast over MMS (IPCC Table 10.21)",
     "Fraction of managed manure N volatilised as NH3/NOx — manure management (IPCC 2019 Table 10.22)",
-    "N₂O EF for atmospheric N deposition (IPCC Table 11.3)",
-    "N₂O EF for N leaching/runoff (IPCC Table 11.3)",
-    "Fraction of managed N lost through leaching — manure management (IPCC 2019 Table 10.22)",
-    "Fraction of N volatilised from dung/urine deposited on pasture (IPCC 2019 Table 11.3, FracGASM)",
-    "Fraction of N lost through leaching from pasture deposition (IPCC 2019 Table 11.3, Frac_leach-(H))",
-    "Protein content of milk — required for IPCC 2019 nitrogen excretion (Eq 10.32A)",
-    "Mean daily temperature in winter (°C) — Cfi cold-climate adjustment per IPCC Eq 10.2. Leave blank or set 20 to disable adjustment"),
+    "N₂O EF for atmospheric N deposition (IPCC Vol.4 Ch.11 Table 11.3). 2019R aggregated EF4 = 0.010 (range 0.002-0.018); wet climate 0.014; dry climate 0.005. 2006 = 0.010.",
+    "N₂O EF for N leaching/runoff (IPCC Vol.4 Ch.11 Table 11.3). 2019R EF5 = 0.011 (range 0.000-0.020), no climate disaggregation. 2006 = 0.0075.",
+    "Fraction of managed N lost through leaching — manure management (IPCC 2019 Refinement Vol.4 Ch.10 Table 10.23)",
+    "Fraction of N volatilised from dung/urine on pasture (IPCC Vol.4 Ch.11 Table 11.3, FracGASM). 2019R = 0.21 (range 0.00-0.31); 2006 = 0.20.",
+    "Fraction of N leached from pasture deposition (IPCC Vol.4 Ch.11 Table 11.3, FracLEACH-(H), wet climates only). 2019R = 0.24 (range 0.01-0.73); 2006 = 0.30; in dry climates = 0.",
+    "Protein content of milk — feeds the milk-N term in IPCC Vol.4 Ch.10 Eq 10.33 (N retention for cattle, where the 6.38 milk-protein-to-N conversion is defined)",
+    "Mean daily temperature in winter (°C) — Cfi cold-climate adjustment described in IPCC Vol.4 Ch.10 alongside Eq 10.3. Leave blank or set 20 to disable adjustment"),
   unit = c(
     "head","kg","kg","kg/day","kg/head/day","%","fraction (0-1)","%",
     "MJ/day/kg^0.75","dimensionless","dimensionless","dimensionless",
@@ -158,12 +170,19 @@ PARAM_CATALOGUE <- data.frame(
     "kg N2O-N/kg N","kg N2O-N/kg N","fraction","kg N2O-N/kg N","kg N2O-N/kg N","fraction",
     "fraction","fraction",
     "%","°C"),
+  # IPCC alignment audit (2026-05) — verified against Vol.4 Ch.11 Tables 11.1
+  # and 11.3:
+  #   EF3_PRP,CPP : 0.004 aggregated 2019R (wet=0.006, dry=0.002); 2006 = 0.02
+  #   FracGASM    : 0.21 (2019R); 2006 = 0.20
+  #   EF4         : 0.010 aggregated 2019R (wet=0.014, dry=0.005); 2006 = 0.010
+  #   EF5         : 0.011 (2019R); 2006 = 0.0075
+  #   FracLEACH_PRP: 0.24 (2019R wet); 2006 = 0.30; dry = 0
   ipcc_default = c(
     NA, 275, 300, 0.0, 4.0, 4.0, 0.60, 55.0,
     0.386, 0.17, 0.8, 0.10, 0.0, 10.0,
     6.5, 0.10, 0.08, 0.04,
-    0.02, 0.005, 0.20, 0.010, 0.0075, 0.02,
-    0.21, 0.30,
+    0.004, 0.005, 0.21, 0.010, 0.011, 0.02,
+    0.21, 0.24,
     3.3, 20),
   # Uncertainty % per Penman et al. (2000) / Monni et al. (2007).
   # NA = asymmetric: use suggested_lower_bound / suggested_upper_bound instead.
@@ -183,9 +202,15 @@ PARAM_CATALOGUE <- data.frame(
     "normal","normal"),
   # Absolute lower/upper bounds for asymmetric parameters — sourced from IPCC 2006/2019 Refinement.
   # These override the symmetric ±pct formula in the Excel template.
-  # Sources: EF3_PRP/EF3_S → IPCC 2019 Table 10.21; EF4/EF5 → IPCC 2006 Table 11.3;
-  #          Frac_GASMS/Frac_LEACH_H → IPCC 2019 Table 10.22;
-  #          Frac_GASM_PRP/Frac_LEACH_PRP → IPCC 2019 Table 11.3.
+  # IPCC alignment audit (2026-05) — corrected source attribution:
+  #   EF3_S      → Vol.4 Ch.10 Table 10.21 (MMS direct-N2O EFs)
+  #   EF3_PRP    → Vol.4 Ch.11 Table 11.1 (PRP direct-N2O EFs)
+  #   EF4 / EF5  → Vol.4 Ch.11 Table 11.3 (indirect-N2O EFs; 2019 Refinement
+  #                                          values used for the central, with
+  #                                          wider Penman/Monni bounds retained)
+  #   Frac_GASMS / Frac_LEACH_H → Vol.4 Ch.10 Tables 10.22 (volatilisation) and
+  #                                10.23 (leaching), 2019 Refinement.
+  #   Frac_GASM_PRP / Frac_LEACH_PRP → Vol.4 Ch.11 Table 11.3 (2019 Refinement)
   suggested_lower_bound = c(
     NA, NA, NA, NA, NA, NA, NA, NA,
     NA, NA, NA, NA, NA, NA,
@@ -224,13 +249,18 @@ PARAM_CATALOGUE <- data.frame(
     FALSE, FALSE, FALSE, FALSE, FALSE, FALSE,
     FALSE, FALSE,
     TRUE, TRUE),
+  # IPCC alignment audit (2026-05): corrected references —
+  #   Frac_LEACH_H is the MS-side leaching fraction → 2019R Table 10.23,
+  #     not 10.22 (which is volatilisation).
+  #   Tw cold-climate adjustment is the modifier of Eq 10.3, not "Eq 10.2"
+  #     (no Eq 10.2 exists in Vol.4 Ch.10).
   ipcc_ref = c(
-    "","Table 10A.2","Table 10A.2","Table 10A.1","","","","Table 10.2",
-    "Table 10.4","Table 10.5","Eq 10.6","Table 10.7","Eq 10.11","",
+    "","Table 10A.2","Table 10A.2","Table 10A.1","","","","Eq 10.14--16",
+    "Table 10.4","Table 10.5","Eq 10.6","Table 10.7","Eq 10.11","Eq 10.32",
     "Table 10.12","Table 10.16","Eq 10.24","Eq 10.24",
-    "Table 11.1","Table 10.21","Table 10.22","Table 11.3","Table 11.3","Table 10.22",
-    "Table 11.3","Table 11.3",
-    "Table 10A.2","Eq 10.2"),
+    "Ch.11 Table 11.1","Table 10.21","Table 10.22","Ch.11 Table 11.3","Ch.11 Table 11.3","Table 10.23",
+    "Ch.11 Table 11.3","Ch.11 Table 11.3",
+    "Eq 10.33","Eq 10.3 (cold-climate modifier)"),
   # T1.3: IPCC Inventory Software variable names (from screenshots provided by Andreas, May 2026).
   # Surfacing these here means inventory teams can match our column to the IPCC
   # software's terminology one-to-one when transposing data between tools.
@@ -259,7 +289,7 @@ PARAM_CATALOGUE <- data.frame(
     "Frac_GASMS — Fraction of N volatilised from managed manure (Table 10.22)",
     "EF4 — N₂O EF for atmospheric N deposition (Vol 4 Ch 11)",
     "EF5 — N₂O EF for N leaching/runoff (Vol 4 Ch 11)",
-    "Frac_LEACH(MS) — Fraction of managed N lost through leaching (Table 10.22)",
+    "Frac_LEACH(MS) — Fraction of managed N lost through leaching (Table 10.23, 2019 Refinement)",
     "FracGASM — Fraction of N volatilised from pasture deposition (Table 11.3)",
     "Frac_leach-(H) — Fraction of N lost through leaching from pasture deposition (Table 11.3)",
     "Milk PR% — Milk protein content (1.9 + 0.4*Fat)",
@@ -662,8 +692,15 @@ generate_template_openxlsx <- function(filepath, include_example,
   ex_values <- c(500000, 275, 300, 0.10, 4, 4, 0.60, 55,
                  0.386, 0.17, 0.8, 0.10, 0, 10,
                  6.5, 0.10, 0.08, 0.04,
-                 0.02, 0.005, 0.20, 0.010, 0.0075, 0.02,   # EF3_PRP, EF3_S, Frac_GASMS, EF4, EF5, Frac_LEACH_H
-                 0.21, 0.30,                                # Frac_GASM_PRP, Frac_LEACH_PRP
+                 # IPCC alignment audit (2026-05): verified against
+                 # Vol.4 Ch.11 Tables 11.1 / 11.3.
+                 #   EF3_PRP,CPP aggregated 2019R = 0.004 (2006 = 0.02)
+                 #   FracGASM    2019R = 0.21 (2006 = 0.20)
+                 #   EF4 aggregated 2019R = 0.010 (2006 = 0.010; wet 0.014, dry 0.005)
+                 #   EF5         2019R = 0.011 (2006 = 0.0075)
+                 #   FracLEACH-(H) PRP-side 2019R wet = 0.24 (2006 = 0.30; dry = 0)
+                 0.004, 0.005, 0.21, 0.010, 0.011, 0.02,   # EF3_PRP, EF3_S, Frac_GASMS, EF4, EF5, Frac_LEACH_H
+                 0.21, 0.24,                                # Frac_GASM_PRP, Frac_LEACH_PRP
                  3.3, 20)                                   # MilkPR, Tw
   # Example uncertainties — asymmetric parameters use IPCC 2006/2019 bounds (lower/upper pre-filled).
   # NA = asymmetric parameter; lower_bound/upper_bound are pre-filled from catalogue instead.

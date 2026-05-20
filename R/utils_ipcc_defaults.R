@@ -13,11 +13,55 @@ IPCC_DEFAULTS <- list(
   pct_calving = 0.60, pct_pregnant_cows = 0.60, pct_pregnant_heifers = 0.20,
   milk_yield = 4.0, milk_fat = 4.0, Ym = 6.5, DE = 55.0,
   Bo = 0.10, ASH = 0.08, UE = 0.04, CP = 10.0,
-  EF3_PRP = 0.02, Frac_GASMS = 0.20, EF4 = 0.010, EF5 = 0.0075, Frac_LEACH_H = 0.02,
-  # PRP-specific volatilization & leaching fractions (IPCC 2019 Vol 4 Ch 11
-  # Table 11.3). Separate from the MM-side Frac_GASMS / Frac_LEACH_H above;
-  # mixing them is comment #10 in Andreas's 2026-05 review.
-  Frac_GASM_PRP = 0.21, Frac_LEACH_PRP = 0.30
+  # ----- IPCC alignment audit (2026-05) -----
+  # Disambiguation: managed-storage (MS) vs pasture (PRP) N pathways are
+  # different equations and pull from different IPCC tables.
+  #   Managed storage (Vol.4 Ch.10):
+  #     Frac_GASMS    — Eq. 10.26 (volatilisation N losses, MS)
+  #     EF4 (MS path) — Eq. 10.27 (indirect N2O via volatilisation)
+  #                      Default from Vol.4 Ch.11 Table 11.3
+  #     Frac_LEACH_H  — Eq. 10.28 (leaching N losses, MS).
+  #                      Canonical alias exposed in docs: Frac_LeachMS.
+  #     EF5 (MS path) — Eq. 10.29 (indirect N2O via leaching)
+  #                      Default from Vol.4 Ch.11 Table 11.3
+  #   Pasture / range / paddock (Vol.4 Ch.11):
+  #     EF3_PRP       — Eq. 11.1 (direct PRP N2O, default Table 11.1)
+  #     Frac_GASM_PRP — Eq. 11.9 (volatilisation, PRP)
+  #     Frac_LEACH_PRP — Eq. 11.10 (leaching, PRP)
+  # 2006 vs 2019 Refinement values (verified against Vol.4 Ch.11 Tables 11.1
+  # and 11.3, May 2026):
+  #   EF4 (kg N2O-N / (kg NH3-N + NOx-N volatilised)):
+  #     2006   = 0.010 (Table 11.3; range 0.002-0.05)
+  #     2019R  = 0.010 aggregated (range 0.002-0.018)
+  #              0.014 wet climate (range 0.011-0.017)
+  #              0.005 dry climate (range 0.000-0.011)
+  #     The unconditional default below is the AGGREGATED value (0.010),
+  #     which happens to coincide with the 2006 single-value default.
+  #     Inventories that explicitly classify their climate should use 0.014
+  #     (wet) or 0.005 (dry).
+  #   EF5 (kg N2O-N / kg N leached/runoff):
+  #     2006   = 0.0075 (range 0.0005-0.025)
+  #     2019R  = 0.011  (range 0.000-0.020) — no climate disaggregation
+  #   EF3_PRP, CPP (cattle, poultry, pigs):
+  #     2006   = 0.02 (single value)
+  #     2019R  = 0.004 aggregated (range 0.000-0.014)
+  #              0.006 wet climate (range 0.000-0.027)
+  #              0.002 dry climate (range 0.000-0.007)
+  #     The unconditional default below is the AGGREGATED 2019R value (0.004).
+  #   FracGASM (volatilisation, organic N + grazing dung/urine):
+  #     2006   = 0.20 (range 0.05-0.5)
+  #     2019R  = 0.21 (range 0.00-0.31)
+  #   FracLEACH-(H) (leaching/runoff in wet climates):
+  #     2006   = 0.30 (range 0.1-0.8) — applies only where precipitation
+  #              exceeds soil water holding capacity
+  #     2019R  = 0.24 (range 0.01-0.73) — wet climate only; 0 in dry
+  EF3_PRP = 0.004,    # 2019R aggregated EF3_PRP,CPP (Vol.4 Ch.11 Table 11.1)
+  Frac_GASMS = 0.21,  # 2019R aggregated FracGASM (Vol.4 Ch.11 Table 11.3); 2006 = 0.20
+  EF4 = 0.010,        # 2019R aggregated (Vol.4 Ch.11 Table 11.3); 2006 = 0.010 (identical)
+  EF5 = 0.011,        # 2019R (Vol.4 Ch.11 Table 11.3); 2006 = 0.0075
+  Frac_LEACH_H = 0.02,            # MS-side leaching from Vol.4 Ch.10 Table 10.23
+  Frac_GASM_PRP = 0.21,           # 2019R FracGASM (Vol.4 Ch.11 Table 11.3); same parameter as Frac_GASMS
+  Frac_LEACH_PRP = 0.24           # 2019R FracLEACH-(H) wet climate (Vol.4 Ch.11 Table 11.3); 2006 = 0.30; dry = 0
 )
 
 ## TT.3 / G1: MMS list expanded to cover IPCC 2006 (8 systems) and 2019 Refinement
@@ -47,23 +91,34 @@ MMS_DEFAULTS <- data.frame(
   stringsAsFactors = FALSE
 )
 
-## G2: region-aware IPCC benchmarks (Vol.4 Tables 10A.1, 10A.2, 10.4, 10.7).
-## Used by run_qaqc() benchmark check to flag values that deviate strongly from
-## the closest matching regional default. Falls back to "global" if no match.
+## G2: regional benchmark heuristics for the QA/QC plausibility check.
+## IPCC alignment audit (2026-05): only the BW row and the Ym row are direct
+## table lookups from the IPCC Guidelines:
+##   - BW   : Vol.4 Ch.10 Tables 10A.1 / 10A.2 (illustrative regional defaults)
+##   - Ym   : Vol.4 Ch.10 Table 10.12 (cattle/buffalo CH4 conversion factors)
+## The Milk, DE and Bo rows are NOT continental IPCC tables — the 2019
+## Refinement publishes these only by production system (high-/low-productivity)
+## within illustrative regions. The values below are heuristic mid-points
+## derived from the Annex 10A illustrative tables, used only to flag wildly
+## implausible country submissions in QA/QC. They should not be reported as
+## "IPCC defaults" in inventory documentation.
 IPCC_DEFAULTS_BY_REGION <- data.frame(
   parameter   = c(rep("BW", 6), rep("Milk", 6),
                   rep("DE", 6), rep("Ym", 6), rep("Bo", 6)),
   region      = rep(c("africa","asia","europe","americas","oceania","global"), 5),
   default_val = c(
-    # live_weight (kg) per Table 10A.2
+    # BW (kg) — IPCC Vol.4 Ch.10 Tables 10A.1 / 10A.2 illustrative regionals
     275, 350, 600, 500, 500, 400,
-    # milk_yield (kg/head/day) typical
+    # Milk yield (kg/head/day) — heuristic from Annex 10A productivity rows
     4, 8, 22, 18, 15, 10,
-    # DE (%) typical regional ranges
+    # DE (%) — heuristic from Annex 10A productivity rows
     55, 60, 70, 65, 65, 62,
-    # Ym (%) per Table 10.12
+    # Ym (%) — IPCC Vol.4 Ch.10 Table 10.12 (cattle ~5.7–7.0 %, default 6.5)
     6.5, 6.5, 6.0, 5.5, 6.0, 6.5,
-    # Bo (m3 CH4/kg VS)
+    # Bo (m3 CH4/kg VS) — Vol.4 Ch.10 Table 10.16(a) 2019R: dairy NA/W.Europe
+    # ~0.24; "other regions" low-productivity ~0.10–0.13. Continental mapping
+    # below is heuristic — for inventory reporting, look up the production
+    # system row, not the continent row.
     0.10, 0.13, 0.24, 0.18, 0.15, 0.13
   ),
   stringsAsFactors = FALSE

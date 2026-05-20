@@ -88,10 +88,21 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     mms_fractions = mms_fractions,
     mcf_values    = mcf_values,
     ef3_values    = ef3_values,
-    EF3_PRP       = get_param("EF3_PRP", 0.02),
-    Frac_GASMS    = get_param_alt("Frac_GASMS",   "Frac_GASM",  0.20),
+    # IPCC alignment audit (2026-05): defaults updated to the 2019 Refinement
+    # aggregated values from Vol.4 Ch.11 Tables 11.1 and 11.3:
+    #   EF3_PRP,CPP   = 0.004 (aggregated; wet = 0.006, dry = 0.002)
+    #   FracGASM      = 0.21  (2019R; 2006 = 0.20)
+    #   EF4           = 0.010 (aggregated; wet = 0.014, dry = 0.005;
+    #                          coincides with the 2006 single value)
+    #   EF5           = 0.011 (2019R; 2006 = 0.0075)
+    #   FracLEACH-(H) = 0.02  on the MS side (Vol.4 Ch.10 Table 10.23)
+    # 2006 values (0.02 / 0.20 / 0.010 / 0.0075) remain valid for inventories
+    # that explicitly target the 2006 Guidelines — supply them via the
+    # template instead of relying on these fallbacks.
+    EF3_PRP       = get_param("EF3_PRP", 0.004),
+    Frac_GASMS    = get_param_alt("Frac_GASMS",   "Frac_GASM",  0.21),
     EF4           = get_param("EF4", 0.010),
-    EF5           = get_param("EF5", 0.0075),
+    EF5           = get_param("EF5", 0.011),
     Frac_LEACH_H  = get_param_alt("Frac_LEACH_H", "Frac_LEACH", 0.02),
     # Andreas 2026-05 #10: PRP-side fractions, distinct from MM (Table 11.3).
     # Falls back to IPCC 2019 Table 11.3 defaults when the template does not
@@ -104,7 +115,8 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     MilkPR         = get_param_alt("MilkPR", "protein_milk", 3.3),
     gwp = gwp,
     # Andreas 2026-05 follow-up: Tw (mean winter temperature for the IPCC
-    # Eq 10.2 cold-climate Cfi adjustment) is now sourced exclusively from
+    # Vol.4 Ch.10 cold-climate Cfi adjustment — the modifier of Eq 10.3,
+    # not a separate equation) is now sourced exclusively from
     # the Parameters template via the sampled values. Default 20°C makes
     # the adjustment inert (matches the IPCC formula's neutral baseline).
     # The old global Tw argument was retained as a fallback only.

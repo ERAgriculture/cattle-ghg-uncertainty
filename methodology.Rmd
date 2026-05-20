@@ -264,19 +264,19 @@ $$E_{\text{vol,mm}} = N_{\text{ex,annual}} \times \text{Frac\_GasMS} \times EF_4
 \textbf{Leaching and runoff} — Frac\_LeachMS from Eq. 10.28 multiplied by $EF_5$ in Eq. 10.29:
 $$E_{\text{leach,mm}} = N_{\text{ex,annual}} \times \text{Frac\_LeachMS} \times EF_5 \times \frac{44}{28}$$
 
-where $EF_4$ (kg N$_2$O-N kg$^{-1}$ NH$_3$-N + NO$_x$-N deposited) and $EF_5$ (kg N$_2$O-N kg$^{-1}$ N leached/runoff) are from IPCC Vol.4 Ch.11 Table 11.3. In the 2006 Guidelines $EF_4 = 0.010$ and $EF_5 = 0.0075$; the 2019 Refinement updates these to $EF_4 = 0.014$ and $EF_5 = 0.011$. Frac\_GasMS and Frac\_LeachMS are MMS- and country-specific fractions (defaults in Vol.4 Ch.10 Tables 10.22 and 10.23 of the 2019 Refinement).
+where $EF_4$ (kg N$_2$O-N kg$^{-1}$ NH$_3$-N + NO$_x$-N volatilised) and $EF_5$ (kg N$_2$O-N kg$^{-1}$ N leached/runoff) are from IPCC Vol.4 Ch.11 Table 11.3. In the 2006 Guidelines $EF_4 = 0.010$ (range 0.002--0.05) and $EF_5 = 0.0075$ (range 0.0005--0.025). The 2019 Refinement keeps the aggregated $EF_4 = 0.010$ (range 0.002--0.018) and additionally provides climate-disaggregated values of 0.014 in wet climates (range 0.011--0.017) and 0.005 in dry climates (range 0.000--0.011); $EF_5$ is updated to 0.011 (range 0.000--0.020) with no climate disaggregation. Frac\_GasMS and Frac\_LeachMS are MMS- and country-specific fractions (defaults in Vol.4 Ch.10 Tables 10.22 and 10.23 of the 2019 Refinement); on the soil side of Eq.~11.9/11.10 the same role is played by FracGASM and FracLEACH-(H) in Vol.4 Ch.11 Table 11.3.
 
 ## Pasture/Range/Paddock N$_2$O (Direct)
 
-The nitrogen deposited on pasture by grazing animals ($F_{\text{PRP}}$) is calculated as:
+The nitrogen deposited on pasture by grazing animals ($F_{\text{PRP}}$) is the per-sub-category form of IPCC Vol.4 Ch.11 Eq.~11.5 (N in urine and dung deposited by grazing animals on PRP):
 
 $$F_{\text{PRP}} = N_{\text{ex,annual}} \times \text{Frac\_PRP}$$
 
-where Frac\_PRP is the fraction of the year animals spend on pasture. Direct N$_2$O from pasture/range/paddock falls under managed soils (IPCC 2006 Volume 4, Chapter 11), not Chapter 10. It is given by IPCC Eq. 11.1 (with $F_{\text{PRP}}$ as the input N source):
+where Frac\_PRP is the fraction of total annual N excretion deposited on pasture (denoted $MS_{(T,\text{PRP})}$ in IPCC notation). Direct N$_2$O from pasture/range/paddock falls under managed soils (IPCC Volume 4, Chapter 11), not Chapter 10. It is given by IPCC Eq.~11.1 (with $F_{\text{PRP}}$ as the input N source):
 
 $$E_{\text{direct,PRP}} = F_{\text{PRP}} \times EF_{3,\text{PRP}} \times \frac{44}{28}$$
 
-where $EF_{3,\text{PRP}}$ is the emission factor for direct N$_2$O from PRP given in IPCC Vol.4 Chapter 11, Table 11.1. The 2006 value is 0.02 kg N$_2$O-N kg$^{-1}$ N (cattle, poultry, pigs). The 2019 Refinement disaggregates this by climate and animal class: for cattle / poultry / pigs the values are 0.004 in wet climates and 0.006 in dry climates (kg N$_2$O-N kg$^{-1}$ N).
+where $EF_{3,\text{PRP}}$ is the emission factor for direct N$_2$O from PRP given in IPCC Vol.4 Chapter 11, Table 11.1. The 2006 value is 0.02 kg N$_2$O-N kg$^{-1}$ N (cattle, poultry, pigs combined). The 2019 Refinement updates this to $EF_{3PRP,CPP}$ for cattle, poultry and pigs with an aggregated default of 0.004 kg N$_2$O-N kg$^{-1}$ N (range 0.000--0.014). When the climate is known, the disaggregated values are 0.006 in wet climates (range 0.000--0.027) and 0.002 in dry climates (range 0.000--0.007). For sheep and other animals ($EF_{3PRP,SO}$) the 2019 Refinement gives 0.003 (range 0.000--0.010), with no climate disaggregation.
 
 ## Pasture N$_2$O (Indirect)
 
@@ -497,6 +497,8 @@ Emission factors that are structurally linked (e.g. EF4 is applied to volatilise
 ## Structural-Defaults Preset (Expert-Elicited)
 
 The tool provides a **structural-defaults preset** correlation matrix as a middle ground between full independence and user-specified correlations. This preset assigns non-zero correlations to a small set of structurally linked pairs drawn from the IPCC equation structure and the published livestock literature (e.g. body weight and mature weight, via the growth-curve asymptote relation; milk yield and milk fat content, via the dilution effect). \textit{These values are expert-elicited; the IPCC publishes no numerical correlation coefficients for any livestock parameter pair.} All other pairs are set to zero. Hover any non-zero cell in the heatmap for the per-pair source citation. This is appropriate when no empirical correlation data are available but the inventory compiler wants to avoid the unrealistic assumption of full independence.
+
+\textit{May 2026 audit re-review.} DE $\leftrightarrow$ Ym was strengthened from $-$0.40 to $-$0.50 to better match IPCC 2019 Refinement Eq 10.21 and the meta-analysis evidence (Niu et al. 2018 Global Change Biology; Hristov et al. 2013). Cfi $\leftrightarrow$ Ca was lowered from 0.60 to 0.30: the previous 0.60 invoked an estimation-covariance argument that does not apply because Cfi and Ca are independent inputs in IPCC Eq 10.3 / 10.4, not jointly estimated. The earlier N $\leftrightarrow$ BW = 0.30 cross-block pair was removed (no defensible cross-country source). The resulting preset matrix is positive-definite without nearest-PD repair (smallest eigenvalue 0.06).
 
 ## Cross-Block Correlations
 
