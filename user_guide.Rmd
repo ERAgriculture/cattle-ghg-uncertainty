@@ -525,6 +525,24 @@ Before clicking Run, configure:
 
 \textbf{Emission sources}: Tick all sources applicable to your inventory. Unticked sources contribute zero emissions to the total.
 
+## Trend mode — year-to-year coefficient correlation
+
+If you picked \textbf{Trend} analysis mode on Tab 1, an extra control appears on Tab 5: \textbf{Year-to-year correlation}. It governs how the IPCC coefficients (Cfi, Ca, Ym, Bo, MCF, EF3, EF4, EF5, \ldots) move from one year to the next \emph{within a single Monte Carlo iteration}. Activity data (N, BW, Milk, \ldots) is always re-sampled fresh each year — this setting only affects the per-head coefficients.
+
+\textbf{Why does this matter?} If your country uses the same emission factors for the whole inventory series (the typical case — either IPCC defaults or one national estimation), then a high-Ym draw in your base year should also be a high-Ym draw in the current year. The coefficient uncertainty then cancels when you compare the two years, so the trend uncertainty reflects only the activity-data changes. This is what IPCC V1 Ch3 §3.2.3 calls a ``Type A'' sensitivity. If you instead treated EFs as independent across years, you would artificially inflate the trend uncertainty.
+
+The three options:
+
+\begin{itemize}
+  \item \textbf{Fully correlated coefficients (IPCC 2019 default)} --- the same coefficient draw is reused for every year of the inventory within one MC iteration. \textit{Pick this if your EFs are IPCC defaults or come from a single national estimation programme reused across the whole series.} This is the IPCC-recommended default and the conservative choice for trend uncertainty.
+  \item \textbf{Partial (AR(1), $\rho = 0.7$)} --- coefficient draws drift slowly between years (last year's value gets 70\% weight, a fresh draw 30\%). \textit{Pick this if your EFs are re-estimated periodically — e.g. every 3--5 years — and neighbouring years share most of the same observational basis.}
+  \item \textbf{Independent (no year-to-year correlation)} --- coefficient draws are sampled fresh each year. Maximises the EF contribution to trend uncertainty. \textit{Pick this only if you genuinely re-measured every emission factor every year with fully new field data}, which is rarely realistic for a national inventory.
+\end{itemize}
+
+A practical sanity check: re-run your trend with ``Fully correlated'' and again with ``Independent''. If the two trend uncertainties are similar, your result is robust to this choice. If they are very different, your trend uncertainty is dominated by the EF block and you need to be explicit about which assumption you're making in your inventory documentation.
+
+\textit{Trend mode runs n\_iter simulations} \textbf{per year}, so total compute = n\_iter $\times$ number of years. Use 5{,}000--10{,}000 iterations for trend runs in development and 25{,}000--30{,}000 for final reporting.
+
 ## Running the simulation
 
 Click \textbf{Run Monte Carlo Simulation}. A progress bar shows the simulation steps. For 10,000 iterations and a single production system, typical run time is 15–60 seconds.

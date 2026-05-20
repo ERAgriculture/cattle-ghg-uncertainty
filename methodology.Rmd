@@ -538,6 +538,28 @@ When the correlation matrix is computed from an uploaded time series (the recomm
 
 The time-series matrix itself is computed as a \textbf{Spearman} rank correlation of the user's annual values, after \textbf{detrending} (first differences by default, with a UI option to switch to linear detrend or raw series). Detrending separates shared long-run growth — which is not the year-to-year joint uncertainty Approach 2 is meant to capture — from genuine parameter co-movement.
 
+## Year-to-Year Coefficient Correlation (Trend Mode)
+
+When the tool is run in \textbf{Trend mode} (multi-year inventory), an additional decision arises: within a single Monte Carlo iteration, how should the IPCC coefficients (Cfi, Ca, Ym, Bo, MCF, EF3, EF4, EF5, \ldots) move from one year to the next? IPCC Volume 1 Chapter 3 Section 3.2.3.2 (Trend Analysis) and 2019 Refinement §3.2.2.4 discuss this explicitly: emission factor uncertainties are typically estimated once for an inventory series and reused across years (correlated), while activity data is normally re-estimated each year and treated as independent across years.
+
+The tool exposes three options on the Simulate tab when Trend mode is selected. Activity data ($N$, $BW$, $WG$, Milk, \ldots) is re-sampled fresh each year regardless of this setting:
+
+\begin{center}
+\begin{tabular}{p{4.0cm} p{9.0cm}}
+\toprule
+\textbf{Option} & \textbf{What happens inside one Monte Carlo iteration} \\
+\midrule
+\textbf{Fully correlated (default)} & The coefficient draw for year $t$ is the \textit{same} as for year 0. If Ym is drawn at 6.2\% for year 0, it is 6.2\% for every other year in that iteration. The trend then reflects activity-data changes only — coefficient uncertainty cancels when subtracting two years. Matches IPCC 2019 §3.2.2.4 default behaviour and the Ogle et al. (2003) ``identical random seed'' construction cited in V1 Ch3 Box 3.2. \\[6pt]
+\textbf{Partial (AR(1), $\rho=0.7$)} & Coefficients drift slowly between years via an autoregressive-1 Gaussian copula: the draw for year $t$ is $0.7$ times the previous year's standard-normal latent plus $\sqrt{1-0.7^2} \approx 0.71$ times a fresh innovation. Neighbouring years share most of the same observational basis but the coefficient can move over a decade. Appropriate when the EF is re-estimated periodically (e.g. every 3--5 years). \\[6pt]
+\textbf{Independent} & Each year gets a fresh, independent coefficient draw. Maximises the EF contribution to trend uncertainty. Realistic only when every emission factor is genuinely re-measured with new field data every year, which is uncommon for national inventories. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The choice is implemented in \texttt{R/trend\_tab.R}. The ``full'' branch pre-samples a single $n_{\text{iter}} \times n_{\text{coef}}$ matrix and reuses it for every year. The ``partial'' branch builds an AR(1) Gaussian copula of length $n_{\text{years}}$ for each coefficient, then runs each year's MC with the corresponding column slice. The ``independent'' branch re-samples coefficients inside every per-year call.
+
+\textbf{Direction of effect.} For an emission factor whose uncertainty is largely systematic, full correlation produces the \textit{smallest} trend uncertainty (because the EF cancels) and independent sampling the \textit{largest}. IPCC V1 Ch3 p. 25 explicitly notes that ``positive correlations in uncertainties when comparing two years as part of trend analysis will decrease uncertainty in the trend''. Choosing ``independent'' when the EFs are in fact reused will over-state trend uncertainty; choosing ``full'' when the EFs are in fact re-measured each year will under-state it. The IPCC default (``full'') is the conservative choice for the typical case where the inventory compiler is using IPCC defaults or a single national estimation programme.
+
 \newpage
 
 # Validation and Quality Assurance
