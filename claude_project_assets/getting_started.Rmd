@@ -83,15 +83,17 @@ Click the shared link:
 
 You'll land in a chat window pre-loaded with the parameter catalogue, template schema, and mapping examples. Claude already knows everything it needs to translate your data.
 
-### 3. Paste your filled questionnaire as your first message
+### 3. Paste the filled questionnaire as your first message
 
-Open the questionnaire (`.docx`), select all, copy, and paste it as the first message into the Translator chat. Send.
+\textbf{This is text you paste, not a file you upload.} Open the questionnaire (\texttt{.docx}), select everything, copy, and paste it into the chat box at the bottom of the Translator window. Click send.
 
-Claude will briefly summarise back what it understood and ask which file(s) you'd like to upload.
+Claude reads the whole questionnaire, briefly summarises back what it understood about your inventory (country, year, sub-categories, MMS systems, etc.), and then asks you to attach your raw data file(s).
+
+\noindent\textit{Why a questionnaire? Without it, Claude has to ask you six warm-up questions one-by-one before it can do anything useful. The questionnaire gives Claude all those answers up front, so the conversation can go straight to inspecting your data.}
 
 ### 4. Upload your raw data file(s)
 
-Click the **paperclip icon** in the chat input box, select your file(s) — `.xlsx`, `.csv`, `.pdf`, or images of tables all work — and send. Claude will inspect the file, propose a column mapping, and ask you to confirm anything ambiguous.
+\textbf{This is a file upload}, not text. Click the \textbf{paperclip icon} in the chat input box, select your file(s) — \texttt{.xlsx}, \texttt{.csv}, \texttt{.pdf}, or images of tables all work — and send. Claude will inspect the file, propose a column mapping, and ask you to confirm anything ambiguous.
 
 ### 5. Answer Claude's clarification questions
 
@@ -107,8 +109,6 @@ Answer in plain language. Claude will adjust and re-confirm.
 ### 6. Receive the filled template
 
 When Claude is satisfied, it will produce \textbf{\texttt{filled\_template\_for\_app.xlsx}} as a downloadable file. Click the download icon next to it in the chat.
-
-\textcolor{amber}{\textbf{If}} Claude tells you the analysis tool is unavailable and instead gives you three CSV blocks (Inventory\_Metadata, Parameters, Manure\_Management), see the \textbf{Backup option} on the next page.
 
 ### 7. Upload into the Cattle Uncertainty App
 
@@ -133,26 +133,6 @@ You are now ready to run the uncertainty simulation.
   \item \textbf{Ask Claude to explain.} ``Why did you set Ym = 6.5?'' is a fine question — it will cite the IPCC table.
   \item \textbf{Don't worry about advanced parameters.} The 16 IPCC coefficients (\texttt{Cfi}, \texttt{Ca}, \texttt{Ym}, \texttt{EF3}, ...) ship with sensible defaults. You only need to provide them if you have country-specific measurements.
 \end{itemize}
-
-## Privacy
-
-Claude.ai uses your messages and uploads in line with \href{https://www.anthropic.com/legal/privacy}{Anthropic's privacy policy}. For national GHG inventory data this is generally fine because the data is intended for public reporting under the UNFCCC. \textbf{If your ministry has a policy against uploading internal data to third-party AI services, do not use this tool} — fill the template manually using the parameter reference in the user guide instead.
-
-## Backup option — when the Project link doesn't work, or Claude can't generate the .xlsx
-
-You can still get most of the value from any free AI chat:
-
-\begin{enumerate}
-  \item Open any free AI chat: claude.ai, ChatGPT, Gemini.
-  \item Paste the contents of \texttt{param\_catalogue.md} and \texttt{template\_schema.md} (download both from the app's Resources tab) as your first message, followed by:
-    \begin{quote}
-    \textit{``You are the GMH Uncertainty Translator. Use the schema above to help me convert my raw data into per-sheet CSV blocks. Ask me the standard six onboarding questions first.''}
-    \end{quote}
-  \item Paste your filled questionnaire and proceed as in Steps 4–5 above.
-  \item When the AI produces three CSV blocks (one per sheet), open the \textbf{blank template} (download it from the app's Data Input tab) , paste each block into the matching sheet starting at row 4, save, and upload.
-\end{enumerate}
-
-This is slower but works on any AI without the persistent Project.
 
 ## When the AI gets it wrong
 

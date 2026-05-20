@@ -270,11 +270,36 @@ app_ui <- function() {
               "No installation, no payment — you just need a free claude.ai account."),
             tags$h6("How to use it"),
             tags$ol(
-              tags$li(tags$strong("Download the questionnaire"), " and fill it out (2 minutes)."),
-              tags$li(tags$strong("Open the Translator"), " on claude.ai (link below) and paste the filled questionnaire."),
-              tags$li(tags$strong("Upload your raw data file(s)"), " — Excel, CSV, even a PDF table."),
-              tags$li("Answer Claude's clarification questions (usually 2-5)."),
-              tags$li(tags$strong("Download the filled template"), " and upload it in the Data Input tab.")
+              tags$li(
+                tags$strong("Download and fill the pre-flight questionnaire."),
+                " It's a one-page form — country, year, IPCC version, your cattle sub-categories, your manure systems, which data fields you have. About 2 minutes. ",
+                tags$em("This is what tells Claude about your inventory in one go, so it doesn't have to ask you each question separately.")
+              ),
+              tags$li(
+                tags$strong("Open the Translator"),
+                " on claude.ai (button below) — sign up for the free account if you don't already have one."
+              ),
+              tags$li(
+                tags$strong("Paste the filled questionnaire as your first chat message."),
+                " ",
+                tags$em("This is text you copy-paste into the chat box, not a file you upload."),
+                " Claude reads it and confirms what it understood."
+              ),
+              tags$li(
+                tags$strong("Upload your raw data file(s)"),
+                " when Claude prompts you — click the paperclip icon. Excel, CSV, even a PDF or a screenshot of a table all work."
+              ),
+              tags$li(
+                tags$strong("Answer 2–5 short clarification questions"),
+                " about anything ambiguous (e.g. ",
+                tags$em("\"Is your weight column body weight or mature weight?\""),
+                ")."
+              ),
+              tags$li(
+                tags$strong("Download the filled template"),
+                " (Claude produces ", tags$code("filled_template_for_app.xlsx"),
+                ") and upload it in the Data Input tab."
+              )
             ),
             div(style = "margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;",
               tags$a(
@@ -298,9 +323,7 @@ app_ui <- function() {
                 class = "btn btn-outline-success",
                 icon("clipboard-list"), " Pre-flight questionnaire (.docx)"
               )
-            ),
-            div(style = "margin-top: 10px; font-size: 0.82rem; color: #666;",
-              tags$em("Privacy note: your data is sent to Anthropic (Claude.ai). National-inventory data submitted for UNFCCC reporting is generally non-confidential, but check your ministry's policy before uploading internal datasets. The app also includes a manual fallback path that uses no external AI — see the user guide."))
+            )
           )
         ),
 
