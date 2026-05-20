@@ -5,21 +5,27 @@
 # Andreas 2026-05 audit follow-up: warn when nearPD has to make a large
 # adjustment to the user-supplied correlation matrix, instead of silently
 # changing the correlations to enforce positive-definiteness.
-.repair_corr <- function(m, label = "correlation matrix", tol = 0.05) {
+# 2026-05 follow-up #2: tol lowered from 0.05 to 0.01 so users are told about
+# shifts that matter (a 0.05 shift to a correlation of 0.30 is a 17% relative
+# change — large enough to affect MC results).
+.repair_corr <- function(m, label = "correlation matrix", tol = 0.01) {
   fixed <- as.matrix(Matrix::nearPD(m, corr = TRUE)$mat)
   if (is.matrix(m) && all(dim(m) == dim(fixed))) {
     delta <- max(abs(fixed - m), na.rm = TRUE)
     if (is.finite(delta) && delta > tol) {
       warning(sprintf(
-        "Supplied %s was not positive-definite; nearPD adjusted correlations by up to %.3f.",
-        label, delta), call. = FALSE)
+        "Supplied %s was not positive-definite; nearPD adjusted correlations by up to %.3f (tol=%.2f).",
+        label, delta, tol), call. = FALSE)
     }
   }
   fixed
 }
 
-# Used for the "uniform EF correlation" option where a single rho represents
-# shared systematic bias across all emission factors.
+# Used for the legacy "uniform EF correlation" option where a single rho
+# represents shared systematic bias across all emission factors. Retained for
+# back-compat; the default UI control switched to make_block_corr() in the
+# 2026-05 audit follow-up because a single rho across 13 heterogeneous
+# coefficients (energy, manure-CH4, manure-N) is statistically extreme.
 make_uniform_corr <- function(n, rho) {
   if (n <= 1) return(diag(max(n, 1L)))
   m <- matrix(rho, n, n)
@@ -27,7 +33,51 @@ make_uniform_corr <- function(n, rho) {
   .repair_corr(m, "uniform-rho correlation matrix")
 }
 
-# Gaussian copula sampling for one block of parameters (shared helper)
+# 2026-05 audit follow-up: block-structured EF correlation.
+# Groups the IPCC coefficients into three blocks that share a measurement /
+# methodological provenance, and lets each block carry its own within-block
+# correlation. Cross-block entries are zero (the three literatures —
+# energy-equation rumen studies, BMP / lagoon studies, NH3/N2O volatilisation
+# studies — are independent).
+.EF_BLOCKS <- list(
+  # Energy-equation coefficients (IPCC Eq 10.3 / 10.4 / 10.16 / 10.21 family)
+  energy   = c("Cfi", "Ca", "C", "C_growth", "Cp", "Ym", "Ym_pct"),
+  # Manure-CH4 coefficients (BMP / lagoon literature)
+  manureCH = c("Bo", "MCF", "ASH", "ash"),
+  # Manure-N coefficients (NH3 / N2O volatilisation literature)
+  manureN  = c("EF3_PRP", "EF3_S", "EF3",
+               "Frac_GASMS", "Frac_GASM_PRP", "Frac_GASM",
+               "EF4", "EF5",
+               "Frac_LEACH_H", "Frac_LEACH_PRP", "Frac_LEACH",
+               "UE")
+)
+
+# Build an n x n block-diagonal correlation matrix. `param_names` are the
+# column ordering you want in the output (typically ef_params$parameter);
+# `rho_by_block` is a named list like list(energy = 0.3, manureCH = 0.2, manureN = 0).
+# Blocks with rho == 0 (or absent) contribute identity rows/cols; blocks with
+# only one matching parameter in `param_names` likewise contribute identity.
+make_block_corr <- function(param_names, rho_by_block) {
+  n <- length(param_names)
+  if (n == 0) return(matrix(0, 0, 0))
+  m <- diag(n)
+  rownames(m) <- colnames(m) <- param_names
+  for (blk in names(.EF_BLOCKS)) {
+    rho <- rho_by_block[[blk]]
+    if (is.null(rho) || !is.finite(rho) || rho == 0) next
+    idx <- which(param_names %in% .EF_BLOCKS[[blk]])
+    if (length(idx) >= 2) {
+      sub <- matrix(rho, length(idx), length(idx))
+      diag(sub) <- 1
+      m[idx, idx] <- sub
+    }
+  }
+  .repair_corr(m, "block-structured EF correlation matrix")
+}
+
+# Gaussian copula sampling for one block of parameters (shared helper).
+# Used for the preset / manual / structural-defaults paths where the user is
+# specifying a correlation matrix directly (Pearson-on-Gaussian-scale convention).
 .copula_sample <- function(n_iter, params, corr_mat) {
   corr_mat <- .repair_corr(corr_mat, "block correlation matrix")
   z <- MASS::mvrnorm(n_iter, mu = rep(0, nrow(corr_mat)), Sigma = corr_mat)
@@ -41,6 +91,28 @@ make_uniform_corr <- function(n, rho) {
   }
   colnames(samp) <- params$parameter
   samp
+}
+
+# Iman-Conover restricted-pairing sampling for one block (2026-05 audit follow-up).
+# This is the method explicitly cited by IPCC V1 Ch3 Section 3.2.3.2 (p. 26):
+# "simulating correlation using restricted pairing methods (that are included
+# in many software packages)". Used for the time-series path because:
+#   (a) the matrix estimated from observed data is a rank correlation
+#       (Spearman) and Iman-Conover reproduces it exactly,
+#   (b) it is distribution-free — the marginal shapes (PERT, lognormal, beta,
+#       normal) are preserved exactly,
+#   (c) it avoids the Pearson-vs-Spearman bias of the Gaussian copula for
+#       non-Gaussian marginals.
+.iman_conover_sample <- function(n_iter, params, target_rank_corr) {
+  target_rank_corr <- .repair_corr(target_rank_corr,
+                                   "Iman-Conover target rank correlation matrix")
+  X <- .indep_sample(n_iter, params)
+  # mc2d::cornode reorders the columns of X so that the rank correlation
+  # matches `target` while preserving each column's marginal distribution.
+  out <- mc2d::cornode(X, target = target_rank_corr, outrank = FALSE,
+                        result = FALSE)
+  colnames(out) <- params$parameter
+  out
 }
 
 # Independent sampling for one block (no copula)
@@ -63,7 +135,7 @@ make_uniform_corr <- function(n, rho) {
 generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
                                  seed = NULL, ef_corr_matrix = NULL,
                                  # Round 7 T4.3: unified copula across AD + coefficients
-                                 # so cross-block correlations (e.g. N <-> W) are honoured.
+                                 # so cross-block correlations (e.g. BW <-> Cfi) are honoured.
                                  # When supplied, this is a square named matrix covering
                                  # the union of AD and coefficient parameter names. Falls
                                  # back to the two-pass behaviour when NULL.
@@ -72,7 +144,15 @@ generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
                                  # (n_iter x n_coef) used by the trend tab to share the
                                  # same coefficient draws across years. Overrides the
                                  # coefficient-block sampler when supplied.
-                                 pre_sampled_coefficients = NULL) {
+                                 pre_sampled_coefficients = NULL,
+                                 # 2026-05 audit follow-up: sampler choice.
+                                 #   "copula"       — Gaussian copula (default for preset / manual paths;
+                                 #                    user-supplied Sigma is interpreted as Pearson-on-Gaussian-scale)
+                                 #   "iman_conover" — IPCC-cited restricted-pairing method (default for the
+                                 #                    time-series path; Sigma is a Spearman rank correlation,
+                                 #                    reproduced exactly regardless of the marginal shapes)
+                                 sampler = c("copula", "iman_conover")) {
+  sampler <- match.arg(sampler)
   if (!is.null(seed)) set.seed(seed)
 
   ad_params <- param_specs[param_specs$param_type == "activity_data", ]
@@ -80,7 +160,10 @@ generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
   n_ad <- nrow(ad_params)
   n_ef <- nrow(ef_params)
 
-  # Round 7 T4.3: single-pass unified copula path
+  # Pick the per-block sampler once.
+  sample_block <- if (sampler == "iman_conover") .iman_conover_sample else .copula_sample
+
+  # Round 7 T4.3: single-pass unified-correlation path
   if (!is.null(unified_corr_matrix) && (n_ad + n_ef) > 0) {
     all_params <- rbind(ad_params, ef_params)
     nm <- all_params$parameter
@@ -91,7 +174,7 @@ generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
       M[common, common] <- unified_corr_matrix[common, common]
       M <- .repair_corr(M, "unified AD+coefficient correlation matrix")
       rownames(M) <- colnames(M) <- nm
-      samp <- .copula_sample(n_iter, all_params, M)
+      samp <- sample_block(n_iter, all_params, M)
       out  <- as.data.frame(samp)
       # If the trend tab supplied pre-sampled coefficients, override that block
       if (!is.null(pre_sampled_coefficients) && n_ef > 0) {
@@ -109,7 +192,7 @@ generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     use_ad_corr <- !is.null(corr_matrix) &&
                    nrow(corr_matrix) == n_ad && ncol(corr_matrix) == n_ad
     ad_samples <- if (use_ad_corr) {
-      .copula_sample(n_iter, ad_params, corr_matrix)
+      sample_block(n_iter, ad_params, corr_matrix)
     } else {
       .indep_sample(n_iter, ad_params)
     }
@@ -127,6 +210,10 @@ generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
       use_ef_corr <- !is.null(ef_corr_matrix) &&
                      nrow(ef_corr_matrix) == n_ef && ncol(ef_corr_matrix) == n_ef
       ef_samples <- if (use_ef_corr) {
+        # EF correlations (uniform-rho legacy or block-structured) are
+        # specified directly on the Gaussian scale by the UI sliders, so we
+        # keep the copula sampler for the EF block even when AD uses
+        # Iman-Conover. This matches the user's UI mental model.
         .copula_sample(n_iter, ef_params, ef_corr_matrix)
       } else {
         .indep_sample(n_iter, ef_params)
@@ -142,12 +229,42 @@ generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
 # Compute a named correlation matrix from a time series data frame.
 # Only numeric columns are used. Returns a named matrix so expand_corr_matrix()
 # can later slot it into the full AD parameter space.
-compute_correlation_from_timeseries <- function(pop_data) {
+#
+# 2026-05 audit follow-up: switched from Pearson (default) to Spearman rank
+# correlation, and added optional detrending. Spearman is the rank correlation
+# Iman-Conover (the default sampler for this path) reproduces exactly, and
+# detrending separates shared long-run growth from year-to-year parameter
+# co-movement (IPCC V1 Ch3 p.26 lists "time series techniques can be used to
+# analyse or simulate temporal autocorrelation" — implying detrending first).
+#
+# `detrend` options:
+#   "first_diff" (default) — take year-on-year differences before correlation
+#   "linear"               — subtract a fitted linear trend
+#   "none"                 — raw series (legacy behaviour)
+compute_correlation_from_timeseries <- function(pop_data,
+                                                 detrend = c("first_diff","linear","none")) {
+  detrend <- match.arg(detrend)
   numeric_cols <- sapply(pop_data, is.numeric)
   pop_numeric  <- pop_data[, numeric_cols, drop = FALSE]
   if (ncol(pop_numeric) < 2)
     stop("Time series must contain at least 2 numeric columns.")
-  cor_matrix <- cor(pop_numeric, use = "complete.obs")
+  series <- switch(detrend,
+    none       = pop_numeric,
+    first_diff = as.data.frame(lapply(pop_numeric, function(y) c(NA, diff(y)))),
+    linear     = as.data.frame(lapply(pop_numeric, function(y) {
+                   if (sum(!is.na(y)) < 3) return(y)
+                   fit <- stats::lm(y ~ seq_along(y), na.action = stats::na.exclude)
+                   as.numeric(stats::residuals(fit))
+                 })))
+  # Drop constant columns (sd = 0 → cor() warns and returns NaN).
+  has_variance <- vapply(series, function(y) {
+    y <- y[is.finite(y)]
+    length(y) >= 2 && stats::sd(y) > 0
+  }, logical(1))
+  series <- series[, has_variance, drop = FALSE]
+  if (ncol(series) < 2)
+    stop("Time series must contain at least 2 non-constant numeric columns after detrending.")
+  cor_matrix <- cor(series, use = "complete.obs", method = "spearman")
   as.matrix(Matrix::nearPD(cor_matrix, corr = TRUE)$mat)
 }
 
@@ -195,31 +312,37 @@ sample_per_mms_param <- function(mms_rows, value_col, lower_col, upper_col,
 # to come back, the previous `sample_dirichlet_simplex` implementation lives
 # in git history at commit 4191b73.
 
-# Round 7 R1.15: build the IPCC-guidance preset correlation matrix.
+# Structural-defaults preset correlation matrix (expert-elicited, NOT IPCC-published).
+# Renamed 2026-05 from "IPCC-guidance preset" after the statistical audit: IPCC V1
+# Ch3 / V4 Ch10 publish no numerical correlation values for any livestock parameter.
+# These pairs reflect documented biological / statistical relationships from the
+# IPCC equations and the published livestock literature.
+#
 # Pure function — no rv dependency. Returns a named partial matrix containing
 # only the pairs whose endpoints exist in `all_param_names`. Pairs missing from
 # the spec are silently dropped.
 #
-# Existing pairs (kept from the inline observer that had the post-R1.6 bug):
-#   BW <-> MW (0.85), BW <-> WG (0.40),
-#   Milk <-> Fat (-0.30), Milk <-> pct_calving (0.20),
-#   DE <-> CP (0.50), DE <-> Ym (-0.40)
-# New in Round 7:
-#   Cfi <-> Ca (0.60)         R1.15: structural breed/physiology pairing
-#   N   <-> BW (0.30)         T4.3: cross-block AD <-> coefficient pair
+# Each entry carries a `source` field surfaced in the UI tooltip so users can
+# trace where the value came from.
 #
-# Note: the post-Round-4 IPCC rename means the documented pairs use the new
-# variable names directly (DE not DE_pct, Ym not Ym_pct, CP not CP_pct).
-# Legacy aliases are accepted via the lookup helper below.
+# Note: 2026-05 statistical audit dropped the previous N <-> BW = 0.30 pair —
+# population size and per-animal weight have no defensible cross-country
+# correlation. The pair was Round-7 T4.3 expert judgement, not IPCC guidance.
 PRESET_PAIRS <- list(
-  list(a = "BW",   b = "MW",            rho = 0.85),
-  list(a = "BW",   b = "WG",            rho = 0.40),
-  list(a = "Milk", b = "Fat",           rho = -0.30),
-  list(a = "Milk", b = "pct_calving",   rho = 0.20),
-  list(a = "DE",   b = "CP",            rho = 0.50),
-  list(a = "DE",   b = "Ym",            rho = -0.40),
-  list(a = "Cfi",  b = "Ca",            rho = 0.60),
-  list(a = "N",    b = "BW",            rho = 0.30)
+  list(a = "BW",   b = "MW",          rho =  0.85,
+       source = "Growth-curve asymptote relation (Brody 1945); reused in IPCC Eq 10.3 net-energy parameterisation"),
+  list(a = "BW",   b = "WG",          rho =  0.40,
+       source = "IPCC Eq 10.6 (NEg scales with BW^0.75 x WG^1.097); estimation correlation"),
+  list(a = "Milk", b = "Fat",         rho = -0.30,
+       source = "Milk dilution effect, dairy genetics literature (Wilmink 1987, VandeHaar 1998)"),
+  list(a = "Milk", b = "pct_calving", rho =  0.20,
+       source = "Reproductive-yield linkage; expert judgement"),
+  list(a = "DE",   b = "CP",          rho =  0.50,
+       source = "Forage-quality co-variation (NRC 2001)"),
+  list(a = "DE",   b = "Ym",          rho = -0.40,
+       source = "IPCC 2019 Refinement Eq 10.21 — Ym depends on diet quality"),
+  list(a = "Cfi",  b = "Ca",          rho =  0.60,
+       source = "Estimation covariance from IPCC Eq 10.3 / Eq 10.4 fit on shared dataset")
 )
 
 # Legacy alias table — accept Round-3 names so the helper finds pairs even if
@@ -253,7 +376,7 @@ build_ipcc_preset_corr <- function(all_param_names) {
     }
   }
   if (applied == 0L) return(NULL)
-  .repair_corr(m, "IPCC-guidance preset correlation matrix")
+  .repair_corr(m, "structural-defaults preset correlation matrix")
 }
 
 # Expand a partial (named) correlation matrix to the full set of AD parameters.

@@ -559,10 +559,12 @@ app_ui <- function() {
                     " upload multi-year national livestock data in the Parameter_TimeSeries sheet. ",
                     "Year-to-year co-movement is computed automatically (Pearson correlation, then nearest positive-definite). ",
                     "This is the recommended option whenever you have ≥5 years of data."),
-            tags$li(tags$strong("IPCC-guidance preset:"),
+            tags$li(tags$strong("Structural defaults (expert-elicited):"),
                     " applies a sparse correlation matrix containing only well-documented structural pairs ",
-                    "(e.g. BW ↔ MW, Milk ↔ Fat).",
-                    "All other pairs are zero. A good middle ground when you have no time series but want some realism beyond full independence."),
+                    "(e.g. BW ↔ MW, Milk ↔ Fat). ",
+                    "These values reflect documented biological/statistical relationships from the IPCC equations and the livestock literature; ",
+                    tags$em("they are not IPCC-published correlation coefficients"),
+                    ". All other pairs are zero. A good middle ground when you have no time series but want some realism beyond full independence."),
             tags$li(tags$strong("Advanced — manual entry:"),
                     " upload a CSV with expert estimates of pairwise correlations. ",
                     "Most users should leave this alone.")
@@ -588,7 +590,7 @@ app_ui <- function() {
             radioButtons("corr_mode", "Mode",
                          choices = c("No correlations"        = "none",
                                      "From template (auto, time-series)" = "timeseries",
-                                     "IPCC-guidance preset"   = "preset",
+                                     "Structural defaults (expert-elicited)" = "preset",
                                      "Advanced — manual entry"= "manual"),
                          selected = "none"),
             # Group selector for time-series mode (Andreas: "correlate within all AD / population only / intake only")
@@ -596,20 +598,41 @@ app_ui <- function() {
               condition = "input.corr_mode == 'timeseries'",
               radioButtons("corr_group_scope", "Apply correlations within:",
                            choices = c(
-                             "All AD parameters"                     = "all",
+                             "All parameters"                          = "all",
                              "Population-related only (N, BW, MW, WG)" = "population",
-                             "Intake / feed-quality only (DE_pct, CP_pct, Cfi, Ca, etc.)"      = "intake"
+                             "Intake / feed-quality only (DE, CP, Ym, Cfi, Ca, …)" = "intake"
                            ),
                            selected = "all"),
+              # 2026-05 audit follow-up: detrending option. Most national livestock
+              # series share a long-run growth trend; raw Pearson/Spearman of two
+              # upward-trending series is mechanically high. First differences
+              # isolate the year-to-year shocks, which is what Approach 2 should
+              # propagate. IPCC V1 Ch3 p.26 lists "time series techniques can be
+              # used to analyse or simulate temporal autocorrelation".
+              selectInput("corr_ts_detrend",
+                          label = tagList(
+                            "Treatment of trends ",
+                            bslib::tooltip(
+                              span(icon("circle-question"),
+                                   style = "color:#2D6A4F; cursor:help; vertical-align:middle;"),
+                              "Multi-year series usually share long-run growth. First differences (year-on-year change) isolate the genuine year-to-year co-movement that should drive joint parameter uncertainty. Use 'Raw series' only if the input is already stationary (e.g. already-differenced data).",
+                              placement = "right"
+                            )
+                          ),
+                          choices = c("First differences (recommended)" = "first_diff",
+                                      "Linear detrend"                  = "linear",
+                                      "Raw series (legacy)"             = "none"),
+                          selected = "first_diff"),
               uiOutput("corr_ts_status")
             ),
             conditionalPanel(
               condition = "input.corr_mode == 'preset'",
               div(class = "info-panel",
-                  tags$strong("IPCC-guidance preset: "),
+                  tags$strong("Structural defaults (expert-elicited): "),
                   "applies a sparse correlation matrix with only well-documented structural pairs ",
-                  "(e.g. BW ↔ MW, Milk ↔ Fat).",
-                  "All other pairs are zero. Use this when you have no time series but want some realism beyond independence.")
+                  "(e.g. BW ↔ MW, Milk ↔ Fat). ",
+                  tags$em("Note: these values reflect documented biological/statistical relationships from the IPCC equations and the livestock literature — they are not IPCC-published correlation coefficients."),
+                  " All other pairs are zero. Use this when you have no time series but want some realism beyond independence. Hover any cell in the heatmap for the per-pair source citation.")
             ),
             conditionalPanel(
               condition = "input.corr_mode == 'manual'",
@@ -630,20 +653,42 @@ app_ui <- function() {
           bslib::card_header("Coefficient Correlations (per-head EF inputs)"),
           bslib::card_body(
             div(class = "info-panel",
-                "Systematic biases in IPCC methodology (e.g., the Ym% equation) can cause all emission factors ",
-                "to be over- or under-estimated together. A ", tags$strong("uniform correlation"),
-                " (single rho) captures this assumption. ",
-                tags$em("Default is no EF correlation — a simplifying assumption used when no information on correlations is available. IPCC Approach 2 recommends incorporating known correlations where they exist.")),
+                "Coefficients within the same measurement literature can share systematic bias. The ",
+                tags$strong("block-structured"),
+                " option (default) lets you set a different correlation for three independent literatures: ",
+                tags$ul(
+                  tags$li(tags$strong("Energy-equation coefficients"), " (Cfi, Ca, C, Cp, Ym): rumen-fermentation studies, IPCC Eq 10.3 / 10.16 / 10.21 family."),
+                  tags$li(tags$strong("Manure-CH₄ coefficients"), " (Bo, MCF, ASH): BMP assays and lagoon-temperature studies."),
+                  tags$li(tags$strong("Manure-N coefficients"), " (EF3, EF4, EF5, Frac_GASMS, Frac_LEACH, UE): NH₃ / N₂O volatilisation studies.")
+                ),
+                "Cross-block correlation is zero by default — the three literatures are independent. ",
+                tags$em("Default is no EF correlation — used when no information on correlations is available. IPCC Approach 2 recommends incorporating known correlations where they exist.")),
             radioButtons("ef_corr_mode", "Mode",
                          choices = c("No EF correlations (default)" = "none",
-                                     "Uniform EF correlation"       = "uniform")),
+                                     "Block-structured EF correlation" = "block",
+                                     "Uniform EF correlation (legacy)" = "uniform")),
+            conditionalPanel(
+              condition = "input.ef_corr_mode == 'block'",
+              sliderInput("ef_rho_energy",
+                          "Within-block ρ — Energy-equation coefficients (Cfi, Ca, C, Cp, Ym)",
+                          min = 0.0, max = 0.5, value = 0.0, step = 0.05),
+              sliderInput("ef_rho_manureCH",
+                          "Within-block ρ — Manure-CH₄ coefficients (Bo, MCF, ASH)",
+                          min = 0.0, max = 0.5, value = 0.0, step = 0.05),
+              sliderInput("ef_rho_manureN",
+                          "Within-block ρ — Manure-N coefficients (EF3, EF4, EF5, Frac_GASMS, Frac_LEACH, UE)",
+                          min = 0.0, max = 0.5, value = 0.0, step = 0.05),
+              div(style = "font-size:0.82rem; color:#555; margin-top:4px;",
+                  "ρ = 0 = independent within the block. ρ = 0.3 is a moderate assumption capturing shared measurement bias; values above 0.5 require documented justification (capped at 0.5 by the slider).")
+            ),
             conditionalPanel(
               condition = "input.ef_corr_mode == 'uniform'",
-              sliderInput("ef_corr_rho", "Uniform correlation coefficient (rho)",
+              sliderInput("ef_corr_rho",
+                          "Uniform correlation coefficient (ρ) — legacy",
                           min = 0.0, max = 0.9, value = 0.3, step = 0.05),
-              div(style = "font-size:0.82rem; color:#555; margin-top:4px;",
-                  "rho = 0 = independent (same as 'No EF correlations'). ",
-                  "rho = 0.3 is a moderate assumption; values above 0.5 are strong and should be justified.")
+              div(style = "font-size:0.82rem; color:#92400E; background:#FEF3C7; padding:8px 10px; border-radius:6px; margin-top:4px;",
+                  icon("exclamation-triangle"),
+                  " Applying a single ρ to all coefficients implies shared bias across three independent literatures (rumen studies, BMP, NH₃ volatilisation). The block-structured option is recommended.")
             ),
             plotly::plotlyOutput("ef_corr_heatmap", height = "350px")
           )

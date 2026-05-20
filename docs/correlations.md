@@ -14,10 +14,10 @@ All parameters in `param_specs` carry a `param_type` label that determines which
 
 | `param_type` | Parameters | Default correlation treatment |
 |---|---|---|
-| `activity_data` | cattle_pop, live_weight, mature_weight, weight_gain, milk_yield, milk_fat, pct_lactating, DE_pct, hours, CP_pct, protein_milk | User-specified matrix (upload or manual) or independent |
-| `emission_factor` | Cfi, Ca, C_growth, Cp, Ym_pct, Bo, ash, UE, EF3_PRP, Frac_GASM, EF4, EF5, Frac_LEACH | Independent (default) or uniform rho |
+| `activity_data` | N, BW, MW, WG, Milk, Fat, pct_calving, DE, hours, CP, MilkPR | User-specified matrix (upload or manual) or independent |
+| `emission_factor` (coefficient) | Cfi, Ca, C, Cp, Ym, Bo, ASH, UE, EF3_PRP, EF3_S, Frac_GASMS, EF4, EF5, Frac_LEACH_H, etc. | Independent (default) or block-structured |
 
-The two blocks are sampled independently of each other: correlations are defined only *within* each block, never across them.
+The two blocks can be correlated **within** themselves (the default scope) and **across** each other (via the unified-matrix path used by the structural-defaults preset and any time-series matrix that covers parameters from both blocks). The sampler draws from a single multivariate distribution covering the union of all parameter names whenever cross-block pairs are specified; otherwise the two blocks are sampled in two independent passes for backward compatibility.
 
 ---
 
@@ -89,16 +89,23 @@ so **R_AD** is 11 × 11.
 
 **Option A — Upload time series (recommended)**
 
-Upload a spreadsheet where columns are activity data parameters and rows are years. The tool computes **R_AD** as the Pearson correlation matrix of the time series (with pairwise complete observations), then applies `nearPD` to ensure positive definiteness:
+Upload a spreadsheet where columns are activity data parameters and rows are years. The tool computes **R_AD** as the **Spearman rank correlation** matrix of the time series, after **detrending** (first differences by default), then applies `nearPD` to guarantee positive-definiteness:
 
 ```r
-compute_correlation_from_timeseries <- function(pop_data) {
-  cor_matrix <- cor(pop_numeric, use = "complete.obs")
-  as.matrix(Matrix::nearPD(cor_matrix, corr = TRUE)$mat)
+compute_corr_from_population <- function(population, detrend = "first_diff") {
+  series  <- switch(detrend, none = numeric_cols,
+                            first_diff = diff(numeric_cols),
+                            linear     = residuals(lm(y ~ year)))
+  cor_mat <- cor(series, use = "complete.obs", method = "spearman")
+  as.matrix(Matrix::nearPD(cor_mat, corr = TRUE)$mat)
 }
 ```
 
-Example: if you have national livestock census data for 2005–2022 with columns for cattle headcount, average liveweight, and milk yield, the tool will compute the year-to-year co-movement between these variables directly from the data.
+Sampling along this path uses **Iman–Conover restricted pairing** (`mc2d::cornode`) — the method explicitly cited by IPCC V1 Ch3 §3.2.3.2. Iman–Conover is distribution-free and reproduces the target Spearman rank correlation exactly, regardless of the marginal shapes (lognormal, PERT, beta).
+
+Detrending matters: most national livestock series share a long-run growth trend, and raw Pearson correlation between two upward-trending series is mechanically high. That trend co-movement is not the year-to-year parameter uncertainty Approach 2 is meant to propagate. First differences (the default) isolate the year-to-year shocks; "linear detrend" removes a fitted linear trend; "raw series" reproduces the legacy behaviour.
+
+Example: if you have national livestock census data for 2005–2022 with columns for cattle headcount, average liveweight, and milk yield, the tool will compute the year-to-year co-movement between these variables directly from the data — after stripping shared growth.
 
 **Option B — Manual entry**
 

@@ -118,18 +118,18 @@ Table \ref{tab:params} lists all parameters used in the calculation chain, their
 \texttt{Cp} & Coefficient for pregnancy & — & 10.13 & Constant \\
 \texttt{DE\_pct} & Digestible energy as \% of GE & \% & 10.14--16 & Normal \\
 \texttt{Ym} & Methane conversion factor & \% & 10.21 & Normal/PERT \\
-\texttt{MMS\_fractions} & Fraction of manure in each MMS & — & 10.23 & Uniform/Dirichlet \\
-\texttt{Bo} & Maximum methane capacity & m$^3$ CH$_4$/kg VS & 10.24 & Normal \\
-\texttt{MCF} & Methane conversion factor (MMS) & — & 10.24 & Normal/PERT \\
-\texttt{EF3} & Emission factor for N$_2$O (MMS) & kg N$_2$O-N/kg N & 10.26 & Lognormal/PERT \\
-\texttt{Frac\_GasMS} & Fraction N volatilised (MMS) & — & 10.29 & Normal \\
-\texttt{EF4} & EF for atmospheric deposition & kg N$_2$O-N/kg NH$_3$-N & 10.29 & PERT \\
-\texttt{Frac\_LEACH} & Fraction N lost by leaching & — & 10.31 & PERT \\
-\texttt{EF5} & EF for leaching/runoff & kg N$_2$O-N/kg N & 10.31 & PERT \\
-\texttt{Frac\_PRP} & Fraction of time on pasture & — & 10.32A & Uniform \\
-\texttt{EF3\_PRP} & EF for PRP N$_2$O & kg N$_2$O-N/kg N & 10.33 & PERT \\
-\texttt{Frac\_GasPRP} & Fraction N volatilised (PRP) & — & 10.34 & Normal \\
-\texttt{Frac\_LEACH\_H} & Fraction N leached (PRP) & — & 10.34 & PERT \\
+\texttt{MMS\_fractions} & Fraction of manure in each MMS & — & 10.23; T.10.A-9 & Uniform/Dirichlet \\
+\texttt{Bo} & Maximum methane producing capacity & m$^3$ CH$_4$/kg VS & 10.23; T.10.16 & Normal \\
+\texttt{MCF} & Methane conversion factor (MMS) & — & 10.23; T.10.17 & Normal/PERT \\
+\texttt{EF3} & Emission factor for N$_2$O (MMS) & kg N$_2$O-N/kg N & 10.25; T.10.21 & Lognormal/PERT \\
+\texttt{Frac\_GasMS} & Fraction N volatilised (MMS) & — & 10.26 & Normal \\
+\texttt{EF4} & EF for atmospheric deposition & kg N$_2$O-N/kg NH$_3$-N & 10.27; Ch.11 T.11.3 & PERT \\
+\texttt{Frac\_LeachMS} & Fraction N lost by leaching (MMS) & — & 10.28 & PERT \\
+\texttt{EF5} & EF for leaching/runoff & kg N$_2$O-N/kg N & 10.29; Ch.11 T.11.3 & PERT \\
+\texttt{Frac\_PRP} & Fraction of time on pasture & — & Ch.11 §11.2 & Uniform \\
+\texttt{EF3\_PRP} & EF for PRP N$_2$O & kg N$_2$O-N/kg N & Ch.11 Eq.11.1; T.11.1 & PERT \\
+\texttt{Frac\_GasPRP} & Fraction N volatilised (PRP) & — & Ch.11 Eq.11.9; T.11.3 & Normal \\
+\texttt{Frac\_LeachPRP} & Fraction N leached (PRP) & — & Ch.11 Eq.11.10; T.11.3 & PERT \\
 \end{longtable}
 
 \newpage
@@ -144,11 +144,11 @@ The daily net energy requirement for maintenance ($NE_m$, MJ head$^{-1}$ day$^{-
 
 $$NE_m = C_{fi,\text{adj}} \times BW^{0.75}$$
 
-where $BW$ is the mean live body weight (kg head$^{-1}$) and $C_{fi}$ is a species/condition coefficient (MJ kg$^{-0.75}$ day$^{-1}$). In cold climates (mean annual temperature $T_w < 20$°C), the IPCC software v2.95 applies a linear cold-climate adjustment:
+where $BW$ is the mean live body weight (kg head$^{-1}$) and $C_{fi}$ is a species/condition coefficient (MJ kg$^{-0.75}$ day$^{-1}$). For open-lot cattle in colder climates the 2006 Guidelines (Vol.4 Ch.10, text accompanying Eq. 10.3, and retained in the 2019 Refinement) prescribe a linear adjustment of $C_{fi}$ based on the mean daily winter temperature:
 
 $$C_{fi,\text{adj}} = C_{fi} + 0.0048 \times (20 - T_w) \quad \text{when } T_w < 20\text{°C}$$
 
-otherwise $C_{fi,\text{adj}} = C_{fi}$. This adjustment increases the maintenance energy requirement by approximately 0.48\% per degree below 20°C. The linear model is validated for $-50\text{°C} \leq T_w < 20\text{°C}$.
+otherwise $C_{fi,\text{adj}} = C_{fi}$. This adjustment increases the maintenance energy requirement by approximately 0.48\% per degree below 20°C. The same linear formula is implemented in the IPCC Inventory Software (v2.95).
 
 ## Net Energy for Activity
 
@@ -228,7 +228,7 @@ Nitrogen intake from feed is:
 
 $$N_{\text{intake}} = \frac{GE}{18.45} \times \frac{\text{CP\%}}{6.25 \times 100}$$
 
-Nitrogen retained in body tissue and milk is calculated separately. For milk, the nitrogen content uses the **Jones factor for casein (6.38)** — distinct from the generic protein factor (6.25) used for feed and body tissue (IPCC 2006 Eq. 10.32A):
+Nitrogen retained in body tissue and milk is calculated separately. For milk, the nitrogen content uses the **Jones factor for casein (6.38)** — distinct from the generic protein factor (6.25) used for feed and body tissue. The 6.38 factor and the 6.25 factor both appear inside IPCC 2006 Vol.4 Ch.10 Eq. 10.33 (N retention rates for cattle); the same equation is retained, with updated form, in the 2019 Refinement (also numbered 10.33):
 
 $$N_{\text{milk}} = \frac{\text{Milk} \times \text{MilkProtein\%}}{6.38 \times 100}$$
 
@@ -238,15 +238,15 @@ $$N_{\text{ex,annual}} = N_{\text{ex}} \times N \times 365$$
 
 ## Volatile Solids and Manure CH$_4$
 
-Volatile solids excreted daily ($VS$, kg VS head$^{-1}$ day$^{-1}$) are derived from feed intake and digestibility (IPCC Eq. 10.22). The manure CH$_4$ emission factor (kg CH$_4$ head$^{-1}$ yr$^{-1}$) is given by IPCC Eq. 10.23--10.24:
+Total manure CH$_4$ emissions are given by IPCC 2006 Vol.4 Ch.10 Eq. 10.22 (the top-level emissions equation, EF $\times$ population $\times$ 10$^{-6}$). The per-head per-year emission factor is given by Eq. 10.23, and the daily volatile-solid (VS) excretion rate that feeds Eq. 10.23 is given by Eq. 10.24:
 
 $$EF_{\text{mm,CH}_4} = VS \times 365 \times B_o \times 0.67 \times \sum_s \left( MS_s \times MCF_s \right)$$
 
-where $B_o$ is the maximum methane producing capacity (m$^3$ CH$_4$ kg$^{-1}$ VS), $0.67$ is the density of methane (kg m$^{-3}$), $MS_s$ is the fraction of manure managed in system $s$, and $MCF_s$ is the methane conversion factor for system $s$ (fraction of $B_o$). The tool supports up to 13 MMS categories (IPCC 2006 Table 10.17; 2019 Refinement Table 10.17A). Per-MMS uncertainty in $MCF$ and fractions is sampled independently.
+where $B_o$ is the maximum methane producing capacity (m$^3$ CH$_4$ kg$^{-1}$ VS), $0.67$ is the conversion factor from m$^3$ CH$_4$ to kg CH$_4$ (the density of methane at standard conditions, kg m$^{-3}$), $MS_s$ is the fraction of manure managed in system $s$, and $MCF_s$ is the methane conversion factor for system $s$ (fraction of $B_o$). The 2019 Refinement Table 10.17 (Updated) provides MCF defaults across 11 manure management systems — eight inherited from the 2006 Guidelines plus four added in 2019 (anaerobic digester / biogas, aerobic treatment, solid storage – covered/compacted, and burned for fuel). Default $B_o$ values for cattle are given in Table 10.16a. Per-MMS uncertainty in $MCF$ and in the manure fractions $MS_s$ is sampled independently.
 
 ## Manure Management N$_2$O (Direct)
 
-Direct N$_2$O emissions from manure management are given by IPCC Eq. 10.25--10.28:
+Direct N$_2$O emissions from manure management are given by IPCC 2006 Vol.4 Ch.10 Eq. 10.25 (the indirect-pathway losses are calculated separately in Eq. 10.26--10.29; see next sub-section):
 
 $$E_{\text{direct,mm}} = N_{\text{ex,annual}} \times EF_3 \times \frac{44}{28} \quad \text{(kg N}_2\text{O yr}^{-1}\text{)}$$
 
@@ -256,15 +256,15 @@ $$EF_3 = \sum_s MS_s \times EF_{3,s}$$
 
 ## Manure Management N$_2$O (Indirect)
 
-Indirect N$_2$O from managed manure arises from two pathways (IPCC Eq. 10.29--10.31):
+Indirect N$_2$O from managed manure arises from two pathways. Each pathway is split between an N-loss equation (in Vol.4 Ch.10) and an N$_2$O equation (in Vol.4 Ch.10, drawing EFs from Vol.4 Ch.11 Table 11.3):
 
-\textbf{Atmospheric deposition} of volatilised N:
+\textbf{Atmospheric deposition} of volatilised N — Frac\_GasMS from Eq. 10.26 multiplied by $EF_4$ in Eq. 10.27:
 $$E_{\text{vol,mm}} = N_{\text{ex,annual}} \times \text{Frac\_GasMS} \times EF_4 \times \frac{44}{28}$$
 
-\textbf{Leaching and runoff}:
-$$E_{\text{leach,mm}} = N_{\text{ex,annual}} \times \text{Frac\_LEACH} \times EF_5 \times \frac{44}{28}$$
+\textbf{Leaching and runoff} — Frac\_LeachMS from Eq. 10.28 multiplied by $EF_5$ in Eq. 10.29:
+$$E_{\text{leach,mm}} = N_{\text{ex,annual}} \times \text{Frac\_LeachMS} \times EF_5 \times \frac{44}{28}$$
 
-where $EF_4$ (kg N$_2$O-N kg$^{-1}$ NH$_3$-N + NO$_x$-N deposited) and $EF_5$ (kg N$_2$O-N kg$^{-1}$ N leached/runoff) are from IPCC Table 11.3; Frac\_GasMS and Frac\_LEACH are country- or region-specific fractions.
+where $EF_4$ (kg N$_2$O-N kg$^{-1}$ NH$_3$-N + NO$_x$-N deposited) and $EF_5$ (kg N$_2$O-N kg$^{-1}$ N leached/runoff) are from IPCC Vol.4 Ch.11 Table 11.3. In the 2006 Guidelines $EF_4 = 0.010$ and $EF_5 = 0.0075$; the 2019 Refinement updates these to $EF_4 = 0.014$ and $EF_5 = 0.011$. Frac\_GasMS and Frac\_LeachMS are MMS- and country-specific fractions (defaults in Vol.4 Ch.10 Tables 10.22 and 10.23 of the 2019 Refinement).
 
 ## Pasture/Range/Paddock N$_2$O (Direct)
 
@@ -272,17 +272,17 @@ The nitrogen deposited on pasture by grazing animals ($F_{\text{PRP}}$) is calcu
 
 $$F_{\text{PRP}} = N_{\text{ex,annual}} \times \text{Frac\_PRP}$$
 
-where Frac\_PRP is the fraction of the year animals spend on pasture. Direct N$_2$O from pasture is given by IPCC Eq. 10.33:
+where Frac\_PRP is the fraction of the year animals spend on pasture. Direct N$_2$O from pasture/range/paddock falls under managed soils (IPCC 2006 Volume 4, Chapter 11), not Chapter 10. It is given by IPCC Eq. 11.1 (with $F_{\text{PRP}}$ as the input N source):
 
 $$E_{\text{direct,PRP}} = F_{\text{PRP}} \times EF_{3,\text{PRP}} \times \frac{44}{28}$$
 
-where $EF_{3,\text{PRP}}$ is the emission factor for direct N$_2$O from PRP (IPCC Table 10.21; typical range 0.007--0.060 kg N$_2$O-N kg$^{-1}$ N).
+where $EF_{3,\text{PRP}}$ is the emission factor for direct N$_2$O from PRP given in IPCC Vol.4 Chapter 11, Table 11.1. The 2006 value is 0.02 kg N$_2$O-N kg$^{-1}$ N (cattle, poultry, pigs). The 2019 Refinement disaggregates this by climate and animal class: for cattle / poultry / pigs the values are 0.004 in wet climates and 0.006 in dry climates (kg N$_2$O-N kg$^{-1}$ N).
 
 ## Pasture N$_2$O (Indirect)
 
-Indirect N$_2$O from pasture deposition follows IPCC Eq. 10.34, using the same pathway structure as managed manure:
+Indirect N$_2$O from pasture deposition follows IPCC Vol.4 Ch.11 Eq. 11.9 (volatilisation pathway) and Eq. 11.10 (leaching/runoff pathway), using the same pathway structure as managed manure:
 
-$$E_{\text{indirect,PRP}} = F_{\text{PRP}} \times \left( \text{Frac\_GasPRP} \times EF_4 + \text{Frac\_LEACH\_H} \times EF_5 \right) \times \frac{44}{28}$$
+$$E_{\text{indirect,PRP}} = F_{\text{PRP}} \times \left( \text{Frac\_GasPRP} \times EF_4 + \text{Frac\_LeachPRP} \times EF_5 \right) \times \frac{44}{28}$$
 
 ## GWP-Based CO$_2$eq Conversion
 
@@ -293,9 +293,9 @@ All emission pathways are converted to CO$_2$ equivalents using Global Warming P
 \toprule
 \textbf{Basis} & \textbf{CH$_4$ GWP} & \textbf{N$_2$O GWP} & \textbf{Reference} \\
 \midrule
-AR4 (100-yr) & 25 & 298 & IPCC AR4, Table 2.14 \\
-AR5 (100-yr) & 28 & 265 & IPCC AR5, Table 8.7 \\
-AR6 (100-yr) & 27.0 & 273 & IPCC AR6, Table 7.SM.7 \\
+AR4 (100-yr) & 25 & 298 & IPCC AR4 WG1, Ch.2 Table 2.14 \\
+AR5 (100-yr) & 28 & 265 & IPCC AR5 WG1, Ch.8 Table 8.7 \\
+AR6 (100-yr, non-fossil CH$_4$) & 27.0 & 273 & IPCC AR6 WG1, Ch.7 Table 7.15 (and Table 7.SM.7) \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -341,22 +341,21 @@ $$\sigma = \frac{\text{uncertainty\_pct} \times \mu}{100 \times 1.96}$$
 
 for a normal distribution, or equivalent transformations for lognormal and PERT.
 
-## Correlated Sampling (Gaussian Copula)
+## Correlated Sampling
 
-When parameters are correlated (e.g. body weight and mature weight are positively correlated; diet quality and methane conversion factor may be negatively correlated), ignoring correlation underestimates or overestimates combined uncertainty.
+When parameters are correlated (e.g. body weight and mature weight are positively correlated; diet quality and methane conversion factor may be negatively correlated), ignoring correlation underestimates or overestimates combined uncertainty. The tool supports two complementary algorithms.
 
-The tool uses a **Gaussian copula** to impose a desired correlation structure while preserving the marginal distributions of each parameter. The procedure is:
+\textbf{Gaussian copula} (used for the preset / manual / structural-defaults paths). The Gaussian copula imposes a desired correlation structure while preserving the marginal distributions:
 
-1. Draw $n_{\text{iter}}$ samples from a multivariate normal distribution $\mathbf{Z} \sim \mathcal{N}(\mathbf{0}, \boldsymbol{\Sigma})$, where $\boldsymbol{\Sigma}$ is the target correlation matrix (with unit variances on the diagonal).
-2. Transform each column $Z_j$ to uniform margins via $U_j = \Phi(Z_j)$, where $\Phi$ is the standard normal CDF.
-3. Apply the inverse CDF of the target marginal distribution to obtain samples $X_j = F_j^{-1}(U_j)$.
+1. Draw $n_{\text{iter}}$ samples from a multivariate normal distribution $\mathbf{Z} \sim \mathcal{N}(\mathbf{0}, \boldsymbol{\Sigma})$ via \texttt{MASS::mvrnorm}, which uses the eigendecomposition of $\boldsymbol{\Sigma}$ (numerically equivalent to a Cholesky factorisation for a positive-definite $\boldsymbol{\Sigma}$).
+2. Transform each column $Z_j$ to uniform margins via $U_j = \Phi(Z_j)$.
+3. Apply the inverse CDF of the target marginal to obtain samples $X_j = F_j^{-1}(U_j)$.
 
-The Cholesky decomposition of $\boldsymbol{\Sigma}$ is used in step 1. The tool validates that the supplied matrix is positive definite before proceeding; if not, it falls back to uncorrelated sampling.
+If $\boldsymbol{\Sigma}$ is not positive definite, the tool projects it onto the nearest positive-definite correlation matrix via \texttt{Matrix::nearPD(corr = TRUE)} and emits a warning whenever any entry shifts by more than 0.01. The tool does \textit{not} silently fall back to uncorrelated sampling.
 
-Separate correlation matrices are maintained for:
+\textbf{Iman–Conover restricted pairing} (used for the time-series path). This is the method explicitly cited by IPCC Volume 1 Chapter 3 §3.2.3.2. Iman–Conover is distribution-free, reproduces the target Spearman rank correlation exactly, and is preferred when the correlation matrix has been estimated from observed data: the resulting samples have the right rank dependence regardless of the marginal shapes.
 
-- **Activity data** ($N$, $BW$, $WG$, $MW$, Milk, DE\_pct, etc.)
-- **Emission factors** (Ym, Bo, MCF, EF3, EF4, EF5, EF3\_PRP, etc.)
+The tool supports both within-block and across-block correlations. The default scope is independence; a single unified correlation matrix spanning AD + coefficients is used whenever cross-block pairs are specified.
 
 ## Simulation Procedure
 
@@ -495,15 +494,25 @@ Correlations between activity data parameters (e.g. body weight and mature weigh
 
 Emission factors that are structurally linked (e.g. EF4 is applied to volatilised N, which is also affected by Frac\_GasMS) can be assigned correlations via the \texttt{EF\_Correlations} sheet.
 
-## IPCC-Guidance Preset
+## Structural-Defaults Preset (Expert-Elicited)
 
-The tool provides an **IPCC-guidance preset** correlation matrix as a middle ground between full independence and user-specified correlations. This preset assigns positive correlations to structurally linked pairs documented in IPCC guidance (e.g. body weight and mature weight; milk yield and milk fat content). All other pairs are set to zero. This is appropriate when no empirical correlation data are available but the inventory compiler wants to avoid the unrealistic assumption of full independence.
+The tool provides a **structural-defaults preset** correlation matrix as a middle ground between full independence and user-specified correlations. This preset assigns non-zero correlations to a small set of structurally linked pairs drawn from the IPCC equation structure and the published livestock literature (e.g. body weight and mature weight, via the growth-curve asymptote relation; milk yield and milk fat content, via the dilution effect). \textit{These values are expert-elicited; the IPCC publishes no numerical correlation coefficients for any livestock parameter pair.} All other pairs are set to zero. Hover any non-zero cell in the heatmap for the per-pair source citation. This is appropriate when no empirical correlation data are available but the inventory compiler wants to avoid the unrealistic assumption of full independence.
+
+## Cross-Block Correlations
+
+The preset and the manual / time-series matrices support cross-block correlations (i.e. correlations between an activity-data parameter and a coefficient — for example BW $\leftrightarrow$ Cfi). This is implemented via a single unified correlation matrix that spans the union of all parameter names; the sampler draws from one multivariate distribution covering both blocks rather than two independent block-level distributions. Independence within and across blocks is the default.
 
 ## Gaussian Copula Implementation
 
-The correlated sampling procedure uses the Cholesky decomposition of the correlation matrix $\boldsymbol{\Sigma}$. If $\boldsymbol{\Sigma} = \mathbf{L}\mathbf{L}^\top$, then $\mathbf{Z} = \mathbf{L}\mathbf{U}$, where $\mathbf{U}$ is a matrix of independent standard-normal draws, gives multivariate normal draws with the target correlation structure. After transformation to uniform margins via $\Phi(\cdot)$, the inverse CDF of each target distribution is applied.
+For the manual / preset / advanced paths, the correlated sampling procedure draws from a multivariate normal $\mathbf{Z} \sim \mathcal{N}(\mathbf{0}, \boldsymbol{\Sigma})$ using the eigendecomposition of $\boldsymbol{\Sigma}$ provided by \texttt{MASS::mvrnorm} (numerically equivalent to a Cholesky factorisation for a positive-definite $\boldsymbol{\Sigma}$). The draws are then transformed to uniform margins via $\Phi(\cdot)$ and finally to each parameter's target marginal via its inverse CDF.
 
-If the supplied correlation matrix is not positive definite (a common issue with manually entered or imputed matrices), the tool issues a warning and falls back to uncorrelated sampling.
+If the supplied $\boldsymbol{\Sigma}$ is not positive definite (which can occur with manually entered or imputed matrices), the tool projects it onto the nearest positive-definite correlation matrix using \texttt{Matrix::nearPD(corr = TRUE)}. A warning is issued whenever any individual entry is shifted by more than 0.01 (a 1\% absolute change), with the actual maximum shift reported. The tool does \textit{not} silently fall back to uncorrelated sampling.
+
+## Iman–Conover for Time-Series Correlations
+
+When the correlation matrix is computed from an uploaded time series (the recommended path), the tool uses the \textbf{Iman–Conover restricted-pairing method} (\texttt{mc2d::cornode}) rather than the Gaussian copula. Iman–Conover is the technique explicitly cited by IPCC Volume 1 Chapter 3 Section 3.2.3.2 (p. 26: ``simulating correlation using restricted pairing methods that are included in many software packages''), is distribution-free, and reproduces the target Spearman rank correlation exactly. This eliminates a subtle bias of the Gaussian copula whereby, for non-Gaussian marginals (lognormal, PERT, beta), the output Pearson correlation differs from the input correlation by an amount that depends on the marginal shapes.
+
+The time-series matrix itself is computed as a \textbf{Spearman} rank correlation of the user's annual values, after \textbf{detrending} (first differences by default, with a UI option to switch to linear detrend or raw series). Detrending separates shared long-run growth — which is not the year-to-year joint uncertainty Approach 2 is meant to capture — from genuine parameter co-movement.
 
 \newpage
 

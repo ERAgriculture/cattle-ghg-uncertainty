@@ -65,6 +65,15 @@ app_server <- function(input, output, session) {
     }
   }
 
+  # 2026-05 audit follow-up: small helper so every time-series → matrix path
+  # honours the current detrend selection. The first load uses the default
+  # ("first_diff") because input$corr_ts_detrend is NULL pre-render.
+  .compute_corr_now <- function(pop) {
+    if (is.null(pop)) return(NULL)
+    dt <- input$corr_ts_detrend %||% "first_diff"
+    compute_corr_from_population(pop, detrend = dt)
+  }
+
   .load_example <- function(name) {
     # T0.3 + B1: distinct example datasets per country selection
     if (name == "uganda") {
@@ -73,12 +82,12 @@ app_server <- function(input, output, session) {
       # that Tab 4's "From template (auto)" correlation mode works without
       # requiring a separate Excel upload.
       rv$population  <- generate_uganda_timeseries()
-      rv$corr_matrix <- compute_corr_from_population(rv$population)
+      rv$corr_matrix <- .compute_corr_now(rv$population)
       rv$sim_log <- "Country X (hypothetical dairy smallholder) example data loaded — 12 parameters, dairy / cows; 5-year synthetic time-series populated for correlation auto-mode.\n"
     } else if (name == "zimbabwe") {
       rv$param_specs <- fill_bounds(generate_country_y_example())
       rv$population  <- generate_country_y_timeseries()
-      rv$corr_matrix <- compute_corr_from_population(rv$population)
+      rv$corr_matrix <- .compute_corr_now(rv$population)
       rv$sim_log <- "Country Y (hypothetical pastoral non-dairy) example data loaded — 11 parameters, non_dairy / breeding_cows; 5-year synthetic time-series populated for correlation auto-mode.\n"
     }
     # Flag any missing core parameters immediately so the Tab 1 notice appears
@@ -634,13 +643,15 @@ app_server <- function(input, output, session) {
 
   # --- CORRELATIONS ---
 
-  # T4.1 / Round 7 R1.15: IPCC-guidance preset — sparse matrix with documented
-  # structural pairs only. After Round 7 the preset operates on the **unified**
-  # set of all parameter names (AD + coefficients) so cross-block pairs
-  # like N <-> BW (T4.3) flow correctly. Bug fixed in Round 7: prior code
-  # filtered to activity_data names, which after R1.6 left only `N` and made
-  # the preset matrix 1x1 (effectively a no-op for documented pairs like
-  # BW <-> MW that are coefficients post-rename).
+  # T4.1 / Round 7 R1.15: structural-defaults preset — sparse matrix with documented
+  # structural pairs only. Renamed 2026-05 from "IPCC-guidance preset" after the
+  # statistical audit: the IPCC publishes no numerical correlation values; this
+  # preset is expert-elicited from biological / statistical relationships in the
+  # IPCC equations and the livestock literature. After Round 7 the preset operates
+  # on the **unified** set of all parameter names (AD + coefficients) so within-
+  # coefficient pairs like BW <-> MW (now both coefficients post-R1.6) flow
+  # correctly. The previous cross-block N <-> BW pair was dropped in the 2026-05
+  # audit (no defensible cross-country source).
   observeEvent(input$corr_mode, {
     if (input$corr_mode == "preset") {
       all_names <- if (!is.null(rv$param_specs))
@@ -656,11 +667,20 @@ app_server <- function(input, output, session) {
       }
       rv$corr_matrix <- preset
       showNotification(
-        sprintf("Loaded IPCC-guidance preset correlation matrix (%d-parameter scope).",
+        sprintf("Loaded structural-defaults preset correlation matrix (%d-parameter scope).",
                 nrow(preset)),
         type = "message", duration = 4)
     } else if (input$corr_mode == "none") {
       # Don't wipe an uploaded matrix — just don't apply it (sim observer reads input$corr_mode)
+    }
+  }, ignoreInit = TRUE)
+
+  # 2026-05 audit follow-up: recompute the time-series correlation matrix when
+  # the user toggles the detrend mode (otherwise the heatmap and the next
+  # simulation would still reflect the previous setting).
+  observeEvent(input$corr_ts_detrend, {
+    if (isTRUE(input$corr_mode == "timeseries") && !is.null(rv$population)) {
+      rv$corr_matrix <- .compute_corr_now(rv$population)
     }
   }, ignoreInit = TRUE)
 
@@ -712,14 +732,54 @@ app_server <- function(input, output, session) {
     }
   })
 
+  # 2026-05 audit follow-up: wire up the corr_group_scope radio (was dead).
+  # When corr_mode == "timeseries" and the user picks "population" or "intake",
+  # restrict the active correlation matrix to that subgroup; uncorrelated
+  # parameters fall to identity rows/cols via the unified-matrix expansion
+  # downstream.
+  .CORR_GROUPS <- list(
+    population = c("N", "BW", "MW", "WG",
+                   # legacy aliases (accepted on upload via PARAM_ALIASES, but
+                   # surface here too in case raw template headers leaked through)
+                   "cattle_pop", "live_weight", "mature_weight", "weight_gain"),
+    intake     = c("DE", "DE_pct", "CP", "CP_pct", "Ym", "Ym_pct",
+                   "Cfi", "Ca", "C", "C_growth", "Cp", "hours")
+  )
+  effective_corr_matrix <- reactive({
+    m <- rv$corr_matrix
+    if (is.null(m)) return(NULL)
+    scope <- if (isTRUE(input$corr_mode == "timeseries")) input$corr_group_scope else "all"
+    if (is.null(scope) || scope == "all" || !(scope %in% names(.CORR_GROUPS))) return(m)
+    keep <- intersect(rownames(m), .CORR_GROUPS[[scope]])
+    if (length(keep) < 2) return(NULL)   # nothing meaningful to correlate after filter
+    m[keep, keep, drop = FALSE]
+  })
+
   output$corr_heatmap <- plotly::renderPlotly({
-    if (is.null(rv$corr_matrix)) {
+    mtx <- effective_corr_matrix()
+    if (is.null(mtx)) {
       plotly::plot_ly() %>%
         plotly::layout(title = "No correlation matrix loaded",
                        xaxis = list(visible = FALSE), yaxis = list(visible = FALSE))
     } else {
-      plotly::plot_ly(z = rv$corr_matrix, type = "heatmap",
-                      x = colnames(rv$corr_matrix), y = rownames(rv$corr_matrix),
+      # 2026-05 audit follow-up: when the structural-defaults preset is active,
+      # attach the per-pair source citation as the hover text so users can trace
+      # where each non-zero correlation comes from.
+      hover <- matrix("", nrow = nrow(mtx), ncol = ncol(mtx))
+      if (isTRUE(input$corr_mode == "preset") && exists("PRESET_PAIRS")) {
+        rn <- rownames(mtx); cn <- colnames(mtx)
+        for (p in PRESET_PAIRS) {
+          ia <- which(rn == p$a); ib <- which(cn == p$b)
+          ja <- which(rn == p$b); jb <- which(cn == p$a)
+          src <- if (!is.null(p$source)) p$source else ""
+          tip <- sprintf("%s &harr; %s: %.2f<br><i>%s</i>", p$a, p$b, p$rho, src)
+          if (length(ia) && length(ib)) hover[ia, ib] <- tip
+          if (length(ja) && length(jb)) hover[ja, jb] <- tip
+        }
+      }
+      plotly::plot_ly(z = mtx, type = "heatmap",
+                      x = colnames(mtx), y = rownames(mtx),
+                      text = hover, hoverinfo = "x+y+z+text",
                       colorscale = list(c(0, "#C1121F"), c(0.5, "#FFFFFF"), c(1, "#2D6A4F")),
                       zmin = -1, zmax = 1) %>%
         plotly::layout(title = "Activity Data Correlation Matrix")
@@ -747,16 +807,34 @@ app_server <- function(input, output, session) {
     }
   })
 
-  # EF correlation matrix — built from UI inputs whenever they change
+  # EF correlation matrix — built from UI inputs whenever they change.
+  # 2026-05 audit follow-up: added the block-structured option (now default).
+  # Modes:
+  #   "none"    → NULL                          (independent EFs, IPCC default)
+  #   "block"   → make_block_corr(ef_names, …)  (within-literature correlations,
+  #                                              cross-block zero)
+  #   "uniform" → make_uniform_corr(n_ef, ρ)    (legacy single-ρ; kept for back-compat)
   ef_corr_reactive <- reactive({
     req(rv$param_specs)
-    if (is.null(input$ef_corr_mode) || input$ef_corr_mode == "none") return(NULL)
+    mode <- input$ef_corr_mode
+    if (is.null(mode) || mode == "none") return(NULL)
     ef_params <- rv$param_specs[rv$param_specs$param_type == "coefficient", ]
     n_ef <- nrow(ef_params)
     if (n_ef < 2) return(NULL)
-    rho <- if (!is.null(input$ef_corr_rho)) input$ef_corr_rho else 0.3
-    mat <- make_uniform_corr(n_ef, rho)
-    rownames(mat) <- colnames(mat) <- ef_params$parameter
+    nms <- ef_params$parameter
+    if (mode == "block") {
+      rho_by_block <- list(
+        energy   = input$ef_rho_energy   %||% 0,
+        manureCH = input$ef_rho_manureCH %||% 0,
+        manureN  = input$ef_rho_manureN  %||% 0
+      )
+      if (all(unlist(rho_by_block) == 0)) return(NULL)  # nothing to apply
+      mat <- make_block_corr(nms, rho_by_block)
+    } else {  # legacy uniform
+      rho <- if (!is.null(input$ef_corr_rho)) input$ef_corr_rho else 0.3
+      mat <- make_uniform_corr(n_ef, rho)
+      rownames(mat) <- colnames(mat) <- nms
+    }
     mat
   })
 
@@ -771,11 +849,19 @@ app_server <- function(input, output, session) {
         plotly::layout(title = "No EF correlation (independent sampling)",
                        xaxis = list(visible = FALSE), yaxis = list(visible = FALSE))
     } else {
+      title_str <- if (isTRUE(input$ef_corr_mode == "block")) {
+        sprintf("EF Correlation Matrix — block (energy=%.2f, manureCH=%.2f, manureN=%.2f)",
+                input$ef_rho_energy   %||% 0,
+                input$ef_rho_manureCH %||% 0,
+                input$ef_rho_manureN  %||% 0)
+      } else {
+        sprintf("EF Correlation Matrix (uniform rho = %.2f)", input$ef_corr_rho %||% 0)
+      }
       plotly::plot_ly(z = mat, type = "heatmap",
                       x = colnames(mat), y = rownames(mat),
                       colorscale = list(c(0, "#FFFFFF"), c(1, "#2D6A4F")),
                       zmin = 0, zmax = 1) %>%
-        plotly::layout(title = sprintf("EF Correlation Matrix (rho = %.2f)", input$ef_corr_rho))
+        plotly::layout(title = title_str)
     }
   })
 
@@ -852,8 +938,16 @@ app_server <- function(input, output, session) {
     rv$sim_log <- paste0(rv$sim_log, "Iterations: ", n_iter_val, "\n")
     rv$sim_log <- paste0(rv$sim_log, "GWP: ", input$gwp_version, "\n")
     if (!is.null(rv$ef_corr_matrix)) {
-      rho_val <- if (!is.null(input$ef_corr_rho)) input$ef_corr_rho else "?"
-      rv$sim_log <- paste0(rv$sim_log, "EF correlation: uniform rho = ", rho_val, "\n")
+      if (isTRUE(input$ef_corr_mode == "block")) {
+        rv$sim_log <- paste0(rv$sim_log,
+          sprintf("EF correlation: block-structured (energy=%.2f, manureCH=%.2f, manureN=%.2f)\n",
+                  input$ef_rho_energy   %||% 0,
+                  input$ef_rho_manureCH %||% 0,
+                  input$ef_rho_manureN  %||% 0))
+      } else {
+        rho_val <- if (!is.null(input$ef_corr_rho)) input$ef_corr_rho else "?"
+        rv$sim_log <- paste0(rv$sim_log, "EF correlation: uniform rho = ", rho_val, " (legacy)\n")
+      }
     } else {
       rv$sim_log <- paste0(rv$sim_log, "EF correlation: none (independent)\n")
     }
@@ -1035,12 +1129,16 @@ app_server <- function(input, output, session) {
             coef_names <- sys_specs$parameter[sys_specs$param_type == "coefficient"]
             all_names  <- c(ad_names, coef_names)
 
-            unified_corr <- if (input$corr_mode != "none" && !is.null(rv$corr_matrix)) {
-              expand_corr_matrix(rv$corr_matrix, all_names)
+            # 2026-05 audit follow-up: route through effective_corr_matrix() so
+            # the corr_group_scope radio actually filters the matrix used by MC.
+            corr_mtx_active <- effective_corr_matrix()
+
+            unified_corr <- if (input$corr_mode != "none" && !is.null(corr_mtx_active)) {
+              expand_corr_matrix(corr_mtx_active, all_names)
             } else NULL
 
-            ts_coef_corr <- if (input$corr_mode != "none" && !is.null(rv$corr_matrix)) {
-              expand_corr_matrix(rv$corr_matrix, coef_names)
+            ts_coef_corr <- if (input$corr_mode != "none" && !is.null(corr_mtx_active)) {
+              expand_corr_matrix(corr_mtx_active, coef_names)
             } else NULL
 
             # AD block has only cattle_pop — within-block correlation is meaningless.
@@ -1080,7 +1178,11 @@ app_server <- function(input, output, session) {
             # the Parameters template (per sub-category) — the UI input was
             # removed. pct_calving is still read here as a single global
             # value (Cp pro-rate applies inventory-wide).
-            pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1
+            pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1,
+            # 2026-05 audit follow-up: time-series mode uses Iman-Conover
+            # (the IPCC-cited restricted-pairing method); other modes use the
+            # Gaussian copula because the user is specifying Sigma directly.
+            sampler = if (isTRUE(input$corr_mode == "timeseries")) "iman_conover" else "copula"
           )
 
           # T1.12: zero out per-source contributions the user has unchecked.
@@ -1173,11 +1275,13 @@ app_server <- function(input, output, session) {
               sd
             }
 
+            .sampler_choice <- if (isTRUE(input$corr_mode == "timeseries")) "iman_conover" else "copula"
             systems_ad <- lapply(systems_data, fix_params, fix_type = "coefficient")
             ad_result  <- run_inventory_simulation(
               systems_ad, n_iter = n_iter_val,
               gwp = input$gwp_version, seed = input$seed,
-              pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1
+              pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1,
+              sampler = .sampler_choice
             )
 
             setProgress(0.70, detail = sprintf("Running EF-only simulation (%d group(s))...",
@@ -1186,7 +1290,8 @@ app_server <- function(input, output, session) {
             ef_result  <- run_inventory_simulation(
               systems_ef, n_iter = n_iter_val,
               gwp = input$gwp_version, seed = input$seed,
-              pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1
+              pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1,
+              sampler = .sampler_choice
             )
 
             rv$decomposition <- list(

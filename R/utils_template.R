@@ -16,12 +16,23 @@
 `%||%` <- function(a, b)
   if (is.null(a) || length(a) == 0 || is.na(a[1]) || !nzchar(as.character(a[1]))) b else a
 
-# R2.2: compute a Pearson correlation matrix (with nearest-PD projection) from
-# a Parameter_TimeSeries-style data frame. Used both by parse_uploaded_template()
+# R2.2: compute a correlation matrix (with nearest-PD projection) from a
+# Parameter_TimeSeries-style data frame. Used both by parse_uploaded_template()
 # (real upload path) and by .load_example() in app_server.R so that the built-in
 # Country X / Country Y examples can populate Tab 4's "From template (auto)"
 # correlation mode without requiring a separate upload.
-compute_corr_from_population <- function(population) {
+#
+# 2026-05 audit follow-up:
+#   - Switched from Pearson to Spearman rank correlation (matches the Iman-Conover
+#     sampler default for the time-series path).
+#   - Added optional detrending. Default is first differences, which strips the
+#     shared long-run growth common to most national livestock series. Linear
+#     detrend and "none" (raw, legacy behaviour) are also available.
+#   - When `detrend = "first_diff"` and only N=5 years are available, only N-1=4
+#     paired observations remain, so the minimum-rows guard is relaxed accordingly.
+compute_corr_from_population <- function(population,
+                                          detrend = c("first_diff","linear","none")) {
+  detrend <- match.arg(detrend)
   if (is.null(population) || ncol(population) < 2) return(NULL)
   if (exists("PARAM_ALIASES")) {
     hits <- names(population) %in% names(PARAM_ALIASES)
@@ -37,8 +48,27 @@ compute_corr_from_population <- function(population) {
   pop_numeric  <- population[, numeric_cols, drop = FALSE]
   if ("year" %in% names(pop_numeric)) pop_numeric$year <- NULL
   if (ncol(pop_numeric) < 2 || nrow(pop_numeric) < 5) return(NULL)
+  series <- switch(detrend,
+    none       = pop_numeric,
+    first_diff = as.data.frame(lapply(pop_numeric, function(y) c(NA_real_, diff(y)))),
+    linear     = as.data.frame(lapply(pop_numeric, function(y) {
+                   if (sum(!is.na(y)) < 3) return(as.numeric(y))
+                   fit <- tryCatch(
+                     stats::lm(y ~ seq_along(y), na.action = stats::na.exclude),
+                     error = function(e) NULL)
+                   if (is.null(fit)) as.numeric(y) else as.numeric(stats::residuals(fit))
+                 })))
+  # Drop constant (zero-variance) columns: cor() returns NaN for them and warns
+  # "the standard deviation is zero". This commonly happens with user templates
+  # where one parameter has the same value every year (e.g. hours = 100).
+  has_variance <- vapply(series, function(y) {
+    y <- y[is.finite(y)]
+    length(y) >= 2 && stats::sd(y) > 0
+  }, logical(1))
+  series <- series[, has_variance, drop = FALSE]
+  if (ncol(series) < 2) return(NULL)
   tryCatch({
-    cm <- cor(pop_numeric, use = "complete.obs")
+    cm <- cor(series, use = "complete.obs", method = "spearman")
     as.matrix(Matrix::nearPD(cm, corr = TRUE)$mat)
   }, error = function(e) NULL)
 }

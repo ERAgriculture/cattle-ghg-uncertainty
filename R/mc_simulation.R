@@ -19,13 +19,21 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
                                # treat the corresponding MMS values as
                                # deterministic constants (pre-fix behaviour).
                                mcf_samples = NULL, ef3_samples = NULL,
-                               frac_gas_samples = NULL, frac_leach_samples = NULL) {
+                               frac_gas_samples = NULL, frac_leach_samples = NULL,
+                               # 2026-05 audit follow-up: AD-block sampler choice.
+                               # "iman_conover" is the default for the time-series path
+                               # (Spearman rank matrix is reproduced exactly);
+                               # "copula" is the default for preset/manual paths
+                               # (user-supplied Sigma is Pearson-on-Gaussian-scale).
+                               sampler = c("copula", "iman_conover")) {
+  sampler <- match.arg(sampler)
   # Andreas 2026-05 follow-up: the Dirichlet `mms_fractions_matrix` argument
   # was removed because the Dirichlet MMS-allocation sampling it enabled is
   # not cited in IPCC 2006 / 2019 guidance. MMS% is now deterministic.
   samples <- generate_mc_samples(param_specs, corr_matrix, n_iter, seed, ef_corr_matrix,
                                   unified_corr_matrix = unified_corr_matrix,
-                                  pre_sampled_coefficients = pre_sampled_coefficients)
+                                  pre_sampled_coefficients = pre_sampled_coefficients,
+                                  sampler = sampler)
 
   # Andreas 2026-05 follow-up (C4 / C6): expose per-MMS sampled values to the
   # sensitivity analysis by appending them to `samples` as e.g.
@@ -118,7 +126,12 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
 
 # Run simulation across multiple systems/subsystems
 run_inventory_simulation <- function(systems_data, n_iter = 10000, gwp = "AR5",
-                                      seed = NULL, Tw = 20, pct_calving = 1) {
+                                      seed = NULL, Tw = 20, pct_calving = 1,
+                                      # 2026-05 audit follow-up: AD-block sampler.
+                                      # Caller (app_server.R) picks "iman_conover"
+                                      # when corr_mode == "timeseries", "copula" otherwise.
+                                      sampler = c("copula", "iman_conover")) {
+  sampler <- match.arg(sampler)
   by_system <- list()
 
   for (sys_name in names(systems_data)) {
@@ -142,7 +155,8 @@ run_inventory_simulation <- function(systems_data, n_iter = 10000, gwp = "AR5",
       mcf_samples              = sys$mcf_samples,
       ef3_samples              = sys$ef3_samples,
       frac_gas_samples         = sys$frac_gas_samples,
-      frac_leach_samples       = sys$frac_leach_samples
+      frac_leach_samples       = sys$frac_leach_samples,
+      sampler                  = sampler
     )
     by_system[[sys_name]] <- sim
   }
