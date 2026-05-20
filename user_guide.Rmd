@@ -117,6 +117,27 @@ Before opening the tool, assemble the following:
 
 If you do not yet have uncertainty estimates, see Section 2.4 for guidance on obtaining them.
 
+## AI-assisted data preparation (optional, free)
+
+If your raw inventory data lives in your own Excel or CSV files with column names that do not match the template, you can use the free **GMH Uncertainty Translator** on \texttt{claude.ai} to do the column-mapping and unit-conversion work for you. The Translator is a pre-built Claude Project loaded with the parameter catalogue, template schema, and ten worked mapping examples. It is free to use with a free claude.ai account and requires no installation.
+
+\textbf{Workflow.}
+
+\begin{enumerate}
+\item Download the \textbf{pre-flight questionnaire} from the Resources tab and fill it out (about 2 minutes — country, year, IPCC version, sub-categories, manure systems, data fields, uncertainty source).
+\item Sign up for a free claude.ai account if you do not already have one.
+\item Click the \emph{Open the Translator on claude.ai} button in the Resources tab.
+\item Paste the filled questionnaire as your first message; attach your raw data file(s) (\texttt{.xlsx}, \texttt{.csv}, or even a PDF/screenshot of a table).
+\item Claude proposes a column mapping with confidence flags; confirm ambiguities (typically 2--5 short questions).
+\item Download the produced \texttt{filled\_template\_for\_app.xlsx} and upload it in Tab 1.
+\end{enumerate}
+
+A 1-page \textbf{Getting Started} guide with screenshots is available from the Resources tab.
+
+\textbf{When to use --- and when not to.} The Translator is useful when (a) your data is in a non-standard shape, (b) your column names differ from the template (e.g. \texttt{cattle\_pop}, \texttt{live\_wt\_lb}), (c) you have data in inconsistent units (lbs vs kg, fractions vs percentages), or (d) you want IPCC defaults filled in for the parameters you do not measure. Do \textbf{not} use the Translator if your ministry's data-handling policy prohibits uploading internal datasets to third-party services. National-inventory data submitted for UNFCCC reporting is generally non-confidential, but check before sending.
+
+\textbf{Quality control.} The Translator does column-mapping, not analysis. Always (a) spot-check the key numbers (population, body weight, milk yield) by comparing with your original file, and (b) review the QA/QC tab after upload --- any value the Translator filled from an IPCC default is flagged in amber there.
+
 ## Complete parameter reference
 
 The table below lists all parameters accepted by the tool. Required parameters depend on the emission sources you are running. Parameters marked \textit{n/a} in the IPCC default column must be supplied from your national data. The tool will auto-fill missing optional parameters with IPCC defaults and flag them in Tab 1 (see Section 3.2).

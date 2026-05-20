@@ -226,6 +226,53 @@ app_ui <- function() {
       title = "Resources",
       icon = icon("book-open"),
       div(style = "max-width: 960px; margin: 0 auto; padding: 24px;",
+        # AI Translator kit — free, self-serve helper to turn the user's own
+        # Excel/CSV files into the strict app template via a pre-built Claude.ai
+        # Project. See claude_project_assets/README.md for setup.
+        bslib::card(
+          style = "border-left: 4px solid #2D6A4F;",
+          bslib::card_header(h4("AI-assisted data preparation (free)", style = "margin: 0;")),
+          bslib::card_body(
+            tags$p(style = "margin-bottom: 12px;",
+              "Filling the template by hand can take hours if your raw data isn't already in the right shape. ",
+              "The ", tags$strong("GMH Uncertainty Translator"),
+              " is a free Claude.ai assistant that takes your own Excel/CSV files and produces a ready-to-upload template in about 10 minutes. ",
+              "No installation, no payment — you just need a free claude.ai account."),
+            tags$h6("How to use it"),
+            tags$ol(
+              tags$li(tags$strong("Download the questionnaire"), " and fill it out (2 minutes)."),
+              tags$li(tags$strong("Open the Translator"), " on claude.ai (link below) and paste the filled questionnaire."),
+              tags$li(tags$strong("Upload your raw data file(s)"), " — Excel, CSV, even a PDF table."),
+              tags$li("Answer Claude's clarification questions (usually 2-5)."),
+              tags$li(tags$strong("Download the filled template"), " and upload it in the Data Input tab.")
+            ),
+            div(style = "margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;",
+              tags$a(
+                href = "https://claude.ai/project/019e4594-d13d-761e-a6fb-71e242eb9804",
+                target = "_blank",
+                rel = "noopener noreferrer",
+                class = "btn btn-success",
+                icon("robot"), " Open the Translator on claude.ai"
+              ),
+              tags$a(
+                href = "getting_started.pdf",
+                target = "_blank",
+                rel = "noopener noreferrer",
+                class = "btn btn-outline-success",
+                icon("file-pdf"), " Getting started (1-page guide)"
+              ),
+              tags$a(
+                href = "questionnaire.docx",
+                target = "_blank",
+                download = "questionnaire.docx",
+                class = "btn btn-outline-success",
+                icon("clipboard-list"), " Pre-flight questionnaire (.docx)"
+              )
+            ),
+            div(style = "margin-top: 10px; font-size: 0.82rem; color: #666;",
+              tags$em("Privacy note: your data is sent to Anthropic (Claude.ai). National-inventory data submitted for UNFCCC reporting is generally non-confidential, but check your ministry's policy before uploading internal datasets. The app also includes a manual fallback path that uses no external AI — see the user guide."))
+          )
+        ),
         bslib::card(
           bslib::card_header(h4("Tool-specific resources", style = "margin: 0;")),
           bslib::card_body(
@@ -431,6 +478,20 @@ app_ui <- function() {
                            class = "btn-outline-primary btn-sm mt-2"),
             div(style = "font-size:0.78rem; color:#666; margin-top:6px;",
                 tags$em("If no IPCC version is picked, the download is blocked and the app will prompt you to select one.")),
+            div(style = "margin-top: 10px; padding: 8px 10px; background:#E8F5E9; border-left:3px solid #2D6A4F; border-radius:4px; font-size:0.82rem;",
+              icon("robot"),
+              tags$strong(" Don't have the template filled yet?"),
+              tags$br(),
+              "Use the free ",
+              tags$a(href = "https://claude.ai/project/019e4594-d13d-761e-a6fb-71e242eb9804", target = "_blank",
+                     rel = "noopener noreferrer", "AI Translator"),
+              " to turn your own Excel/CSV into a ready-to-upload template in ~10 minutes. ",
+              tags$a(href = "getting_started.pdf", target = "_blank",
+                     rel = "noopener noreferrer", "Getting started (PDF)"),
+              " · ",
+              tags$a(href = "questionnaire.docx", target = "_blank",
+                     download = "questionnaire.docx", "Questionnaire (.docx)"),
+              " · see the Resources tab for details."),
             hr(),
             h5("3. Upload your filled template"),
             fileInput("data_upload", "Upload Excel Template (.xlsx)",
