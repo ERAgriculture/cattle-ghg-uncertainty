@@ -1,0 +1,173 @@
+---
+title: "IPCC Tier 2 Livestock GHG Uncertainty Calculator"
+subtitle: "Getting Started with the AI-Assisted Data Translator"
+author: "CIAT / CGIAR Alliance — ClimateActionNetZero"
+date: "May 2026"
+output:
+  pdf_document:
+    toc: false
+    number_sections: false
+    latex_engine: pdflatex
+    keep_tex: false
+  word_document:
+    toc: false
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{array}
+  - \usepackage{xcolor}
+  - \usepackage{fancyhdr}
+  - \usepackage{graphicx}
+  - \usepackage{hyperref}
+  - \usepackage{setspace}
+  - \usepackage{caption}
+  - \definecolor{cgiargreen}{RGB}{45,106,79}
+  - \definecolor{lightgreen}{RGB}{216,243,220}
+  - \definecolor{darkgrey}{RGB}{60,60,60}
+  - \definecolor{amber}{RGB}{180,100,0}
+  - \definecolor{infoBlue}{RGB}{30,80,160}
+  - \setlength{\headheight}{14pt}
+  - \pagestyle{fancy}
+  - \fancyhf{}
+  - \fancyhead[L]{\textcolor{cgiargreen}{\small IPCC Tier 2 Livestock GHG Uncertainty Calculator}}
+  - \fancyhead[R]{\textcolor{darkgrey}{\small Getting Started — AI Translator}}
+  - \fancyfoot[C]{\textcolor{darkgrey}{\small \thepage}}
+  - \renewcommand{\headrulewidth}{0.4pt}
+  - \renewcommand{\footrulewidth}{0pt}
+  - \setlength{\parskip}{6pt}
+  - \captionsetup{font=small,labelfont=bf}
+  - \hypersetup{colorlinks=true, urlcolor=cgiargreen, linkcolor=cgiargreen}
+geometry: "top=3cm, bottom=2.5cm, left=2.5cm, right=2.5cm"
+fontsize: 11pt
+linestretch: 1.15
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+\vspace{0.4cm}
+
+\begin{center}
+\textcolor{cgiargreen}{\rule{14cm}{1.5pt}}\\[6pt]
+\textcolor{cgiargreen}{\large\textbf{Version 1.0 — May 2026}}\\[4pt]
+\textcolor{darkgrey}{Developed under the Global Methane Hub initiative}\\[4pt]
+\textcolor{cgiargreen}{\rule{14cm}{1.5pt}}
+\end{center}
+
+\vspace{0.6cm}
+
+# A free AI assistant for translating your data into the app template
+
+Filling the app's input template by hand can take several hours when your raw data isn't already in the right shape. The **GMH Uncertainty Translator** is a free Claude.ai assistant — loaded with the IPCC parameter catalogue, the template schema, and a library of mapping examples — that turns your own Excel or CSV files into a ready-to-upload template in roughly **10 minutes**. No installation, no payment.
+
+## Before you start
+
+You will need:
+
+\begin{enumerate}
+  \item Your raw inventory data file(s) — Excel, CSV, or even a PDF / screenshot of a table.
+  \item The filled \textbf{Pre-flight Questionnaire} (downloaded from the app's Resources tab).
+  \item About 10 minutes.
+\end{enumerate}
+
+## Step-by-step
+
+### 1. Open claude.ai and sign in (free)
+
+Go to \textbf{\href{https://claude.ai}{claude.ai}} and click \textit{Sign up} if you don't already have an account. The free tier is enough for this task. You can sign in with Google, email, or Apple — no payment details required.
+
+### 2. Open the Translator Project
+
+Click the shared link:
+\textbf{\href{https://claude.ai/project/019e4594-d13d-761e-a6fb-71e242eb9804}{GMH Uncertainty Translator}}
+
+You'll land in a chat window pre-loaded with the parameter catalogue, template schema, and mapping examples. Claude already knows everything it needs to translate your data.
+
+### 3. Paste your filled questionnaire as your first message
+
+Open the questionnaire (`.docx`), select all, copy, and paste it as the first message into the Translator chat. Send.
+
+Claude will briefly summarise back what it understood and ask which file(s) you'd like to upload.
+
+### 4. Upload your raw data file(s)
+
+Click the **paperclip icon** in the chat input box, select your file(s) — `.xlsx`, `.csv`, `.pdf`, or images of tables all work — and send. Claude will inspect the file, propose a column mapping, and ask you to confirm anything ambiguous.
+
+### 5. Answer Claude's clarification questions
+
+You'll typically see 2–5 short questions, e.g.:
+
+\begin{itemize}
+  \item ``Your column \texttt{weight} — is this body weight (current) or mature weight (adult target)?''
+  \item ``Your milk yield column is in litres — should I convert to kg using $\times 1.03$, or treat 1 L = 1 kg?''
+\end{itemize}
+
+Answer in plain language. Claude will adjust and re-confirm.
+
+### 6. Receive the filled template
+
+When Claude is satisfied, it will produce \textbf{\texttt{filled\_template\_for\_app.xlsx}} as a downloadable file. Click the download icon next to it in the chat.
+
+\textcolor{amber}{\textbf{If}} Claude tells you the analysis tool is unavailable and instead gives you three CSV blocks (Inventory\_Metadata, Parameters, Manure\_Management), see the \textbf{Backup option} on the next page.
+
+### 7. Upload into the Cattle Uncertainty App
+
+In the app's \textbf{Data Input} tab:
+
+\begin{enumerate}
+  \item Click \textit{Upload your filled template (.xlsx)}.
+  \item Select \texttt{filled\_template\_for\_app.xlsx}.
+\end{enumerate}
+
+The app will validate the file and load it. Any issues appear in the \textbf{QA/QC} tab — \textcolor{cgiargreen}{green} = OK, \textcolor{amber}{amber} = review, \textcolor{red}{red} = fix.
+
+You are now ready to run the uncertainty simulation.
+
+\newpage
+
+## Tips for a smooth session
+
+\begin{itemize}
+  \item \textbf{Be specific.} ``Population in column B is total dairy cattle in 2022'' beats ``B is animals''.
+  \item \textbf{Tell Claude when something is wrong.} If a unit conversion looks off, just say ``wait — that should be 275 kg, not 599 kg'' and Claude will fix it.
+  \item \textbf{Ask Claude to explain.} ``Why did you set Ym = 6.5?'' is a fine question — it will cite the IPCC table.
+  \item \textbf{Don't worry about advanced parameters.} The 16 IPCC coefficients (\texttt{Cfi}, \texttt{Ca}, \texttt{Ym}, \texttt{EF3}, ...) ship with sensible defaults. You only need to provide them if you have country-specific measurements.
+\end{itemize}
+
+## Privacy
+
+Claude.ai uses your messages and uploads in line with \href{https://www.anthropic.com/legal/privacy}{Anthropic's privacy policy}. For national GHG inventory data this is generally fine because the data is intended for public reporting under the UNFCCC. \textbf{If your ministry has a policy against uploading internal data to third-party AI services, do not use this tool} — fill the template manually using the parameter reference in the user guide instead.
+
+## Backup option — when the Project link doesn't work, or Claude can't generate the .xlsx
+
+You can still get most of the value from any free AI chat:
+
+\begin{enumerate}
+  \item Open any free AI chat: claude.ai, ChatGPT, Gemini.
+  \item Paste the contents of \texttt{param\_catalogue.md} and \texttt{template\_schema.md} (download both from the app's Resources tab) as your first message, followed by:
+    \begin{quote}
+    \textit{``You are the GMH Uncertainty Translator. Use the schema above to help me convert my raw data into per-sheet CSV blocks. Ask me the standard six onboarding questions first.''}
+    \end{quote}
+  \item Paste your filled questionnaire and proceed as in Steps 4–5 above.
+  \item When the AI produces three CSV blocks (one per sheet), open the \textbf{blank template} (download it from the app's Data Input tab) , paste each block into the matching sheet starting at row 4, save, and upload.
+\end{enumerate}
+
+This is slower but works on any AI without the persistent Project.
+
+## When the AI gets it wrong
+
+The Translator is a helper, not an oracle. Always:
+
+\begin{itemize}
+  \item \textbf{Spot-check} the key numbers (population, body weight, milk yield) by comparing with your original file.
+  \item \textbf{Watch the QA/QC tab} for amber and red flags after upload — those highlight values outside IPCC ranges.
+  \item \textbf{Tell us} when something is off. Use the in-app Feedback tab to report mistranslations so we can improve the prompt.
+\end{itemize}
+
+\vspace{0.5cm}
+
+\begin{center}
+\textcolor{cgiargreen}{\rule{14cm}{0.6pt}}
+\end{center}
+
+\textit{Produced by the CGIAR Alliance, Climate Action–Net Zero Initiative, Project D614 — GMH Emissions Uncertainty. Questions: \href{mailto:M.Lolita@cgiar.org}{M.Lolita@cgiar.org}.}

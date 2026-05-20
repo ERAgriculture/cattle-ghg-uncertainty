@@ -296,13 +296,16 @@ for (f in user_facing) {
 message("✓ staged ", length(user_facing), " files into ", www_dir, "/")
 
 # ---------------------------------------------------------------------------
-# 3b. Convert getting_started.md and questionnaire.md to PDF + DOCX if pandoc
-# is available. PDF prefers xelatex (good Unicode coverage); falls back to the
-# pandoc default engine if xelatex is missing. Both PDF and DOCX are staged in
-# claude_project_assets/ (canonical) and copied to www/ (served by Shiny).
+# 3b. Render the user-facing .Rmd files (getting_started.Rmd, questionnaire.Rmd)
+# to PDF + DOCX via rmarkdown::render(). The .Rmd files carry the same polished
+# CGIAR-green LaTeX styling as user_guide.Rmd and methodology.Rmd. Outputs are
+# staged in claude_project_assets/ (canonical) and copied to www/ (served by
+# Shiny). Needs: `rmarkdown` package + a LaTeX install (MiKTeX/TinyTeX) for
+# pdflatex.
 # ---------------------------------------------------------------------------
-# Locate xelatex. R's child-process PATH doesn't always include MiKTeX/TinyTeX
-# even when the shell does, so we also check the usual Windows install dirs.
+# Locate a LaTeX engine. R's child-process PATH doesn't always include
+# MiKTeX/TinyTeX even when the shell does, so we also check the usual Windows
+# install dirs.
 find_xelatex <- function() {
   hit <- Sys.which("xelatex")
   if (nzchar(hit) && file.exists(hit)) return(unname(hit))
@@ -319,53 +322,37 @@ find_xelatex <- function() {
   ""
 }
 
-pandoc_bin <- Sys.which("pandoc")
-if (nzchar(pandoc_bin)) {
-  xelatex_bin <- find_xelatex()
-  has_xelatex <- nzchar(xelatex_bin)
-  if (has_xelatex) {
-    # Pandoc finds xelatex by name only if its dir is on PATH — prepend it.
-    Sys.setenv(PATH = paste(dirname(xelatex_bin), Sys.getenv("PATH"),
-                             sep = .Platform$path.sep))
-    message("  (using xelatex at ", xelatex_bin, ")")
-  }
-  to_convert <- c("getting_started.md", "questionnaire.md")
-  for (md in to_convert) {
-    src <- file.path(out_dir, md)
+xelatex_bin <- find_xelatex()
+if (nzchar(xelatex_bin)) {
+  Sys.setenv(PATH = paste(dirname(xelatex_bin), Sys.getenv("PATH"),
+                           sep = .Platform$path.sep))
+  message("  (LaTeX engine at ", xelatex_bin, ")")
+}
+
+if (requireNamespace("rmarkdown", quietly = TRUE)) {
+  to_render <- c("getting_started.Rmd", "questionnaire.Rmd")
+  for (rmd in to_render) {
+    src <- file.path(out_dir, rmd)
     if (!file.exists(src)) next
-    base <- tools::file_path_sans_ext(md)
-    pdf_out  <- file.path(out_dir, paste0(base, ".pdf"))
-    docx_out <- file.path(out_dir, paste0(base, ".docx"))
-
-    pdf_args <- c(src, "-o", pdf_out, "--standalone",
-                  if (has_xelatex) c("--pdf-engine=xelatex",
-                                     "-V", "geometry:margin=2cm",
-                                     "-V", "mainfont=Calibri",
-                                     "-V", "monofont=Consolas"))
-    pdf_status <- tryCatch(
-      system2(pandoc_bin, pdf_args, stdout = TRUE, stderr = TRUE),
-      error = function(e) NULL)
-    if (file.exists(pdf_out)) {
-      file.copy(pdf_out, file.path(www_dir, basename(pdf_out)), overwrite = TRUE)
-      message("✓ ", basename(pdf_out), "  (", file.info(pdf_out)$size, " bytes)")
-    } else {
-      message("✗ PDF conversion failed for ", md,
-              " — install xelatex/MiKTeX or check the pandoc log")
-    }
-
-    docx_status <- tryCatch(
-      system2(pandoc_bin, c(src, "-o", docx_out, "--standalone"),
-              stdout = TRUE, stderr = TRUE),
-      error = function(e) NULL)
-    if (file.exists(docx_out)) {
-      file.copy(docx_out, file.path(www_dir, basename(docx_out)), overwrite = TRUE)
-      message("✓ ", basename(docx_out), "  (", file.info(docx_out)$size, " bytes)")
-    } else {
-      message("✗ DOCX conversion failed for ", md)
+    for (fmt in c("pdf_document", "word_document")) {
+      out <- tryCatch(
+        rmarkdown::render(src, output_format = fmt,
+                          quiet = TRUE, envir = new.env()),
+        error = function(e) {
+          message("✗ ", rmd, " → ", fmt,
+                  " failed: ", conditionMessage(e))
+          NULL
+        })
+      if (!is.null(out) && file.exists(out)) {
+        file.copy(out, file.path(www_dir, basename(out)), overwrite = TRUE)
+        message("✓ ", basename(out), "  (",
+                file.info(out)$size, " bytes)")
+      }
     }
   }
 } else {
-  message("(pandoc not found on PATH — skipping PDF/DOCX conversion. Install pandoc to enable.)")
+  message("(rmarkdown package not installed — ",
+          "install.packages('rmarkdown') to enable styled PDF/DOCX.)")
 }
 
 # ---------------------------------------------------------------------------

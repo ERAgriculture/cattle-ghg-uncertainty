@@ -226,9 +226,39 @@ app_ui <- function() {
       title = "Resources",
       icon = icon("book-open"),
       div(style = "max-width: 960px; margin: 0 auto; padding: 24px;",
+        # Tool-specific resources — methodology + user guide. Kept first so it
+        # is the first thing users see in the Resources tab.
+        bslib::card(
+          bslib::card_header(h4("Tool-specific resources", style = "margin: 0;")),
+          bslib::card_body(
+            tags$h5("How this tool works"),
+            tags$ul(
+              tags$li("Equation chain: IPCC 2006 Vol 4 Ch 10 (Eq 10.1–10.34) and Ch 11 for the per-head emission factor; population × EF for the per-sub-category total."),
+              tags$li("Monte Carlo: Approach 2 from IPCC 2006 Vol 1 Ch 3, with optional Gaussian copula correlations across activity data and coefficients."),
+              tags$li("Sensitivity: Standardised regression coefficients (SRC) and partial rank correlation (PRCC) on the sampled inputs vs each output.")
+            ),
+            div(style = "margin-top: 16px; display: flex; gap: 12px; flex-wrap: wrap;",
+              tags$a(
+                href = "methodology.pdf",
+                target = "_blank",
+                rel = "noopener noreferrer",
+                class = "btn btn-success",
+                icon("file-pdf"), " Open full methodology (PDF)"
+              ),
+              tags$a(
+                href = "user_guide.pdf",
+                target = "_blank",
+                rel = "noopener noreferrer",
+                class = "btn btn-outline-success",
+                icon("book"), " Open user guide (PDF)"
+              )
+            )
+          )
+        ),
         # AI Translator kit — free, self-serve helper to turn the user's own
         # Excel/CSV files into the strict app template via a pre-built Claude.ai
-        # Project. See claude_project_assets/README.md for setup.
+        # Project. Placed below Tool-specific resources so the canonical docs
+        # are the first thing users see. See claude_project_assets/README.md.
         bslib::card(
           style = "border-left: 4px solid #2D6A4F;",
           bslib::card_header(h4("AI-assisted data preparation (free)", style = "margin: 0;")),
@@ -271,33 +301,6 @@ app_ui <- function() {
             ),
             div(style = "margin-top: 10px; font-size: 0.82rem; color: #666;",
               tags$em("Privacy note: your data is sent to Anthropic (Claude.ai). National-inventory data submitted for UNFCCC reporting is generally non-confidential, but check your ministry's policy before uploading internal datasets. The app also includes a manual fallback path that uses no external AI — see the user guide."))
-          )
-        ),
-        bslib::card(
-          bslib::card_header(h4("Tool-specific resources", style = "margin: 0;")),
-          bslib::card_body(
-            tags$h5("How this tool works"),
-            tags$ul(
-              tags$li("Equation chain: IPCC 2006 Vol 4 Ch 10 (Eq 10.1–10.34) and Ch 11 for the per-head emission factor; population × EF for the per-sub-category total."),
-              tags$li("Monte Carlo: Approach 2 from IPCC 2006 Vol 1 Ch 3, with optional Gaussian copula correlations across activity data and coefficients."),
-              tags$li("Sensitivity: Standardised regression coefficients (SRC) and partial rank correlation (PRCC) on the sampled inputs vs each output.")
-            ),
-            div(style = "margin-top: 16px; display: flex; gap: 12px; flex-wrap: wrap;",
-              tags$a(
-                href = "methodology.pdf",
-                target = "_blank",
-                rel = "noopener noreferrer",
-                class = "btn btn-success",
-                icon("file-pdf"), " Open full methodology (PDF)"
-              ),
-              tags$a(
-                href = "user_guide.pdf",
-                target = "_blank",
-                rel = "noopener noreferrer",
-                class = "btn btn-outline-success",
-                icon("book"), " Open user guide (PDF)"
-              )
-            )
           )
         ),
 
