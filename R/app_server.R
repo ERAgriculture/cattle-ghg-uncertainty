@@ -2211,15 +2211,28 @@ app_server <- function(input, output, session) {
         analysis_mode     = input$analysis_mode,
         emission_sources  = input$emission_sources
       )
+      # Round 9b: pass through the decomposition, comparison run (uncertainty
+      # frame), diagnostics, and a samples frame for the density plot so the
+      # Word report can mirror everything the IPCC Report / Sensitivity /
+      # Results tabs show.
+      comp_unc <- if (!is.null(rv$comparison_result))
+        calc_all_uncertainty(rv$comparison_result$inventory) else NULL
+      density_samples <- if (!is.null(rv$mc_results$by_system) &&
+                              length(rv$mc_results$by_system) > 0)
+        rv$mc_results$by_system[[1]]$samples else NULL
       build_run_summary_docx(
-        path        = file,
-        settings    = settings,
-        param_specs = rv$param_specs,
-        mc_results  = rv$mc_results,
-        uncertainty = rv$uncertainty,
-        sensitivity = rv$sensitivity,
-        ipcc_table  = rv$ipcc_table,
-        ipcc_meta   = rv$inv_metadata
+        path                  = file,
+        settings              = settings,
+        param_specs           = rv$param_specs,
+        mc_results            = rv$mc_results,
+        uncertainty           = rv$uncertainty,
+        sensitivity           = rv$sensitivity,
+        ipcc_table            = rv$ipcc_table,
+        ipcc_meta             = rv$inv_metadata,
+        decomposition         = rv$decomposition,
+        comparison_uncertainty = comp_unc,
+        diagnostics           = rv$diagnostics,
+        samples_for_density   = density_samples
       )
     }
   )

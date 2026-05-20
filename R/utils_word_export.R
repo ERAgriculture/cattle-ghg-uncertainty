@@ -38,9 +38,10 @@
   ft <- flextable::padding(ft, padding = 3, part = "all")
   ft <- flextable::border_inner(ft, officer::fp_border(color = .BORDER, width = 0.5))
   ft <- flextable::border_outer(ft, officer::fp_border(color = .BORDER, width = 0.5))
-  # Alternating row backgrounds (skip if there are no body rows)
+  # Alternating row backgrounds (skip if fewer than 2 body rows — seq() would
+  # error with `wrong sign in 'by' argument` for a 1-row table).
   body_rows <- nrow(ft$body$dataset)
-  if (body_rows > 0L) {
+  if (body_rows >= 2L) {
     even_rows <- seq(2, body_rows, by = 2)
     if (length(even_rows) > 0L)
       ft <- flextable::bg(ft, i = even_rows, bg = .ROW_ALT, part = "body")
@@ -187,6 +188,10 @@ build_run_summary_docx <- function(path,
                                    sensitivity = NULL,
                                    ipcc_table  = NULL,
                                    ipcc_meta   = NULL,
+                                   decomposition          = NULL,
+                                   comparison_uncertainty = NULL,
+                                   diagnostics            = NULL,
+                                   samples_for_density    = NULL,
                                    app_version = NULL) {
 
   doc <- officer::read_docx()
@@ -253,17 +258,72 @@ build_run_summary_docx <- function(path,
   doc <- .add_flextable_safe(doc, .styled_flextable(.results_flextable(uncertainty)))
   doc <- .add_portrait_break(doc)
 
-  # ---- Sensitivity ranking ------------------------------------------------
-  sens_ft <- .sensitivity_flextable(sensitivity)
-  if (!is.null(sens_ft)) {
-    doc <- .add_h2(doc, "5. Sensitivity ranking — top 10 drivers")
+  # ---- Results aggregated by cattle type / production system / sub-category
+  # Round 9b §5 / Andreas 2026-05 #39: per-cattle-type aggregation tables.
+  agg_fts <- .aggregated_results_flextable(mc_results)
+  if (!is.null(agg_fts)) {
+    any_rendered <- FALSE
+    for (lvl in c("cattle_type", "aggregation_level", "sub_category")) {
+      ft <- agg_fts[[lvl]]
+      if (is.null(ft)) next
+      if (!any_rendered) {
+        doc <- .add_h2(doc, "5. Results by cattle type / production system / sub-category")
+        doc <- .add_p(doc,
+          "Each table aggregates the Monte Carlo results to one row per group at the chosen level. Use these breakdowns to identify which group drives the headline totals in section 4.")
+        any_rendered <- TRUE
+      }
+      level_label <- switch(lvl,
+        cattle_type       = "By cattle type",
+        aggregation_level = "By production system (aggregation level)",
+        sub_category      = "By sub-category")
+      doc <- .add_h3(doc, level_label)
+      doc <- .add_flextable_safe(doc, .styled_flextable(ft))
+    }
+    if (any_rendered) doc <- .add_portrait_break(doc)
+  }
+
+  # ---- AD vs EF vs Combined decomposition chart --------------------------
+  # Round 9b §6: visual companion to the IPCC Table 3.3 decomposition above.
+  decomp_plot <- .gg_decomposition(decomposition)
+  if (!is.null(decomp_plot)) {
+    doc <- .add_h2(doc, "6. AD vs EF vs Combined uncertainty")
     doc <- .add_p(doc,
-      "Standardised regression coefficient (SRC) and partial rank correlation (PRCC) of each input parameter against total CO2eq. Larger absolute values dominate the output uncertainty.")
+      "Coefficient of variation for total CO2eq, CH4 and N2O under three configurations: AD-only (activity data drives the uncertainty, all coefficients fixed), EF-only (coefficients drive the uncertainty, AD fixed) and Combined (both vary). The Combined value is what is reported in the IPCC Table 3.3 row.")
+    doc <- officer::body_add_gg(doc, value = decomp_plot, width = 5.5, height = 3.2)
+  }
+
+  # ---- Comparison: with vs without correlations --------------------------
+  # Round 9b §7: only rendered when a comparison run was executed.
+  comp_plot <- .gg_comparison(uncertainty, comparison_uncertainty)
+  if (!is.null(comp_plot)) {
+    doc <- .add_h2(doc, "7. Effect of correlations on uncertainty")
+    doc <- .add_p(doc,
+      "Comparison of the main run (with the parameter correlations set on the Uncertainty tab) against an otherwise-identical run that ignores correlations. A larger 'with-correlations' CV% indicates that the correlation structure compounds parameter uncertainty; a similar CV% in both cases indicates the correlations have little effect for this inventory.")
+    doc <- officer::body_add_gg(doc, value = comp_plot, width = 5.5, height = 3.0)
+  }
+
+  # ---- Sensitivity ranking — top 10 drivers ------------------------------
+  sens_ft <- .sensitivity_flextable(sensitivity, top_n = 10L)
+  if (!is.null(sens_ft)) {
+    doc <- .add_h2(doc, "8. Sensitivity ranking — top 10 drivers")
+    doc <- .add_p(doc,
+      "Standardised regression coefficient (SRC) and partial rank correlation (PRCC) of each input parameter against total CO2eq. Larger absolute values dominate the output uncertainty. Parameter labels include the cattle-type and sub-category they belong to when the inventory has more than one group.")
     doc <- .add_flextable_safe(doc, .styled_flextable(sens_ft))
   }
 
+  # ---- Full sensitivity rankings -----------------------------------------
+  # Round 9b §9: every parameter, SRC and PRCC side-by-side.
+  full_sens_ft <- .sensitivity_flextable(sensitivity, top_n = Inf)
+  if (!is.null(full_sens_ft)) {
+    doc <- .add_h2(doc, "9. Full sensitivity rankings (all parameters)")
+    doc <- .add_p(doc,
+      "Complete SRC and PRCC values for every input parameter, sorted by decreasing absolute SRC. Useful for QA and for documenting which parameters were considered in the run.")
+    doc <- .add_flextable_safe(doc, .styled_flextable(full_sens_ft))
+    doc <- .add_landscape_break(doc)
+  }
+
   # ---- Charts -------------------------------------------------------------
-  doc <- .add_h2(doc, "6. Charts")
+  doc <- .add_h2(doc, "10. Charts")
 
   hist_plot <- .gg_total_co2e_hist(mc_results)
   if (!is.null(hist_plot)) {
@@ -283,8 +343,45 @@ build_run_summary_docx <- function(path,
     doc <- officer::body_add_gg(doc, value = src_plot, width = 5.5, height = 4.0)
   }
 
+  # ---- Per-parameter density plots ---------------------------------------
+  # Round 9b §11: mirrors the IPCC Report tab's input-density subplots.
+  density_plot <- .gg_input_densities(samples_for_density)
+  if (!is.null(density_plot)) {
+    doc <- .add_h2(doc, "11. Sampled parameter distributions")
+    doc <- .add_p(doc,
+      "Histograms of the actual parameter draws used in the Monte Carlo run (up to 12 parameters). Use this to confirm the distributions are shaped as you expected — particularly for any parameter with a non-normal distribution or asymmetric uncertainty bounds.")
+    doc <- officer::body_add_gg(doc, value = density_plot, width = 6.5, height = 4.5)
+  }
+
+  # ---- MC convergence diagnostics ---------------------------------------
+  # Round 9b §12: convergence plot + 4-row diagnostics summary table.
+  conv_plot <- .gg_convergence(diagnostics)
+  diag_ft   <- .diagnostics_flextable(diagnostics)
+  if (!is.null(conv_plot) || !is.null(diag_ft)) {
+    doc <- .add_h2(doc, "12. Monte Carlo convergence diagnostics")
+    doc <- .add_p(doc,
+      "Quality checks confirming the Monte Carlo run is large enough to give a stable headline result. PASS values indicate the reported mean and 95% CI are not sensitive to the random seed; WARN/FAIL means consider re-running with more iterations.")
+    if (!is.null(diag_ft)) {
+      doc <- .add_flextable_safe(doc, .styled_flextable(diag_ft))
+    }
+    if (!is.null(conv_plot)) {
+      doc <- officer::body_add_gg(doc, value = conv_plot, width = 5.5, height = 3.0)
+    }
+  }
+
+  # ---- Input parameter documentation -------------------------------------
+  # Round 9b §13: full parameter catalogue used in the run.
+  inputs_ft <- .inputs_doc_flextable(param_specs)
+  if (!is.null(inputs_ft)) {
+    doc <- .add_h2(doc, "13. Input parameter documentation")
+    doc <- .add_p(doc,
+      "Every parameter used in this run: distribution, central value, bounds and IPCC reference. This table is the input audit trail for the IPCC inventory submission.")
+    doc <- .add_flextable_safe(doc, .styled_flextable(inputs_ft))
+    doc <- .add_landscape_break(doc)
+  }
+
   # ---- IPCC reporting context --------------------------------------------
-  doc <- .add_h2(doc, "7. IPCC reporting context")
+  doc <- .add_h2(doc, "14. IPCC reporting context")
   # Andreas 2026-05 C12: previous wording named a specific column ("column J")
   # in the national inventory uncertainty table that we had not verified
   # against the live IPCC 2006 Vol 1 Ch 3 / Annex 7 template. Reworded to
@@ -402,6 +499,20 @@ build_trend_summary_docx <- function(path,
     doc <- officer::body_add_gg(doc, value = trend_plot, width = 5.5, height = 3.2)
   }
 
+  # Round 9b §3a — Year-over-year % change bar chart.
+  yoy_plot <- .gg_yoy_chart(trend_results)
+  if (!is.null(yoy_plot)) {
+    doc <- .add_h3(doc, "Year-over-year % change")
+    doc <- officer::body_add_gg(doc, value = yoy_plot, width = 5.5, height = 2.8)
+  }
+
+  # Round 9b §3b — Distribution of ΔY_N − Y_1, the uncertainty on the trend.
+  delta_plot <- .gg_delta_distribution(delta_total)
+  if (!is.null(delta_plot)) {
+    doc <- .add_h3(doc, "Distribution of ΔY_N − Y_1")
+    doc <- officer::body_add_gg(doc, value = delta_plot, width = 5.5, height = 3.0)
+  }
+
   # ---- Slope + delta mini-table ------------------------------------------
   doc <- .add_h2(doc, "4. Trend slope and Δ Y_N − Y_1")
   doc <- .add_p(doc,
@@ -414,26 +525,54 @@ build_trend_summary_docx <- function(path,
   doc <- .add_p(doc,
     "Two views: per-year drivers identify what dominates the uncertainty in the most recent year, while trend drivers (Δ across years) identify what drives the change between Y_1 and Y_N. The latter is the methodologically correct answer to 'what makes the trend uncertain' per IPCC Vol 1 Ch 3 §3.7.")
 
-  py_ft <- .sensitivity_flextable(sensitivity_per_year)
+  py_ft <- .sensitivity_flextable(sensitivity_per_year, top_n = 10L)
   if (!is.null(py_ft)) {
-    doc <- .add_h3(doc, "Per-year (latest year)")
+    doc <- .add_h3(doc, "Per-year (latest year) — top 10")
     doc <- .add_flextable_safe(doc, .styled_flextable(py_ft))
     py_plot <- .gg_tornado(sensitivity_per_year)
     if (!is.null(py_plot))
       doc <- officer::body_add_gg(doc, value = py_plot, width = 5.5, height = 3.0)
   }
 
-  dl_ft <- .sensitivity_flextable(sensitivity_delta)
+  dl_ft <- .sensitivity_flextable(sensitivity_delta, top_n = 10L)
   if (!is.null(dl_ft)) {
-    doc <- .add_h3(doc, "Trend driver (Δ Y_N − Y_1)")
+    doc <- .add_h3(doc, "Trend driver (Δ Y_N − Y_1) — top 10")
     doc <- .add_flextable_safe(doc, .styled_flextable(dl_ft))
     dl_plot <- .gg_tornado(sensitivity_delta)
     if (!is.null(dl_plot))
       doc <- officer::body_add_gg(doc, value = dl_plot, width = 5.5, height = 3.0)
   }
 
+  # Round 9b §5a — Full sensitivity rankings (all parameters).
+  full_py <- .sensitivity_flextable(sensitivity_per_year, top_n = Inf)
+  full_dl <- .sensitivity_flextable(sensitivity_delta,    top_n = Inf)
+  if (!is.null(full_py) || !is.null(full_dl)) {
+    doc <- .add_h2(doc, "5a. Full sensitivity rankings (all parameters)")
+    doc <- .add_p(doc,
+      "Complete SRC and PRCC values for every input parameter. Per-year is the latest-year analysis; trend driver is the Δ Y_N − Y_1 analysis.")
+    if (!is.null(full_py)) {
+      doc <- .add_h3(doc, "Per-year (latest year) — full ranking")
+      doc <- .add_flextable_safe(doc, .styled_flextable(full_py))
+    }
+    if (!is.null(full_dl)) {
+      doc <- .add_h3(doc, "Trend driver (Δ Y_N − Y_1) — full ranking")
+      doc <- .add_flextable_safe(doc, .styled_flextable(full_dl))
+    }
+    doc <- .add_landscape_break(doc)
+  }
+
+  # Round 9b §6 — Input parameter documentation.
+  inputs_ft <- .inputs_doc_flextable(param_specs)
+  if (!is.null(inputs_ft)) {
+    doc <- .add_h2(doc, "6. Input parameter documentation")
+    doc <- .add_p(doc,
+      "Every parameter used in the trend run: distribution, central value, bounds and IPCC reference. AD parameters (animal population) are re-drawn per year; coefficient (EF) parameters are drawn according to the year-correlation mode in section 1.")
+    doc <- .add_flextable_safe(doc, .styled_flextable(inputs_ft))
+    doc <- .add_landscape_break(doc)
+  }
+
   # ---- Methodological notes ----------------------------------------------
-  doc <- .add_h2(doc, "6. Methodological notes")
+  doc <- .add_h2(doc, "7. Methodological notes")
   yc_text <- switch(
     year_corr,
     full    = "Coefficient draws (the 23 IPCC equation parameters) are sampled once and reused across every year, while activity data (animal population N) is re-drawn fresh for each year. This is the IPCC 2019 Refinement Vol 1 Ch 3 §3.2.2.4 default for emission-factor uncertainty: same EF every year, AD re-estimated annually. The trend uncertainty in this configuration reflects only the AD changes between years.",
@@ -445,7 +584,7 @@ build_trend_summary_docx <- function(path,
     "All uncertainty quantification follows IPCC 2006 Vol 1 Ch 3 Approach 2 (Monte Carlo). The trend slope is computed via per-iteration least-squares fit; the slope's 95% CI is therefore the empirical 2.5%/97.5% quantiles of the slope distribution, not a parametric CI. ΔY_N−Y_1 reports the difference between the per-iteration totals at the last and first years, preserving the year-to-year correlation structure imposed above.")
 
   # ---- IPCC reporting context --------------------------------------------
-  doc <- .add_h2(doc, "7. IPCC reporting context")
+  doc <- .add_h2(doc, "8. IPCC reporting context")
   doc <- .add_p(doc,
     "Per IPCC Vol 1 Ch 3 §3.7, trend uncertainty should be reported alongside the level of emissions in any national inventory submission that covers more than a single year. The Δ vs base year column in section 2 maps to the trend uncertainty cells of the IPCC Table 3.3 trend annex; the slope in section 4 supports the §3.7.2 'trend assessment' text typical of biennial transparency reports under the Paris Agreement Enhanced Transparency Framework.")
   doc <- .add_p(doc,
@@ -681,7 +820,7 @@ build_trend_summary_docx <- function(path,
   flextable::flextable(df)
 }
 
-.sensitivity_flextable <- function(sens) {
+.sensitivity_flextable <- function(sens, top_n = 10L) {
   if (is.null(sens) || length(sens) == 0) return(NULL)
   src  <- sens$src
   prcc <- sens$prcc
@@ -693,7 +832,7 @@ build_trend_summary_docx <- function(path,
              else if ("prcc" %in% names(base)) "prcc"
              else names(base)[2]
   base <- base[order(-abs(base[[val_col]])), , drop = FALSE]
-  base <- utils::head(base, 10)
+  if (is.finite(top_n)) base <- utils::head(base, as.integer(top_n))
 
   src_disp  <- if ("src" %in% names(base))
                  formatC(base$src,  digits = 3, format = "f") else NULL
@@ -704,6 +843,119 @@ build_trend_summary_docx <- function(path,
   df <- data.frame(Parameter = base$parameter, stringsAsFactors = FALSE)
   if (!is.null(src_disp))  df$SRC  <- src_disp
   if (!is.null(prcc_disp)) df$PRCC <- prcc_disp
+  flextable::flextable(df)
+}
+
+# Round 9b §5 — Per-cattle-type / aggregation-level / sub-category breakdown.
+# Mirrors the live results_by_system table at each aggregation level. Returns
+# NULL if mc_results$by_system is missing; otherwise a named list of
+# flextables keyed by the aggregation level.
+.aggregated_results_flextable <- function(mc_results) {
+  if (is.null(mc_results) || is.null(mc_results$by_system) ||
+      length(mc_results$by_system) == 0) return(NULL)
+
+  by_sys <- mc_results$by_system
+  sys_names <- names(by_sys)
+  if (length(sys_names) == 0) return(NULL)
+
+  build_one <- function(level) {
+    parts <- strsplit(sys_names, "\\|\\|", fixed = FALSE)
+    idx <- switch(level, "cattle_type" = 1, "aggregation_level" = 2, "sub_category" = 3, 1)
+    group_keys <- sapply(parts, function(p) {
+      if (length(p) >= idx && nzchar(p[idx])) p[idx] else paste(p, collapse = " / ")
+    })
+    rows <- list()
+    for (g in unique(group_keys)) {
+      members <- sys_names[group_keys == g]
+      frames <- lapply(members, function(sn) by_sys[[sn]]$results)
+      combined <- frames[[1]]
+      if (length(frames) > 1) {
+        for (k in 2:length(frames)) {
+          for (col in names(combined)) {
+            combined[[col]] <- combined[[col]] + frames[[k]][[col]]
+          }
+        }
+      }
+      co2e <- combined$total_co2e
+      if (is.null(co2e) || length(co2e) == 0) next
+      m  <- mean(co2e)
+      lo <- stats::quantile(co2e, 0.025, names = FALSE)
+      hi <- stats::quantile(co2e, 0.975, names = FALSE)
+      moe <- if (m > 0) ((hi - lo) / 2) / m * 100 else NA_real_
+      cv  <- if (m > 0) stats::sd(co2e) / m * 100 else NA_real_
+      rows[[length(rows) + 1L]] <- data.frame(
+        Group              = g,
+        `Mean CH4 (t)`     = formatC(mean(combined$total_ch4), digits = 2, format = "f"),
+        `Mean N2O (t)`     = formatC(mean(combined$total_n2o), digits = 4, format = "f"),
+        `Mean CO2eq (t)`   = formatC(m, digits = 2, format = "f"),
+        `CI lower (t CO2eq)` = formatC(lo, digits = 2, format = "f"),
+        `CI upper (t CO2eq)` = formatC(hi, digits = 2, format = "f"),
+        `CV (%)`           = formatC(cv, digits = 1, format = "f"),
+        `MoE 95% (%)`      = formatC(moe, digits = 1, format = "f"),
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+    }
+    if (length(rows) == 0) return(NULL)
+    flextable::flextable(do.call(rbind, rows))
+  }
+
+  list(
+    cattle_type       = build_one("cattle_type"),
+    aggregation_level = build_one("aggregation_level"),
+    sub_category      = build_one("sub_category")
+  )
+}
+
+# Round 9b §13 — Input parameter documentation. Mirrors inputs_doc_table.
+.inputs_doc_flextable <- function(param_specs) {
+  if (is.null(param_specs) || !is.data.frame(param_specs) || nrow(param_specs) == 0)
+    return(NULL)
+  keep <- intersect(c("cattle_type", "aggregation_level", "sub_category",
+                      "parameter", "param_type", "mean", "uncertainty_pct",
+                      "lower", "upper", "distribution", "data_source",
+                      "ipcc_ref"),
+                    names(param_specs))
+  if (length(keep) == 0) return(NULL)
+  df <- param_specs[, keep, drop = FALSE]
+  # Round numeric columns for readability
+  for (col in c("mean", "uncertainty_pct", "lower", "upper")) {
+    if (col %in% names(df)) df[[col]] <- formatC(df[[col]], digits = 4, format = "g")
+  }
+  flextable::flextable(df)
+}
+
+# Round 9b §12 — MC diagnostics summary (badges as a table).
+.diagnostics_flextable <- function(diagnostics) {
+  if (is.null(diagnostics)) return(NULL)
+  d <- diagnostics
+  status_str <- function(val, warn, fail) {
+    if (is.null(val) || is.na(val)) return("—")
+    if (val < warn) "PASS" else if (val < fail) "WARN" else "FAIL"
+  }
+  skew_label <- if (is.null(d$skew_val) || is.na(d$skew_val)) "—"
+                else if (abs(d$skew_val) < 0.5) "symmetric"
+                else if (d$skew_val > 0)         "right-skewed (expected)"
+                else                              "left-skewed"
+
+  df <- data.frame(
+    Check  = c("Iterations",
+               "Precision (MCSE)",
+               "Mean stability (1st vs 2nd half drift)",
+               "95% CI stability (1st vs 2nd half drift)",
+               "Distribution skew"),
+    Value  = c(.fmt_int(d$n),
+               sprintf("%.2f%% of mean", d$mcse_pct),
+               sprintf("%.1f%%", d$drift_pct),
+               sprintf("%.1f%%", d$ci_drift_pct),
+               sprintf("%.2f (%s)", if (is.null(d$skew_val)) NA_real_ else d$skew_val, skew_label)),
+    Status = c(if (!is.null(d$n) && d$n >= 10000) "PASS" else "WARN",
+               status_str(d$mcse_pct,     0.5, 1),
+               status_str(d$drift_pct,    2.0, 5),
+               status_str(d$ci_drift_pct, 5.0, 10),
+               "INFO"),
+    stringsAsFactors = FALSE
+  )
   flextable::flextable(df)
 }
 
@@ -744,12 +996,18 @@ build_trend_summary_docx <- function(path,
   top <- top[order(top[[val_col]]), , drop = FALSE]
   top$parameter <- factor(top$parameter, levels = top$parameter)
 
+  # #35: when parameter names carry a "cattle_type | sub_category – param"
+  # prefix (added by .aggregate_sensitivity), surface that in the subtitle.
+  has_groups <- any(grepl(" \\| .+ \\u2013 | \\| .+ - | \\| .+ – ", as.character(top$parameter))) ||
+                any(grepl(" \\| ", as.character(top$parameter), fixed = FALSE))
+  subtitle <- if (has_groups) "Top 10 drivers across all cattle groups" else NULL
+
   ggplot2::ggplot(top, ggplot2::aes(x = .data[[val_col]], y = parameter,
                                      fill = .data[[val_col]] > 0)) +
     ggplot2::geom_col() +
     ggplot2::scale_fill_manual(values = c(`TRUE` = .GREEN_MID, `FALSE` = "#C1121F"),
                                 guide = "none") +
-    ggplot2::labs(x = toupper(val_col), y = NULL) +
+    ggplot2::labs(x = toupper(val_col), y = NULL, subtitle = subtitle) +
     ggplot2::theme_minimal(base_size = 10)
 }
 
@@ -757,11 +1015,13 @@ build_trend_summary_docx <- function(path,
   if (is.null(mc_results) || is.null(mc_results$inventory)) return(NULL)
   inv <- mc_results$inventory
   picks <- c(
-    "Enteric CH4"          = "enteric_ch4_total",
-    "Manure CH4"           = "manure_ch4_total",
-    "Manure N2O (direct)"  = "direct_n2o_mm_total",
-    "Manure N2O (indirect)"= "indirect_n2o_mm_total",
-    "Total CO2eq"          = "total_co2e"
+    "Enteric CH4"           = "enteric_ch4_total",
+    "Manure CH4"            = "manure_ch4_total",
+    "Manure N2O (direct)"   = "direct_n2o_mm_total",
+    "Manure N2O (indirect)" = "indirect_n2o_mm_total",
+    "Pasture N2O (direct)"  = "direct_n2o_prp_total",
+    "Pasture N2O (indirect)"= "indirect_n2o_prp_total",
+    "Total CO2eq"           = "total_co2e"
   )
   parts <- list()
   for (lab in names(picks)) {
@@ -796,5 +1056,176 @@ build_trend_summary_docx <- function(path,
     ggplot2::geom_point(colour = .GREEN_DARK, size = 2.5) +
     ggplot2::labs(x = "Inventory year", y = "Total CO2eq (t)",
                    title = "Trend in total CO2eq emissions (95% CI)") +
+    ggplot2::theme_minimal(base_size = 10)
+}
+
+# Round 9b §6 — AD / EF / Combined CV% for total CO2eq, total CH4, total N2O.
+# Mirrors output$decomposition_plot in app_server.R.
+.gg_decomposition <- function(decomp) {
+  if (is.null(decomp)) return(NULL)
+  need <- c("ad_only", "ef_only", "combined")
+  if (!all(need %in% names(decomp))) return(NULL)
+  vars   <- c("total_co2e", "total_ch4", "total_n2o")
+  labels <- c("Total CO2eq", "Total CH4", "Total N2O")
+  rows <- list()
+  for (cat in c("AD only", "EF only", "Combined")) {
+    df <- switch(cat,
+      "AD only"  = decomp$ad_only,
+      "EF only"  = decomp$ef_only,
+      "Combined" = decomp$combined)
+    if (is.null(df) || !is.data.frame(df) || !"variable" %in% names(df)) next
+    for (i in seq_along(vars)) {
+      r <- df[df$variable == vars[i], , drop = FALSE]
+      if (nrow(r) > 0 && !is.na(r$cv_pct[1])) {
+        rows[[length(rows) + 1L]] <- data.frame(
+          category = cat, variable = labels[i], cv_pct = r$cv_pct[1],
+          stringsAsFactors = FALSE)
+      }
+    }
+  }
+  if (length(rows) == 0) return(NULL)
+  df <- do.call(rbind, rows)
+  df$category <- factor(df$category, levels = c("AD only", "EF only", "Combined"))
+  df$variable <- factor(df$variable, levels = labels)
+
+  ggplot2::ggplot(df, ggplot2::aes(x = variable, y = cv_pct, fill = category)) +
+    ggplot2::geom_col(position = ggplot2::position_dodge(width = 0.75), width = 0.7) +
+    ggplot2::scale_fill_manual(values = c("AD only"  = "#40916C",
+                                            "EF only"  = "#4361EE",
+                                            "Combined" = .GREEN_DARK),
+                                 name = NULL) +
+    ggplot2::labs(x = NULL, y = "CV (%)",
+                   title = "Uncertainty decomposition: AD vs EF vs Combined") +
+    ggplot2::theme_minimal(base_size = 10) +
+    ggplot2::theme(legend.position = "bottom")
+}
+
+# Round 9b §7 — Effect of correlations on CV% (with vs without).
+# Mirrors output$comparison_plot. Reads the live uncertainty frame and the
+# comparison-run uncertainty frame.
+.gg_comparison <- function(uncertainty_with, uncertainty_without) {
+  if (is.null(uncertainty_with)  || !is.data.frame(uncertainty_with)  || nrow(uncertainty_with)  == 0)
+    return(NULL)
+  if (is.null(uncertainty_without)|| !is.data.frame(uncertainty_without)|| nrow(uncertainty_without) == 0)
+    return(NULL)
+  vars   <- c("total_co2e", "total_ch4", "total_n2o")
+  labels <- c("Total CO2eq", "Total CH4", "Total N2O")
+  pull <- function(df, v) {
+    r <- df[df$variable == v, , drop = FALSE]
+    if (nrow(r) > 0) r$cv_pct[1] else NA_real_
+  }
+  with_cv    <- vapply(vars, pull, numeric(1), df = uncertainty_with)
+  without_cv <- vapply(vars, pull, numeric(1), df = uncertainty_without)
+  df <- data.frame(
+    variable = factor(rep(labels, 2), levels = labels),
+    scenario = factor(rep(c("With correlations", "Without correlations"), each = length(vars)),
+                       levels = c("With correlations", "Without correlations")),
+    cv_pct   = c(with_cv, without_cv),
+    stringsAsFactors = FALSE
+  )
+  df <- df[!is.na(df$cv_pct), , drop = FALSE]
+  if (nrow(df) == 0) return(NULL)
+
+  ggplot2::ggplot(df, ggplot2::aes(x = variable, y = cv_pct, fill = scenario)) +
+    ggplot2::geom_col(position = ggplot2::position_dodge(width = 0.75), width = 0.7) +
+    ggplot2::scale_fill_manual(values = c("With correlations"    = .GREEN_DARK,
+                                            "Without correlations" = "#9CA3AF"),
+                                 name = NULL) +
+    ggplot2::labs(x = NULL, y = "CV (%)",
+                   title = "Effect of correlations on uncertainty (CV %)") +
+    ggplot2::theme_minimal(base_size = 10) +
+    ggplot2::theme(legend.position = "bottom")
+}
+
+# Round 9b §11 — Per-parameter density plots (up to 12). Mirrors the live
+# output$report_input_densities. Takes the first by_system block's `samples`
+# data frame (parameter columns, n_iter rows).
+.gg_input_densities <- function(samples_df, n_max = 12) {
+  if (is.null(samples_df) || !is.data.frame(samples_df) || ncol(samples_df) == 0)
+    return(NULL)
+  keep <- utils::head(colnames(samples_df), n_max)
+  long <- do.call(rbind, lapply(keep, function(p) {
+    x <- samples_df[[p]]
+    if (length(x) == 0 || all(is.na(x))) return(NULL)
+    if (stats::sd(x, na.rm = TRUE) == 0) return(NULL)
+    data.frame(parameter = p, value = x, stringsAsFactors = FALSE)
+  }))
+  if (is.null(long) || nrow(long) == 0) return(NULL)
+  long$parameter <- factor(long$parameter, levels = keep[keep %in% unique(long$parameter)])
+
+  ncol_panels <- if (length(unique(long$parameter)) <= 6) 3 else 4
+  ggplot2::ggplot(long, ggplot2::aes(x = value)) +
+    ggplot2::geom_histogram(ggplot2::aes(y = after_stat(density)),
+                              bins = 25, fill = .GREEN_MID, colour = "white") +
+    ggplot2::facet_wrap(~ parameter, scales = "free", ncol = ncol_panels) +
+    ggplot2::labs(x = NULL, y = "Density",
+                   title = "Sampled parameter distributions (QA check)") +
+    ggplot2::theme_minimal(base_size = 8) +
+    ggplot2::theme(strip.text = ggplot2::element_text(face = "bold"))
+}
+
+# Round 9b §12 — MC convergence: running mean + 2.5/97.5% bands across
+# iterations. Mirrors output$convergence_plot. Reads rv$diagnostics$trace.
+.gg_convergence <- function(diagnostics) {
+  if (is.null(diagnostics) || is.null(diagnostics$trace)) return(NULL)
+  tr <- diagnostics$trace
+  if (length(tr$iter) == 0) return(NULL)
+  df <- data.frame(
+    iter         = tr$iter,
+    running_mean = tr$running_mean,
+    running_lo   = tr$running_lo,
+    running_hi   = tr$running_hi,
+    stringsAsFactors = FALSE
+  )
+
+  ggplot2::ggplot(df, ggplot2::aes(x = iter)) +
+    ggplot2::geom_ribbon(ggplot2::aes(ymin = running_lo, ymax = running_hi),
+                          fill = "#3B82F6", alpha = 0.12) +
+    ggplot2::geom_line(ggplot2::aes(y = running_lo),
+                        colour = "#3B82F6", linetype = "dashed", linewidth = 0.5) +
+    ggplot2::geom_line(ggplot2::aes(y = running_hi),
+                        colour = "#3B82F6", linetype = "dashed", linewidth = 0.5) +
+    ggplot2::geom_line(ggplot2::aes(y = running_mean),
+                        colour = .GREEN_DARK, linewidth = 1) +
+    ggplot2::geom_hline(yintercept = tr$final_mean,
+                         colour = .GREEN_DARK, linetype = "dashed", linewidth = 0.5) +
+    ggplot2::labs(x = "Iteration number", y = "Total CO2eq (t)",
+                   title = "Monte Carlo convergence (running mean and 95% CI)") +
+    ggplot2::theme_minimal(base_size = 10)
+}
+
+# Round 9b §3a — Year-over-year % change bar chart for the trend report.
+# Mirrors output$trend_yoy_chart.
+.gg_yoy_chart <- function(trend_results) {
+  if (is.null(trend_results) || !"YoY_pct" %in% names(trend_results)) return(NULL)
+  df <- trend_results[!is.na(trend_results$YoY_pct), , drop = FALSE]
+  if (nrow(df) == 0) return(NULL)
+  df$sign <- df$YoY_pct >= 0
+  ggplot2::ggplot(df, ggplot2::aes(x = factor(Year), y = YoY_pct, fill = sign)) +
+    ggplot2::geom_col(width = 0.7) +
+    ggplot2::geom_hline(yintercept = 0, colour = "#555", linewidth = 0.5) +
+    ggplot2::scale_fill_manual(values = c(`TRUE` = .GREEN_MID, `FALSE` = "#C1121F"),
+                                guide = "none") +
+    ggplot2::labs(x = "Year", y = "Δ vs prior year (%)",
+                   title = "Year-over-year % change") +
+    ggplot2::theme_minimal(base_size = 10)
+}
+
+# Round 9b §3b — Distribution of Δ Y_N − Y_1 from the per-iteration delta
+# samples. Mirrors output$trend_delta_histogram.
+.gg_delta_distribution <- function(delta_total) {
+  if (is.null(delta_total) || is.null(delta_total$per_iter)) return(NULL)
+  x <- delta_total$per_iter
+  if (length(x) == 0 || all(is.na(x))) return(NULL)
+  ci  <- stats::quantile(x, c(0.025, 0.975), names = FALSE, na.rm = TRUE)
+  fill_col <- if (mean(x, na.rm = TRUE) >= 0) .GREEN_MID else "#C1121F"
+
+  ggplot2::ggplot(data.frame(value = x), ggplot2::aes(x = value)) +
+    ggplot2::geom_histogram(bins = 40, fill = fill_col, colour = "white") +
+    ggplot2::geom_vline(xintercept = ci, linetype = "dashed", colour = "#C1121F") +
+    ggplot2::geom_vline(xintercept = 0, linetype = "dotted", colour = "#555") +
+    ggplot2::geom_vline(xintercept = mean(x, na.rm = TRUE), colour = "black") +
+    ggplot2::labs(x = "ΔCO2eq (t) between Y_N and Y_1", y = "Frequency",
+                   title = "Distribution of ΔY_N − Y_1 — uncertainty on the trend itself") +
     ggplot2::theme_minimal(base_size = 10)
 }

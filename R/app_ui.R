@@ -243,10 +243,10 @@ app_ui <- function() {
                 icon("file-pdf"), " Download full methodology (PDF)"
               ),
               tags$a(
-                href = "user_guide_draft.md",
-                download = "IPCC_Tier2_Livestock_GHG_UserGuide.md",
+                href = "user_guide.pdf",
+                download = "IPCC_Tier2_Livestock_GHG_UserGuide.pdf",
                 class = "btn btn-outline-success",
-                icon("book"), " Download user guide (draft)"
+                icon("book"), " Download user guide (PDF)"
               )
             )
           )
