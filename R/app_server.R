@@ -26,9 +26,14 @@ app_server <- function(input, output, session) {
     sim_view = "settings"   # R1.5: "settings" or "results" — drives Tab 5 panel toggle
   )
 
-  # B4: Home page Resources link
+  # B4: Home page Resources link — switch to the Resources tab AND scroll to
+  # the Tool-specific resources card (id="downloads-card" in app_ui.R) so the
+  # methodology/user-guide download buttons are in view immediately. The JS
+  # handler in app_ui.R wraps scrollIntoView in setTimeout(150ms) to give the
+  # newly-activated tab a tick to render before we try to scroll to it.
   observeEvent(input$goto_resources, {
     bslib::nav_select(id = "nav", selected = "Resources", session = session)
+    session$sendCustomMessage("scrollTo", "downloads-card")
   })
 
   # --- DATA INPUT ---

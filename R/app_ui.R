@@ -28,8 +28,13 @@ app_ui <- function() {
       tags$head(tags$link(rel = "stylesheet", href = "custom.css")),
       tags$head(tags$script(HTML(
         "Shiny.addCustomMessageHandler('scrollTo', function(id) {
-           var el = document.getElementById(id);
-           if (el) el.scrollIntoView({behavior: 'smooth', block: 'center'});
+           // setTimeout buffer: when scrollTo follows a nav_select, the target
+           // tab needs a tick to render before its child elements become
+           // measurable. 150ms is imperceptible to users but reliable.
+           setTimeout(function() {
+             var el = document.getElementById(id);
+             if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
+           }, 150);
          });"
       )))
     ),
@@ -228,7 +233,10 @@ app_ui <- function() {
       div(style = "max-width: 960px; margin: 0 auto; padding: 24px;",
         # Tool-specific resources — methodology + user guide. Kept first so it
         # is the first thing users see in the Resources tab.
+        # The id is the scroll target for the Home tab "Methodology, user
+        # guide & downloads" button (see goto_resources in app_server.R).
         bslib::card(
+          id = "downloads-card",
           bslib::card_header(h4("Tool-specific resources", style = "margin: 0;")),
           bslib::card_body(
             tags$h5("How this tool works"),
