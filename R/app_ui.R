@@ -624,7 +624,7 @@ app_ui <- function() {
                              bslib::tooltip(
                                span(icon("circle-question"),
                                     style = "color:#2D6A4F; cursor:help; vertical-align:middle;"),
-                               "Should the time-series correlations apply to every parameter, or only a subset? Use this when your time series covers some parameters reliably and others come from different (independent) sources.",
+                               "Did all the columns in your Parameter_TimeSeries sheet come from the same data source? If yes, leave on 'All parameters'. If your animal counts come from one source (e.g. the national livestock survey) and your feed-quality data from a different programme (e.g. a feed-analysis lab), pick the matching subset so the tool doesn't invent correlations between unrelated data streams.",
                                placement = "right"
                              )
                            ),
@@ -638,13 +638,18 @@ app_ui <- function() {
                   style = "margin-top:-4px; margin-bottom:8px; font-size:0.82rem; line-height:1.45;",
                   tags$ul(style = "padding-left:18px; margin:0;",
                     tags$li(tags$strong("All parameters"),
-                            " — your ", tags$code("Parameter_TimeSeries"),
-                            " sheet covers everything reliably. (Default.)"),
+                            " — every column in your ", tags$code("Parameter_TimeSeries"),
+                            " sheet came from the same data source, so it makes sense to let any pair be correlated. (Default — pick this if you're unsure.)"),
                     tags$li(tags$strong("Population-related only"),
-                            " — your census data is consistent across years, but feed-quality data comes from a different (independent) source. ",
-                            "Only animal-population parameters share their uncertainty."),
+                            " — your animal-count and body-weight columns come from a reliable source ",
+                            "(typically the national livestock survey run by the statistics agency or ministry of agriculture). ",
+                            "Your feed-quality columns come from a ", tags$em("different"),
+                            " source (e.g. a separate feed-analysis programme). ",
+                            "Pick this so only N, BW, MW and WG are jointly sampled; DE, CP and the coefficients are sampled independently."),
                     tags$li(tags$strong("Intake / feed-quality only"),
-                            " — your feed-analysis programme is consistent but population data is from independent annual sources.")
+                            " — the opposite situation: your feed-analysis programme is the consistent source, ",
+                            "but the animal counts come from independent annual sources. ",
+                            "Pick this so only DE, CP, Ym, Cfi, Ca and friends are jointly sampled; N, BW, MW and WG are sampled independently.")
                   )),
               # 2026-05 audit follow-up: detrending option. Most national livestock
               # series share a long-run growth trend; raw Pearson/Spearman of two
