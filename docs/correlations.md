@@ -82,7 +82,7 @@ For the Country X example (12 rows, all `cattle_type = "dairy"`, one production 
 
 ```
 cattle_pop, live_weight, mature_weight, weight_gain, milk_yield, milk_fat,
-pct_lactating, DE_pct, hours, CP_pct, protein_milk
+pct_calving, DE_pct, hours, CP_pct, protein_milk
 ```
 
 so **R_AD** is 11 × 11.

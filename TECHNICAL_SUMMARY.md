@@ -196,7 +196,7 @@ These are the exact strings the model looks for. Any row whose `parameter` colum
 | `weight_gain` | Average daily weight gain | kg/day | Table 10A.1; `WG_BY_SUBCAT`; 0 for adult non-growing |
 | `milk_yield` | Daily milk yield per lactating cow | kg/head/day | Country dairy stats; IPCC regional range |
 | `milk_fat` | Milk fat content | % | IPCC default 4 %; country dairy stats preferred |
-| `pct_lactating` | Fraction of cows currently lactating | fraction 0–1 | App default 0.60; herd structure surveys |
+| `pct_calving` | Fraction of females that calve during the year (IPCC Vol.4 Ch.10 §10.5: "Percent of females that give birth in a year") | fraction 0–1 | Default 0.60; national herd-management surveys |
 | `DE_pct` | Digestible energy as % of gross energy | % | IPCC Table 10.2 (45–75 %); feed lab analyses preferred |
 | `Cfi` | Maintenance energy coefficient | MJ/day/kg^0.75 | **IPCC Table 10.4** — `CFI_BY_SUBCAT`: lactating cow 0.386, dry cow/heifer 0.322, bull 0.370, oxen 0.322 |
 | `Ca` | Activity coefficient (energy cost of locomotion) | dimensionless | **IPCC Table 10.5** — auto-filled from `feeding_situation`: stall 0.00, pasture flat 0.17, hilly 0.36 |
@@ -327,13 +327,13 @@ NEg = 22.02 x (LW / (C x MW))^0.75 x WG^1.097     [MJ/head/day]
 Returns **exactly 0** if WG <= 0 (non-growing adults) or MW <= 0. The ratio `LW/(C x MW)` is the animal's current size as a fraction of its mature size. C = 0.8 for females, 1.0 for castrates/oxen, 1.2 for bulls.
 
 ### 3.4 Net Energy for Lactation — Eq 10.8
-**R:** `calc_nel(milk_yield, milk_fat, pct_lactating)`
+**R:** `calc_nel(milk_yield, milk_fat, pct_calving)`
 
 ```
-NEl = milk_yield x (1.47 + 0.40 x milk_fat) x pct_lactating    [MJ/head/day]
+NEl = milk_yield x (1.47 + 0.40 x milk_fat) x pct_calving    [MJ/head/day]
 ```
 
-`1.47 + 0.40 x fat` converts kg milk to MJ using fat content (IPCC Eq 10.8). `pct_lactating` scales down to a whole-herd average. Returns 0 for non-dairy sub-categories.
+`1.47 + 0.40 x fat` converts kg milk to MJ using fat content (IPCC Eq 10.8). `pct_calving` (IPCC "Percent of females that give birth in a year", Vol.4 Ch.10 §10.5) scales the per-lactating-animal milk yield down to a whole-herd average. Returns 0 for non-dairy sub-categories.
 
 ### 3.5 Net Energy for Work — Eq 10.11
 **R:** `calc_new(nem, hours)`
@@ -421,7 +421,7 @@ manure_ch4_total = EF_manure x cattle_pop / 1000    [tonnes CH4/year]
 ---
 
 ### 3.12 Nitrogen Excretion — Eq 10.31–10.34
-**R:** `calc_n_excretion(ge, DE_pct, CP_pct, milk_yield, pct_lactating, weight_gain)` in `R/calc_manure_n2o.R`
+**R:** `calc_n_excretion(ge, CP, milk_yield, pct_calving, weight_gain, MilkPR)` in `R/calc_manure_n2o.R`
 
 **Step 1 — Dry matter intake:**
 ```
@@ -435,7 +435,7 @@ N_intake = DMI x (CP%/100) / 6.25     [kg N/day]
 
 **Step 3 — Nitrogen retained:**
 ```
-N_milk   = milk_yield x pct_lactating x 0.033 / 6.38     [kg N/day]
+N_milk   = milk_yield x pct_calving x (MilkPR/100) / 6.38   [kg N/day]
 N_growth = weight_gain x 0.032                           [kg N/day]
 N_retained = N_milk + N_growth
 ```
@@ -556,7 +556,7 @@ This treats [lower, upper] as a 95 % confidence interval.
 | **normal** | `rnorm(n, mean, SD)` | Symmetric uncertainty; large populations, body weights, milk yield |
 | **posnorm** | Normal, then `pmax(0)` | Non-negative symmetric parameters where negative values are implausible |
 | **lognormal** | `mu_log = log(mean)`; `sd_log = [log(upper)-log(lower)]/(2x1.96)`; `rlnorm(n, mu_log, sd_log)` | Strictly positive, right-skewed; EF4, EF5 |
-| **beta** | `mu = (mean-lower)/(upper-lower)`; alpha/beta computed from mu and var; scaled back to [lower, upper] | Parameters bounded 0–1: `Cp`, `pct_lactating`, fractions |
+| **beta** | `mu = (mean-lower)/(upper-lower)`; alpha/beta computed from mu and var; scaled back to [lower, upper] | Parameters bounded 0–1: `Cp`, `pct_calving`, fractions |
 | **triangular** | `mc2d::rtriang(n, min=lower, mode=mean, max=upper)` | Expert-elicited; only min/mode/max known; `Ca`, `C_growth`, `DE_pct` |
 | **pert** | `mc2d::rpert(n, min=lower, mode=mean, max=upper, shape=4)` — internally Beta with alpha = 1 + 4x(mode-min)/(max-min), beta = 1 + 4x(max-mode)/(max-min) | IPCC coefficients where mode is well-established but tails uncertain: `Cfi`, `Ym`, `Bo`, `EF3_PRP`, `Frac_GASM` |
 | **uniform** | `runif(n, lower, upper)` | When only range is known; maximum uncertainty |
