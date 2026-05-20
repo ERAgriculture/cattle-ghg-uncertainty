@@ -239,7 +239,7 @@ PRODUCTION_SYSTEM_LABELS <- c(
 )
 
 # System type classification (for reporting and defaults)
-SYSTEM_TYPES <- c("dairy", "beef", "mixed", "draft")
+SYSTEM_TYPES <- c("dairy", "beef", "mixed")
 
 # Animal sub-categories (IPCC-aligned, expanded to match real inventories)
 ANIMAL_SUBCATEGORIES <- c(
@@ -251,7 +251,7 @@ ANIMAL_SUBCATEGORY_LABELS <- c(
   dairy_cows = "Dairy Cows (mature lactating females)",
   other_cows = "Other Cows (mature non-dairy females, inc. dry)",
   bulls = "Bulls (mature intact males, breeding)",
-  oxen = "Oxen (mature castrated males, draft)",
+  oxen = "Oxen (mature castrated males)",
   heifers = "Heifers (young females 1-3yr, not yet calved)",
   growing_males = "Growing Males (young males 1-3yr, steers/bulls)",
   calves_female = "Calves - Female (<1yr)",
@@ -328,7 +328,7 @@ CFI_BY_SUBCAT <- list(
   dairy_cows = 0.386,     # lactating dairy cows
   other_cows = 0.322,     # dry/non-dairy cows
   bulls = 0.370,          # intact mature males
-  oxen = 0.322,           # castrated draft males
+  oxen = 0.322,           # castrated males
   heifers = 0.322,        # young females
   growing_males = 0.370,  # young intact males
   calves_female = 0.322,
@@ -380,9 +380,9 @@ AGE_BY_SUBCAT <- list(
   feedlot_cattle = "young_1-3yr"
 )
 
-# Country X \u2014 hypothetical East African dairy system (mid-altitude smallholder)
-# Visibly distinct from Country Y (B1): dairy cattle, milking, higher live weight.
-generate_uganda_example <- function() {
+# Country X \u2014 hypothetical mid-altitude smallholder dairy system.
+# Visibly distinct from Country Y: dairy cattle, milking, higher live weight.
+generate_country_x_example <- function() {
   data.frame(
     cattle_type       = rep("dairy", 12),
     aggregation_level = rep("Country X \u2013 smallholder dairy", 12),
@@ -406,7 +406,7 @@ generate_uganda_example <- function() {
 # Excel upload would, enabling Tab 4's "From template (auto)" mode without a
 # separate file. Trends are illustrative (population grows slowly; weight gain
 # kicks up with feed quality; Ym drifts down as feed improves).
-generate_uganda_timeseries <- function() {
+generate_country_x_timeseries <- function() {
   data.frame(
     year       = 2018:2022,
     N          = c(480000, 488000, 495000, 503000, 510000),
@@ -420,8 +420,8 @@ generate_uganda_timeseries <- function() {
   )
 }
 
-# Country Y \u2014 hypothetical pastoral non-dairy beef system (semi-arid rangeland)
-# B1: visibly different from Country X \u2014 non-dairy, smaller animals, no milk.
+# Country Y \u2014 hypothetical pastoral non-dairy beef system (semi-arid rangeland).
+# Visibly different from Country X \u2014 non-dairy, smaller animals, no milk.
 generate_country_y_example <- function() {
   data.frame(
     cattle_type       = rep("non_dairy", 11),

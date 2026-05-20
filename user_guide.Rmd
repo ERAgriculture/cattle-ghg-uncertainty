@@ -149,7 +149,7 @@ MW & Mature (adult) body weight — used in NEg growth equation & kg & 300 & $\p
 WG & Average daily weight gain — set 0 for non-growing adults & kg/day & 0 & $\pm$30\% & PERT & Eq. 10.6 \\
 Milk & Daily milk yield per \textit{lactating} animal (not sub-category average; tool multiplies by pct\_calving internally). Set 0 for non-dairy sub-categories. & kg/head/day & 4.0 & $\pm$20\% & Normal & Eq. 10.8 \\
 Fat & Fat content of milk & \% & 4.0 & $\pm$10\% & Normal & Eq. 10.8 \\
-pct\_calving & Fraction of females that give birth in a year (0–1). Weights net energy for lactation, pregnancy, and N excretion. & fraction & 0.60 & $\pm$20\% & Beta & 2019 Ref. Ch. 10 p.20 \\
+pct\_calving & Fraction of females in this sub-category that give birth (calve) during the year, 0--1. & fraction & 0.60 & $\pm$20\% & Beta & 2019 Refinement Vol.4 Ch.10 §10.5 \\
 MilkPR & Protein content of milk — feeds the milk-N term in Eq. 10.33 (N retention rates for cattle, where the 6.38 milk-protein-to-N conversion is defined). The 2019 Refinement gives the relation \%MilkPR $= 1.9 + 0.4\times$\%Fat (so 4\% fat $\to$ 3.5\% protein); illustrative values are tabulated in Annex 10A.1 / 10A.2 / 10A.3. & \% & 3.3 & $\pm$10\% & Normal & Eq. 10.33; Annex 10A.1–10A.3 \\
 \addlinespace[4pt]
 \multicolumn{7}{l}{\textbf{\textcolor{cgiargreen}{Energy coefficients}}} \\
@@ -159,7 +159,7 @@ Cfi & Maintenance energy coefficient — depends on sex and lactation status & M
 Ca & Activity coefficient for locomotion energy & dimensionless & 0.17 & $\pm$30\% & Triangular & Table 10.5 \\
 C & Growth coefficient for NEg equation — depends on sex (female 0.8, castrate 1.0, bull 1.2) & dimensionless & 0.8 & $\pm$30\% & Triangular & Eq. 10.6 \\
 Cp & Pregnancy coefficient — 0.10 for pregnant animals & dimensionless & 0.10 & $\pm$10\% & Beta & Table 10.7 \\
-hours & Daily working hours for draft animals — set 0 for non-draft & hours/day & 0 & $\pm$20\% & PERT & Eq. 10.11 \\
+hours & Daily working hours — set 0 when animals do no work (typical for dairy/beef cattle inventories) & hours/day & 0 & $\pm$20\% & PERT & Eq. 10.11 \\
 Tw & Mean daily temperature in winter ($^\circ$C) — Cfi cold-climate adjustment. Leave blank or set 20 to disable. & $^\circ$C & 20 & $\pm$25\% & Normal & Eq. 10.2 \\
 \addlinespace[4pt]
 \multicolumn{7}{l}{\textbf{\textcolor{cgiargreen}{Enteric fermentation}}} \\
@@ -334,31 +334,29 @@ The QA/QC tab runs automated checks on your parameter values and flags any that 
 \toprule
 \textbf{Status} & \textbf{Colour} & \textbf{Meaning} \\
 \midrule
-\textbf{Pass} & \textcolor{cgiargreen}{Green} & Value is within the expected range for this parameter \\
-\textbf{Warn} & \textcolor{amber}{Amber} & Value deviates noticeably from the typical range — check and document \\
-\textbf{Fail} & \textcolor{red}{Red} & Value is outside the plausible range — likely a data entry error \\
-\textbf{Info} & \textcolor{infoBlue}{Blue} & Value differs from an older benchmark source \\
-\textbf{Missing} & \textit{Grey} & A required parameter was not found in your upload \\
+\textbf{Pass} & \textcolor{cgiargreen}{Green} & Value is within $\pm$50\% of the IPCC default (Vol.4 Ch.10 / Ch.11) \\
+\textbf{Warn} & \textcolor{amber}{Amber} & Value deviates 50--200\% from the IPCC default — check and document \\
+\textbf{Fail} & \textcolor{red}{Red} & Value deviates $>$200\% from the IPCC default — likely a data entry error \\
+\textbf{Missing} & \textit{Grey} & Parameter not found in upload; auto-filled with the IPCC default (Vol.4 Ch.10 / Ch.11) \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 ## What to do for each status
 
-\textbf{Pass}: No action needed. The value is consistent with IPCC default ranges.
+\textbf{Pass}: No action needed. The value is within $\pm$50\% of the IPCC default for the parameter (Vol.4 Ch.10 / Ch.11).
 
-\textbf{Warn}: Review the flagged parameter. A Warn means your value is unusual but not impossible. Possible actions:
+\textbf{Warn}: The value deviates 50--200\% from the IPCC default. This may be legitimate (country-specific data, distinct production system, or a specific climate regime — e.g. EF\textsubscript{4}, EF\textsubscript{5} or EF\textsubscript{3,PRP} differ between wet and dry climates) or it may be a data-entry issue. Possible actions:
 \begin{itemize}
-  \item Confirm the value is correct for your country context
-  \item If it is country-specific and well-justified, document it in your inventory report
+  \item Confirm the value matches your country context
+  \item If it is country-specific and well-justified, document the source in your inventory report
+  \item If you intended to use a climate-disaggregated default, check IPCC Vol.4 Ch.11 Tables 11.1 / 11.3 for the wet/dry value
   \item If it is an error, correct it in your Excel file and re-upload
 \end{itemize}
 
-\textbf{Fail}: These represent likely data entry errors (e.g. a live weight of 50,000 kg, a DE\% of 150\%). Correct the value before proceeding.
+\textbf{Fail}: The value deviates more than 200\% from the IPCC default. Most often this means a data-entry error (e.g. a live weight of 50,000 kg, a DE\% of 150\%). Correct the value before proceeding.
 
-\textbf{Info}: These flags cite older benchmark sources (Penman 2000, Monni 2007) that may be less relevant than IPCC 2019 Refinement values. For EF\textsubscript{3}, EF\textsubscript{3,PRP} and Frac\_PRP fractions, check the IPCC 2019 Refinement Vol.4 Ch.11 \emph{Table 11.1}; for EF\textsubscript{4}, EF\textsubscript{5}, Frac\_GasMS / Frac\_LeachMS / Frac\_GasPRP / Frac\_LeachPRP, check \emph{Table 11.3}. If your value falls within the 2019 range, the Info flag can be disregarded for reporting purposes.
-
-\textbf{Missing}: If a parameter is flagged as missing, the tool has auto-filled it with an IPCC default value (shown in the Tab 1 notification). Review whether the default is appropriate for your country context and, if possible, supply a country-specific value.
+\textbf{Missing}: A required parameter was not found in the upload. The tool has auto-filled it with the IPCC default value from PARAM\_CATALOGUE (the value and the IPCC equation/table source are shown in the Tab 1 notification). Review whether the default is appropriate for your country context and, where possible, replace it with country-specific data.
 
 ## Documenting deviations
 
@@ -654,7 +652,7 @@ To illustrate the workflow, the following example uses the Country X built-in da
 
 **Step 1 — Load data**: Select "Country X (hypothetical dairy)" from the dropdown on Tab 1. The data loads automatically (12 parameters, dairy smallholder system).
 
-**Step 2 — QA/QC**: Go to Tab 2. All parameters should pass or show only Info flags. The Info flags for EF3/EF4/EF5 cite older benchmark sources; for this hypothetical example, the values match IPCC 2019 defaults and the flags can be disregarded.
+**Step 2 — QA/QC**: Go to Tab 2. All parameters should pass; any Warn flags would compare against the IPCC 2019 Refinement defaults (Vol.4 Ch.10 / Ch.11), and a deliberate country-specific value can be documented in the inventory report rather than corrected.
 
 **Step 3 — Uncertainty**: Go to Tab 3. Note that activity data (N, BW, Milk, WG, Fat) use Normal distributions and coefficients (Ym, DE, Bo, etc.) use PERT or lognormal distributions.
 

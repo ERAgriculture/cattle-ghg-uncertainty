@@ -1,0 +1,65 @@
+# Exclude dev / build / audit artefacts from the rsconnect deploy bundle.
+# The app itself only needs R/, www/, app.R, methodology.pdf, user_guide.pdf,
+# the input template, plus runtime config.
+
+# Dev / build scripts (underscore-prefixed conventions in this project)
+_build_aw_response.py
+_build_docs.py
+_build_methodology.R
+_check_sensitivity.R
+_check_sensitivity_after.R
+_debug_mm_parse.R
+_deploy.R
+_extract_ipcc.py
+_make_comments_tracker.R
+_make_feedback_template.R
+_smoketest.R
+_smoketest_word.R
+_verify_catalogue.R
+_verify_changes.R
+_verify_dist.R
+deploy_shinyapps.R
+install.R
+
+# Source PDFs we audited against (not needed at runtime)
+19R_V1_Ch03_Uncertainties.pdf
+19R_V4_Ch10_Livestock (2).pdf
+19R_V4_Ch11_Soils_N2O_CO2.pdf
+V1_3_Ch3_Uncertainties.pdf
+V4_10_Ch10_Livestock.pdf
+V4_11_Ch11_N2O&CO2.pdf
+
+# Audit text extracts (only used by the dev audit, not the app)
+.ipcc_text/
+
+# Historical review-response docs
+AW_final_comments_tracker.docx
+AW_review_response*.docx
+AW_review_response*.md
+AW_review_response*.pdf
+docs/AW_review_response*.md
+
+# Source-form drafts (the rendered .pdf is what the app serves)
+methodology.Rmd
+user_guide.Rmd
+user_guide_draft.md
+www/user_guide_draft.md
+methodology.log
+
+# Beta feedback / templates not used at runtime
+beta_feedback_template.csv
+beta_feedback_template.xlsx
+
+# Stale country-specific upload (raw country data file)
+22-07-2023*.xlsx
+
+# Python build artefacts
+__pycache__/
+*.pyc
+
+# Workspace / editor files
+*.code-workspace
+.vscode/
+
+# Backup file from the May 2026 audit
+*.pre_audit_2026_05_bak

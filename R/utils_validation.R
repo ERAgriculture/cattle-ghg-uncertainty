@@ -21,7 +21,7 @@ validate_param_specs <- function(param_specs) {
     errors <- c(errors, "Digestible energy must be between 0 and 100%")
 
   # Hours bug fix: allow lower == upper when the parameter is effectively zero
-  # (e.g. hours = 0 for non-draft animals; weight_gain = 0 for adult non-growing;
+  # (e.g. hours = 0 when animals do no work; weight_gain = 0 for adult non-growing;
   # Cp = 0 for non-pregnant; C_growth = 0 for some sex codes). These are degenerate
   # constants that the sampler handles without issue. Only flag a strict inversion.
   is_constant_dist <- param_specs$distribution %in% c("constant", "const")

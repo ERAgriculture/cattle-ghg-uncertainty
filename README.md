@@ -58,7 +58,7 @@ When a country reports cattle greenhouse gas emissions under the Paris Agreement
 | Sensitivity analysis | Standardised Regression Coefficients (SRC) + PRCC tornado chart |
 | Reporting output | IPCC Table 3.3 formatted XLSX / CSV download |
 | Input format | Excel template with dropdowns, formulas, and colour-coded guidance |
-| Example data | Uganda dairy cattle (pre-loaded, no upload needed to explore) |
+| Example data | Country X (hypothetical dairy) and Country Y (hypothetical pastoral) — both pre-loaded, no upload needed to explore |
 
 ---
 
@@ -93,7 +93,7 @@ The app expects a single Excel workbook with up to 6 sheets. **Only the `Paramet
 
 **Download the template from inside the app** (Tab 1 → "Download Template"), fill it in, and upload it back. The template includes dropdowns, pre-filled IPCC defaults, Excel formulas for bounds, and a colour-coded guide.
 
-**Quick start without uploading anything:** go to Tab 1, select *Uganda (Example)*, then go to Tab 5 and click *Run Monte Carlo Simulation*.
+**Quick start without uploading anything:** go to Tab 1, select *Country X (hypothetical dairy)*, then go to Tab 5 and click *Run Monte Carlo Simulation*.
 
 ---
 

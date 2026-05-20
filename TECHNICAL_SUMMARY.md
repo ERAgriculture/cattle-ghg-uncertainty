@@ -41,7 +41,7 @@ The app takes a national cattle GHG inventory structured as a set of animal sub-
 | Tab | Title | Purpose |
 |---|---|---|
 | Home | Overview | Workflow table, quick-start guide, tool description |
-| 1 | Data Input | Load Uganda/Zimbabwe example or upload custom template; inline DT editing; validation panel |
+| 1 | Data Input | Load Country X or Country Y example (hypothetical), or upload custom template; inline DT editing; validation panel |
 | 2 | QA/QC | 6 automated checks per parameter; traffic-light table (pass/warn/fail) |
 | 3 | Uncertainty | Review/adjust distributions and bounds per parameter; quick-set buttons |
 | 4 | Correlations | AD correlations (from Parameter\_TimeSeries sheet, auto-loaded on upload, or manual entry); EF uniform rho equicorrelation |
@@ -202,7 +202,7 @@ These are the exact strings the model looks for. Any row whose `parameter` colum
 | `Ca` | Activity coefficient (energy cost of locomotion) | dimensionless | **IPCC Table 10.5** — auto-filled from `feeding_situation`: stall 0.00, pasture flat 0.17, hilly 0.36 |
 | `C_growth` | Growth coefficient for NEg equation | dimensionless | **IPCC Eq 10.6** — auto-filled from `sex`: female 0.8, castrate/oxen 1.0, bull 1.2 |
 | `Cp` | Pregnancy coefficient | dimensionless | **IPCC Table 10.7** = 0.10 for pregnant animals |
-| `hours` | Daily work hours (draft animals only) | hours/day | 0 for non-draft; farm surveys |
+| `hours` | Daily working hours (Eq. 10.11) | hours/day | 0 when animals do no work; farm surveys when applicable |
 | `CP_pct` | Crude protein content of diet | % | Feed lab analyses; IPCC Worksheet 10.3 approx 8–18 % |
 | `protein_milk` | Protein content of milk | % | Feeds the milk-N term in IPCC Vol.4 Ch.10 Eq 10.33 (N retention for cattle, where the 6.38 milk-protein-to-N conversion is defined); default 3.3 % |
 
@@ -252,7 +252,7 @@ If the `Manure_Management` sheet is absent or empty, the simulation uses default
 - Row 2: parameter names as column headers
 - Row 3: plain-language descriptions (informational)
 - Row 4: units (informational)
-- Rows 5–14: Uganda example data (2013–2022), if `include_example = TRUE`
+- Rows 5–14: Country X example data (5 illustrative years), if `include_example = TRUE`
 - Rows 15–34: 20 blank rows for user data
 
 **Automatic correlation computation on upload:**
@@ -342,7 +342,7 @@ NEl = milk_yield x (1.47 + 0.40 x milk_fat) x pct_lactating    [MJ/head/day]
 NEw = 0.10 x NEm x hours     [MJ/head/day]
 ```
 
-For draft animals only; zero for all other sub-categories.
+Used only when animals perform work; zero for typical dairy / beef inventories.
 
 ### 3.6 Net Energy for Pregnancy — Eq 10.13
 **R:** `calc_nep(nem, Cp)`
@@ -866,7 +866,7 @@ Only parameters with non-zero variance are included. Constant parameters (decomp
 
 ## 12. Worked Example — Pastoral Dairy Cows
 
-**Inputs (Uganda-style, from `generate_uganda_example()`):**
+**Inputs (Country X example, from `generate_country_x_example()`):**
 
 | Parameter | Mean | Uncertainty | Distribution |
 |---|---|---|---|
@@ -892,7 +892,7 @@ NEm = 0.386 x 275^0.75 = 0.386 x 55.7  = 21.5 MJ/day
 NEa = 0.17  x 21.5     = 3.66 MJ/day
 NEg = 0 (weight_gain = 0)
 NEl = 4.0 x (1.47 + 0.40x4) x 0.6 = 4.0 x 3.07 x 0.6 = 7.37 MJ/day
-NEw = 0  (not draft)
+NEw = 0  (no work)
 NEp = 0.10 x 21.5 = 2.15 MJ/day
 
 REM = 1.123 - 4.092e-3x55 + 1.126e-5x55^2 - 25.4/55 = 0.583

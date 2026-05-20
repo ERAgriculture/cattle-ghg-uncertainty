@@ -238,15 +238,17 @@ app_ui <- function() {
             div(style = "margin-top: 16px; display: flex; gap: 12px; flex-wrap: wrap;",
               tags$a(
                 href = "methodology.pdf",
-                download = "IPCC_Tier2_Livestock_GHG_Methodology.pdf",
+                target = "_blank",
+                rel = "noopener noreferrer",
                 class = "btn btn-success",
-                icon("file-pdf"), " Download full methodology (PDF)"
+                icon("file-pdf"), " Open full methodology (PDF)"
               ),
               tags$a(
                 href = "user_guide.pdf",
-                download = "IPCC_Tier2_Livestock_GHG_UserGuide.pdf",
+                target = "_blank",
+                rel = "noopener noreferrer",
                 class = "btn btn-outline-success",
-                icon("book"), " Download user guide (PDF)"
+                icon("book"), " Open user guide (PDF)"
               )
             )
           )
@@ -364,11 +366,23 @@ app_ui <- function() {
               icon("exclamation-triangle"),
               tags$strong(" Selection required: "),
               "pick Single year or Trend before moving on. The Run button on Tab 5 will block until a mode is chosen."),
-          tags$p(tags$em("IPCC Volume 1 Chapter 3 recommends running uncertainty analysis ",
-                          "for both the first and last year of an inventory and quantifying the ",
-                          "trend uncertainty. Use 'Trend' if you have multi-year data; use ",
-                          "'Single year' for a one-off uncertainty estimate."),
-                  style = "color:#555; font-size:0.85rem; margin-top:8px;")
+          tags$p(tags$em(
+            "What 'Trend' does in this tool: a full Monte Carlo uncertainty run ",
+            "is performed independently for every year present in your time-series ",
+            "upload, and the uncertainty on the trend itself is taken as the ",
+            "distribution of (Year_N − Year_1) — the absolute change in ",
+            "CO₂eq between the last and first year. ",
+            tags$br(), tags$br(),
+            "IPCC alignment: IPCC 2006 Vol.1 Ch.3 §3.7 (“Uncertainty in ",
+            "trends”) defines the trend as the change between a ",
+            tags$strong("base year"), " and a ", tags$strong("current year"),
+            ". The first / last years of the time series you upload are used ",
+            "as those base and current years respectively. §3.7 covers both ",
+            "Approach 1 (error-propagation, Eq. 3.1–3.2) and Approach 2 ",
+            "(Monte Carlo) for the trend; this tool implements the Approach 2 ",
+            "version. Use 'Trend' if you have multi-year data; use 'Single year' ",
+            "for a one-off uncertainty estimate."),
+            style = "color:#555; font-size:0.85rem; margin-top:8px;")
         )
       ),
       div(class = "info-panel", style = "margin: 16px;",
@@ -382,8 +396,8 @@ app_ui <- function() {
           width = 320,
           h5("Data Source"),
           selectInput("country", "Country / Example Data",
-                      choices = c("Country X (hypothetical dairy)" = "uganda",
-                                  "Country Y (hypothetical pastoral)" = "zimbabwe",
+                      choices = c("Country X (hypothetical dairy)" = "country_x",
+                                  "Country Y (hypothetical pastoral)" = "country_y",
                                   "Custom Upload" = "custom")),
           # B1: explicit hint when "Custom Upload" selected so the user knows the
           # dropdown registered (the example tables don't auto-load for "custom")

@@ -78,7 +78,7 @@ where F_j is the marginal CDF defined by the parameter's `distribution`, `mean`,
 
 The activity data correlation matrix **R_AD** is an *n_AD × n_AD* matrix where entry (i, j) is the Spearman rank correlation between parameter *i* and parameter *j*. It must be symmetric and positive definite with diagonal entries = 1.
 
-For the Uganda example (12 rows, all `cattle_type = "dairy"`, one production system), the activity data block has parameters:
+For the Country X example (12 rows, all `cattle_type = "dairy"`, one production system), the activity data block has parameters:
 
 ```
 cattle_pop, live_weight, mature_weight, weight_gain, milk_yield, milk_fat,

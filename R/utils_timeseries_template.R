@@ -132,7 +132,7 @@ generate_timeseries_template <- function(filepath) {
       "IPCC Table 10.5 — typically constant (depends on feeding system)",
       "IPCC Eq 10.6 — typically constant (depends on sex)",
       "IPCC Table 10.7 — typically constant (0 or 0.10)",
-      "Draft use records — typically constant or zero"
+      "Work hours records — typically constant or zero"
     ),
     stringsAsFactors = FALSE
   )

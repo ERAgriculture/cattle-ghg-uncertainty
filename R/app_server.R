@@ -36,12 +36,12 @@ app_server <- function(input, output, session) {
   # T1.1 fix: when the user has a custom upload loaded and re-touches the country
   # dropdown, ask before overwriting. Otherwise load the example silently.
   observeEvent(input$country, {
-    if (!input$country %in% c("uganda", "zimbabwe")) return()  # "custom" is a no-op
+    if (!input$country %in% c("country_x", "country_y")) return()  # "custom" is a no-op
     if (isTRUE(rv$has_custom_upload)) {
       showModal(modalDialog(
         title = "Discard custom upload?",
         paste0("Loading the ",
-               if (input$country == "uganda") "Country X" else "Country Y",
+               if (input$country == "country_x") "Country X" else "Country Y",
                " example will overwrite your uploaded data. Proceed?"),
         footer = tagList(
           modalButton("Keep my upload"),
@@ -75,16 +75,19 @@ app_server <- function(input, output, session) {
   }
 
   .load_example <- function(name) {
-    # T0.3 + B1: distinct example datasets per country selection
-    if (name == "uganda") {
-      rv$param_specs <- fill_bounds(generate_uganda_example())
+    # T0.3 + B1: distinct example datasets per country selection.
+    # Names "country_x" / "country_y" are abstract hypothetical countries
+    # used only to illustrate the two contrasting production systems (dairy
+    # smallholder vs pastoral non-dairy). No real-country attribution.
+    if (name == "country_x") {
+      rv$param_specs <- fill_bounds(generate_country_x_example())
       # R2.2: built-in example now ships with synthetic 5-year time-series so
       # that Tab 4's "From template (auto)" correlation mode works without
       # requiring a separate Excel upload.
-      rv$population  <- generate_uganda_timeseries()
+      rv$population  <- generate_country_x_timeseries()
       rv$corr_matrix <- .compute_corr_now(rv$population)
       rv$sim_log <- "Country X (hypothetical dairy smallholder) example data loaded — 12 parameters, dairy / cows; 5-year synthetic time-series populated for correlation auto-mode.\n"
-    } else if (name == "zimbabwe") {
+    } else if (name == "country_y") {
       rv$param_specs <- fill_bounds(generate_country_y_example())
       rv$population  <- generate_country_y_timeseries()
       rv$corr_matrix <- .compute_corr_now(rv$population)
@@ -96,7 +99,7 @@ app_server <- function(input, output, session) {
     rv$has_custom_upload <- FALSE
     rv$upload_status     <- list(type = "success",
                                  message = sprintf("%s example loaded — %d parameters (with example time-series)",
-                                   if (name == "uganda") "Country X" else "Country Y",
+                                   if (name == "country_x") "Country X" else "Country Y",
                                    nrow(rv$param_specs)))
   }
 
@@ -978,7 +981,7 @@ app_server <- function(input, output, session) {
           # Andreas 2026-05 follow-up: warn when a Parameters group has no
           # matching Manure_Management rows (e.g. cattle_type or sub_category
           # spelt differently between sheets — "DINT_heif" vs "DINT_heifer"
-          # was the case in the Zimbabwe pilot, silently making the heifer
+          # silently makes the heifer
           # group fall back to the default pasture allocation). The warning
           # surfaces in the simulation log on Tab 5 so the user catches the
           # mismatch instead of getting wrong N2O numbers.
