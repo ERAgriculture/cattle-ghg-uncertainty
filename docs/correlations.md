@@ -133,59 +133,55 @@ By default, emission factors (EFs) are sampled independently. This is the standa
 
 However, if EF uncertainty is driven partly by **systematic bias** in the IPCC equation structure — for example, if the Ym_pct equation (IPCC Table 10.12) systematically overestimates for all sub-categories, or if measurement conditions in developing-country studies consistently differ from the IPCC default assumptions — then multiple EFs will tend to be simultaneously over- or under-estimated. Ignoring this correlation underestimates the EF component of total uncertainty.
 
-### 5.2 The uniform correlation assumption
+### 5.2 Block-structured correlation
 
-Because there are 13 emission factors, the full **R_EF** matrix has 78 free off-diagonal entries. Eliciting all 78 pairwise correlations from expert knowledge is impractical. The tool therefore offers a single scalar **ρ** that populates a uniform (equicorrelation) matrix:
+The IPCC coefficients are grouped into three blocks that share a measurement / methodological provenance. Each block carries its own within-block correlation, capped at ρ = 0.5; cross-block correlation is always zero because the three literatures are independent:
 
-```
-R_EF(i, j) = ρ    for i ≠ j
-R_EF(i, i) = 1
-```
-
-This can be written as:
-
-```
-R_EF = (1 − ρ) I + ρ 1 1ᵀ
-```
-
-where **1** is a column vector of ones. This matrix is positive definite for all ρ in (−1/(n−1), 1), which for n = 13 means ρ > −0.083. For the slider range of ρ ∈ [0, 0.9] this is always satisfied, but `nearPD` is applied regardless as a safety check.
+- **Energy-equation coefficients** (Cfi, Ca, C, Cp, Ym) — rumen-fermentation studies (IPCC Eq 10.3 / 10.16 / 10.21 family).
+- **Manure-CH₄ coefficients** (Bo, MCF, ASH) — BMP assays and lagoon-temperature studies.
+- **Manure-N coefficients** (EF3, EF4, EF5, Frac_GASMS, Frac_LEACH, UE) — NH₃ / N₂O volatilisation studies.
 
 **Implementation in `mc_sampling.R`:**
 
 ```r
-make_uniform_corr <- function(n, rho) {
-  m <- matrix(rho, n, n)
-  diag(m) <- 1.0
-  as.matrix(Matrix::nearPD(m, corr = TRUE)$mat)
+make_block_corr <- function(param_names, rho_by_block) {
+  n <- length(param_names)
+  m <- diag(n)
+  rownames(m) <- colnames(m) <- param_names
+  for (blk in names(.EF_BLOCKS)) {
+    rho <- rho_by_block[[blk]]
+    if (is.null(rho) || !is.finite(rho) || rho == 0) next
+    idx <- which(param_names %in% .EF_BLOCKS[[blk]])
+    if (length(idx) >= 2) {
+      sub <- matrix(rho, length(idx), length(idx))
+      diag(sub) <- 1
+      m[idx, idx] <- sub
+    }
+  }
+  .repair_corr(m, "block-structured EF correlation matrix")
 }
 ```
 
-The matrix is constructed in the server and passed per-system, labelled with the EF parameter names:
+> **Audit note (May 2026).** An earlier single-ρ "uniform EF correlation" option was removed: applying one ρ to all 13 coefficients implies the same systematic bias affects rumen-fermentation, BMP-lagoon and NH₃ volatilisation studies simultaneously, which is statistically indefensible. The block-structured option respects the three independent literatures. `make_uniform_corr()` is still exported from `mc_sampling.R` as a low-level helper but is no longer wired to the UI.
 
-```r
-mat <- make_uniform_corr(n_ef, rho)
-rownames(mat) <- colnames(mat) <- ef_params$parameter
-```
-
-### 5.3 Interpreting ρ
+### 5.3 Interpreting ρ (within a block)
 
 | ρ | Interpretation |
 |---|---|
-| 0.00 | Fully independent EFs — standard IPCC Approach 2 assumption |
-| 0.20 | Weak systematic bias — most variation is parameter-specific |
-| 0.30 | Moderate systematic bias — recommended starting point if you suspect IPCC equation bias |
-| 0.50 | Strong systematic bias — requires documented justification |
-| 0.70–0.90 | Very strong — most of the EF variation is a shared signal; implies near-perfect co-movement across all 13 factors |
+| 0.00 | Fully independent within the block — standard IPCC Approach 2 assumption |
+| 0.10–0.15 | Weak shared bias |
+| 0.20–0.35 | Moderate shared bias — typical when one literature dominates the block |
+| 0.40–0.50 | Strong shared bias — requires documented justification (capped at 0.5 by the slider) |
 
 ### 5.4 Numerical example
 
-Suppose Ym_pct is sampled at iteration *k* at its 85th percentile (high end). With ρ = 0.3, each other EF has an expected percentile shift upward:
+Suppose Ym is sampled at iteration *k* at its 85th percentile (high end), and the energy-block ρ is set to 0.3. Each other coefficient in the energy block (Cfi, Ca, C, Cp) has an expected percentile shift upward:
 
 ```
-E[rank(EF_j) | rank(Ym_pct) = 0.85] ≈ Φ(ρ · Φ⁻¹(0.85)) = Φ(0.3 × 1.036) ≈ Φ(0.311) ≈ 0.622
+E[rank(EF_j) | rank(Ym) = 0.85] ≈ Φ(ρ · Φ⁻¹(0.85)) = Φ(0.3 × 1.036) ≈ Φ(0.311) ≈ 0.622
 ```
 
-So the other EFs are nudged to approximately their 62nd percentile, not their 50th. With ρ = 0 they would stay at their 50th percentile on average. With ρ = 0.9 they would be at their 83rd percentile — nearly as extreme as Ym_pct itself.
+So the other energy-block coefficients are nudged to approximately their 62nd percentile, not their 50th. Manure-CH₄ and Manure-N coefficients are unaffected — cross-block correlation is zero.
 
 ---
 

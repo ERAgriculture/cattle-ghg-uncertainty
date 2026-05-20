@@ -161,7 +161,7 @@ PARAM_CATALOGUE <- data.frame(
     "Fraction of N volatilised from dung/urine on pasture (IPCC Vol.4 Ch.11 Table 11.3, FracGASM). 2019R = 0.21 (range 0.00-0.31); 2006 = 0.20.",
     "Fraction of N leached from pasture deposition (IPCC Vol.4 Ch.11 Table 11.3, FracLEACH-(H), wet climates only). 2019R = 0.24 (range 0.01-0.73); 2006 = 0.30; in dry climates = 0.",
     "Protein content of milk — feeds the milk-N term in IPCC Vol.4 Ch.10 Eq 10.33 (N retention for cattle, where the 6.38 milk-protein-to-N conversion is defined)",
-    "Mean daily temperature in winter (°C) — Cfi cold-climate adjustment described in IPCC Vol.4 Ch.10 alongside Eq 10.3. Leave blank or set 20 to disable adjustment"),
+    "Mean daily temperature in winter (°C) — Cfi cold-climate adjustment per IPCC Vol.4 Ch.10 Eq 10.2 (modifies the Cfi from Eq 10.3). Leave blank or set 20 to disable adjustment"),
   unit = c(
     "head","kg","kg","kg/day","kg/head/day","%","fraction (0-1)","%",
     "MJ/day/kg^0.75","dimensionless","dimensionless","dimensionless",
@@ -177,10 +177,11 @@ PARAM_CATALOGUE <- data.frame(
   #   EF4         : 0.010 aggregated 2019R (wet=0.014, dry=0.005); 2006 = 0.010
   #   EF5         : 0.011 (2019R); 2006 = 0.0075
   #   FracLEACH_PRP: 0.24 (2019R wet); 2006 = 0.30; dry = 0
+  # Bo: 0.13 = 2019R Vol.4 Ch.10 Table 10.16(a) "Other regions, low productivity" cattle (2006 Africa = 0.10).
   ipcc_default = c(
     NA, 275, 300, 0.0, 4.0, 4.0, 0.60, 55.0,
     0.386, 0.17, 0.8, 0.10, 0.0, 10.0,
-    6.5, 0.10, 0.08, 0.04,
+    6.5, 0.13, 0.08, 0.04,
     0.004, 0.005, 0.21, 0.010, 0.011, 0.02,
     0.21, 0.24,
     3.3, 20),
@@ -252,15 +253,16 @@ PARAM_CATALOGUE <- data.frame(
   # IPCC alignment audit (2026-05): corrected references —
   #   Frac_LEACH_H is the MS-side leaching fraction → 2019R Table 10.23,
   #     not 10.22 (which is volatilisation).
-  #   Tw cold-climate adjustment is the modifier of Eq 10.3, not "Eq 10.2"
-  #     (no Eq 10.2 exists in Vol.4 Ch.10).
+  #   Tw cold-climate adjustment is Vol.4 Ch.10 Eq 10.2 (confirmed in both
+  #     2006 and 2019R Vol.4 Ch.10 — it's the formal numbered equation for
+  #     Cfi(in_cold) = Cfi + 0.0048 * (20 - Tw); modifies Eq 10.3).
   ipcc_ref = c(
     "","Table 10A.2","Table 10A.2","Table 10A.1","","","","Eq 10.14--16",
     "Table 10.4","Table 10.5","Eq 10.6","Table 10.7","Eq 10.11","Eq 10.32",
     "Table 10.12","Table 10.16","Eq 10.24","Eq 10.24",
     "Ch.11 Table 11.1","Table 10.21","Table 10.22","Ch.11 Table 11.3","Ch.11 Table 11.3","Table 10.23",
     "Ch.11 Table 11.3","Ch.11 Table 11.3",
-    "Eq 10.33","Eq 10.3 (cold-climate modifier)"),
+    "Eq 10.33","Eq 10.2"),
   # T1.3: IPCC Inventory Software variable names (from screenshots provided by Andreas, May 2026).
   # Surfacing these here means inventory teams can match our column to the IPCC
   # software's terminology one-to-one when transposing data between tools.
@@ -691,7 +693,7 @@ generate_template_openxlsx <- function(filepath, include_example,
   # Example values mirror the PARAM_CATALOGUE order; keep lengths == nrow(PARAM_CATALOGUE).
   ex_values <- c(500000, 275, 300, 0.10, 4, 4, 0.60, 55,
                  0.386, 0.17, 0.8, 0.10, 0, 10,
-                 6.5, 0.10, 0.08, 0.04,
+                 6.5, 0.13, 0.08, 0.04,   # Ym, Bo (2019R "Other regions" cattle), ASH, UE
                  # IPCC alignment audit (2026-05): verified against
                  # Vol.4 Ch.11 Tables 11.1 / 11.3.
                  #   EF3_PRP,CPP aggregated 2019R = 0.004 (2006 = 0.02)
@@ -1395,7 +1397,7 @@ generate_template_openxlsx <- function(filepath, include_example,
 generate_template_basic <- function(filepath, include_example) {
   ex_values <- c(500000, 275, 300, 0.10, 4, 4, 0.60, 55,
                  0.386, 0.17, 0.8, 0.10, 0, 10,
-                 6.5, 0.10, 0.08, 0.04,
+                 6.5, 0.13, 0.08, 0.04,   # Ym, Bo (2019R "Other regions" cattle), ASH, UE
                  0.02, 0.005, 0.20, 0.010, 0.0075, 0.02,
                  0.21, 0.30,
                  3.3, 20)

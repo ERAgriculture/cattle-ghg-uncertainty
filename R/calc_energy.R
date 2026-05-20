@@ -2,17 +2,17 @@
 # Source: IPCC 2006 Guidelines, Volume 4, Chapter 10
 
 # Net Energy for Maintenance (Eq 10.3) - MJ/head/day
-# E1: Tw cold-climate adjustment described in IPCC 2006 Vol.4 Ch.10 alongside
-# Eq 10.3 (and retained in the 2019 Refinement). No separate equation number
-# is assigned; the IPCC Inventory Software v2.95 implements the same formula.
-# Cfi(in_cold) = Cfi + 0.0048 * (20 - Tw) when Tw < 20°C; otherwise no adjustment.
+# E1: Tw cold-climate adjustment is IPCC Vol.4 Ch.10 Eq 10.2 (2006 and 2019R),
+# which adjusts the Cfi from Eq 10.3 for open-lot cattle in colder climates:
+#   Cfi(in_cold) = Cfi + 0.0048 * (20 - Tw)   when Tw < 20°C
+# The same formula is implemented in the IPCC Inventory Software v2.95.
 # Andreas 2026-05 audit follow-up: warn on extreme Tw values which would
 # inflate Cfi by >50%. The linear adjustment is validated for roughly
 # -50°C ≤ Tw < 20°C; outside that range it isn't validated.
 calc_nem <- function(live_weight, Cfi, Tw = 20) {
   if (!is.na(Tw) && Tw < -50)
     warning("Tw = ", Tw, "°C is extremely cold; cold-climate Cfi adjustment ",
-            "(IPCC Vol.4 Ch.10 modifier of Eq 10.3) is only validated for Tw >= -50°C.")
+            "(IPCC Vol.4 Ch.10 Eq 10.2) is only validated for Tw >= -50°C.")
   Cfi_adj <- if (!is.na(Tw) && Tw < 20) Cfi + 0.0048 * (20 - Tw) else Cfi
   Cfi_adj * (live_weight ^ 0.75)
 }

@@ -737,8 +737,7 @@ app_ui <- function() {
                            )
                          ),
                          choices = c("No EF correlations (default)" = "none",
-                                     "Block-structured EF correlation" = "block",
-                                     "Uniform EF correlation (legacy)" = "uniform")),
+                                     "Block-structured EF correlation" = "block")),
             div(class = "small text-muted",
                 style = "margin-top:-4px; margin-bottom:8px; font-size:0.82rem; line-height:1.45;",
                 tags$ul(style = "padding-left:18px; margin:0;",
@@ -748,11 +747,7 @@ app_ui <- function() {
                   tags$li(tags$strong("Block-structured EF correlation"),
                           " — pick this when coefficients within the same measurement literature share bias ",
                           "(e.g. all rumen-fermentation coefficients from one regional database) but the three literatures ",
-                          "are independent of one another."),
-                  tags$li(tags$strong("Uniform EF correlation (legacy)"),
-                          " — ", tags$em("not recommended."),
-                          " Implies a single bias affects all coefficients despite coming from three unrelated literatures. ",
-                          "Retained only for back-compat with earlier runs.")
+                          "are independent of one another.")
                 )),
             conditionalPanel(
               condition = "input.ef_corr_mode == 'block'",
@@ -806,23 +801,6 @@ app_ui <- function() {
                   "These sliders only matter when you want to capture systematic measurement bias ",
                   tags$em("within"), " one literature. Cross-block correlation is always zero — ",
                   "the three coefficient groups come from independent measurement programmes.")
-            ),
-            conditionalPanel(
-              condition = "input.ef_corr_mode == 'uniform'",
-              sliderInput("ef_corr_rho",
-                          label = tagList(
-                            "Uniform correlation coefficient (ρ) — legacy ",
-                            bslib::tooltip(
-                              span(icon("circle-question"),
-                                   style = "color:#2D6A4F; cursor:help; vertical-align:middle;"),
-                              "Legacy single-ρ across all coefficients. Not recommended because it implies the same bias affects rumen-fermentation, BMP, and NH₃ volatilisation studies simultaneously. Use the block-structured option above instead.",
-                              placement = "right"
-                            )
-                          ),
-                          min = 0.0, max = 0.9, value = 0.3, step = 0.05),
-              div(style = "font-size:0.82rem; color:#92400E; background:#FEF3C7; padding:8px 10px; border-radius:6px; margin-top:4px;",
-                  icon("exclamation-triangle"),
-                  " Applying a single ρ to all coefficients implies shared bias across three independent literatures (rumen studies, BMP, NH₃ volatilisation). The block-structured option is recommended.")
             ),
             plotly::plotlyOutput("ef_corr_heatmap", height = "350px")
           )

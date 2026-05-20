@@ -115,8 +115,8 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     MilkPR         = get_param_alt("MilkPR", "protein_milk", 3.3),
     gwp = gwp,
     # Andreas 2026-05 follow-up: Tw (mean winter temperature for the IPCC
-    # Vol.4 Ch.10 cold-climate Cfi adjustment — the modifier of Eq 10.3,
-    # not a separate equation) is now sourced exclusively from
+    # Vol.4 Ch.10 Eq 10.2 cold-climate Cfi adjustment, which modifies the
+    # Cfi from Eq 10.3) is now sourced exclusively from
     # the Parameters template via the sampled values. Default 20°C makes
     # the adjustment inert (matches the IPCC formula's neutral baseline).
     # The old global Tw argument was retained as a fallback only.

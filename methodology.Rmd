@@ -23,6 +23,7 @@ header-includes:
   - \usepackage{hyperref}
   - \usepackage{setspace}
   - \usepackage{caption}
+  - \usepackage{pdflscape}
   - \definecolor{cgiargreen}{RGB}{45,106,79}
   - \definecolor{lightgreen}{RGB}{216,243,220}
   - \definecolor{darkgrey}{RGB}{60,60,60}
@@ -86,51 +87,57 @@ The tool implements **Tier 2** methods for enteric fermentation (country-specifi
 
 All parameters are entered via an Excel template (one row per parameter per cattle sub-category) and loaded into the tool. Each parameter requires a central value, an uncertainty specification (distribution type and bounds or percentage), and optional metadata (data source quality, IPCC reference).
 
-Table \ref{tab:params} lists all parameters used in the calculation chain, their units, the IPCC equation in which they appear, and the probability distribution typically applied in uncertainty analysis.
+Table \ref{tab:params} lists all parameters used in the calculation chain, their units, the IPCC equation in which they appear, the default value pre-loaded in the tool (sourced from the IPCC Guidelines), and the probability distribution typically applied in uncertainty analysis. Where the 2006 Guidelines and the 2019 Refinement give different defaults, both are shown.
 
-\begin{longtable}{p{3.2cm} p{4.5cm} p{1.5cm} p{2cm} p{2.2cm}}
-\caption{Input parameters for the IPCC Tier 2 cattle GHG calculation chain.\label{tab:params}} \\
+\begin{landscape}
+\small
+\setlength{\LTcapwidth}{\linewidth}
+\begin{longtable}{p{2.2cm} p{4.0cm} p{1.6cm} p{1.5cm} p{4.5cm} p{2.6cm}}
+\caption{Input parameters for the IPCC Tier 2 cattle GHG calculation chain — including IPCC defaults and source citations.\label{tab:params}} \\
 \toprule
-\textbf{Variable} & \textbf{Definition} & \textbf{Unit} & \textbf{IPCC Eq.} & \textbf{Typical dist.} \\
+\textbf{Variable} & \textbf{Definition} & \textbf{Unit} & \textbf{IPCC default} & \textbf{IPCC reference (equation / table)} & \textbf{Typical dist.} \\
 \midrule
 \endfirsthead
-\multicolumn{5}{l}{\small\textit{Table \ref{tab:params} continued}} \\
+\multicolumn{6}{l}{\small\textit{Table \ref{tab:params} continued}} \\
 \toprule
-\textbf{Variable} & \textbf{Definition} & \textbf{Unit} & \textbf{IPCC Eq.} & \textbf{Typical dist.} \\
+\textbf{Variable} & \textbf{Definition} & \textbf{Unit} & \textbf{IPCC default} & \textbf{IPCC reference (equation / table)} & \textbf{Typical dist.} \\
 \midrule
 \endhead
 \midrule
-\multicolumn{5}{r}{\small\textit{Continued on next page}} \\
+\multicolumn{6}{r}{\small\textit{Continued on next page}} \\
 \endfoot
 \bottomrule
 \endlastfoot
-\texttt{N} & Number of animals (population) & head & 10.1 & Normal \\
-\texttt{BW} & Mean live body weight & kg/head & 10.3 & Normal \\
-\texttt{Cfi} & Coefficient for calculating NEM & MJ/kg$^{0.75}$/d & 10.3 & Constant \\
-\texttt{Tw} & Mean annual temperature & °C & 10.3 & Constant \\
-\texttt{Ca} & Coefficient for animal activity & — & 10.4 & Constant \\
-\texttt{WG} & Mean daily weight gain & kg/head/d & 10.6 & Normal \\
-\texttt{MW} & Mature body weight & kg/head & 10.6 & Normal \\
-\texttt{C} & Coefficient for sex/condition & — & 10.6 & Constant \\
-\texttt{Milk} & Daily milk yield & kg/head/d & 10.8 & Normal/Lognormal \\
-\texttt{MilkFat} & Milk fat content & \% & 10.8 & Normal \\
-\texttt{WorkHours} & Daily draft hours & h/head/d & 10.11 & Constant \\
-\texttt{Cp} & Coefficient for pregnancy & — & 10.13 & Constant \\
-\texttt{DE\_pct} & Digestible energy as \% of GE & \% & 10.14--16 & Normal \\
-\texttt{Ym} & Methane conversion factor & \% & 10.21 & Normal/PERT \\
-\texttt{MMS\_fractions} & Fraction of manure in each MMS & — & 10.23; T.10.A-9 & Uniform/Dirichlet \\
-\texttt{Bo} & Maximum methane producing capacity & m$^3$ CH$_4$/kg VS & 10.23; T.10.16 & Normal \\
-\texttt{MCF} & Methane conversion factor (MMS) & — & 10.23; T.10.17 & Normal/PERT \\
-\texttt{EF3} & Emission factor for N$_2$O (MMS) & kg N$_2$O-N/kg N & 10.25; T.10.21 & Lognormal/PERT \\
-\texttt{Frac\_GasMS} & Fraction N volatilised (MMS) & — & 10.26 & Normal \\
-\texttt{EF4} & EF for atmospheric deposition & kg N$_2$O-N/kg NH$_3$-N & 10.27; Ch.11 T.11.3 & PERT \\
-\texttt{Frac\_LeachMS} & Fraction N lost by leaching (MMS) & — & 10.28 & PERT \\
-\texttt{EF5} & EF for leaching/runoff & kg N$_2$O-N/kg N & 10.29; Ch.11 T.11.3 & PERT \\
-\texttt{Frac\_PRP} & Fraction of time on pasture & — & Ch.11 §11.2 & Uniform \\
-\texttt{EF3\_PRP} & EF for PRP N$_2$O & kg N$_2$O-N/kg N & Ch.11 Eq.11.1; T.11.1 & PERT \\
-\texttt{Frac\_GasPRP} & Fraction N volatilised (PRP) & — & Ch.11 Eq.11.9; T.11.3 & Normal \\
-\texttt{Frac\_LeachPRP} & Fraction N leached (PRP) & — & Ch.11 Eq.11.10; T.11.3 & PERT \\
+\texttt{N} & Number of animals (population) & head & \textit{n/a} & Eq.~10.1 (Tier 1 totals); national activity data & Normal \\
+\texttt{BW} & Mean live body weight & kg/head & 275 & Eq.~10.3; Annex 10A.2 (Africa cattle) & Normal \\
+\texttt{Cfi} & Coefficient for $NE_m$ & MJ/kg$^{0.75}$/d & 0.386 (lact.) / 0.322 (non-lact.) / 0.370 (bulls) & Eq.~10.3; Table 10.4 (Updated) & Constant \\
+\texttt{Tw} & Mean winter temperature & °C & 20 (inert) & Eq.~10.2 (cold-climate Cfi adjustment) & Constant \\
+\texttt{Ca} & Activity coefficient & — & 0.00 (stall) / 0.17 (pasture flat) / 0.36 (hilly) & Eq.~10.4; Table 10.5 (Updated) & Constant \\
+\texttt{WG} & Mean daily weight gain & kg/head/d & 0 (non-growing default) & Eq.~10.6 & Normal \\
+\texttt{MW} & Mature body weight & kg/head & 300 & Eq.~10.6; Annex 10A.2 & Normal \\
+\texttt{C} & Sex/condition coefficient for $NE_g$ & — & 0.8 (female) / 1.0 (castrate) / 1.2 (bull) & Eq.~10.6 & Constant \\
+\texttt{Milk} & Daily milk yield & kg/head/d & 4.0 (Africa) & Eq.~10.8; Annex 10A.1 / 10A.2 & Normal/Lognormal \\
+\texttt{MilkFat} & Milk fat content & \% & 4.0 & Eq.~10.8; Annex 10A.1 & Normal \\
+\texttt{pct\_calving} & Fraction of females calving / yr & — & 0.60 & 2019 Refinement Vol.4 Ch.10 §10.5 & Beta \\
+\texttt{MilkPR} & Milk protein content & \% & 3.3 & Eq.~10.33; Table 10.11 (Updated) — uses 6.38 conversion & Normal \\
+\texttt{WorkHours} & Daily draft hours & h/head/d & 0 (non-draft) & Eq.~10.11 & Constant \\
+\texttt{Cp} & Pregnancy coefficient & — & 0.10 (cattle) & Eq.~10.13; Table 10.7 (Updated) & Constant \\
+\texttt{DE\_pct} & Digestible energy (\% of GE) & \% & 55.0 (Africa) & Eq.~10.14--16; Annex 10A & Normal \\
+\texttt{Ym} & Methane conversion factor & \% & 6.5 (cattle on forage) & Eq.~10.21; Table 10.12 & Normal/PERT \\
+\texttt{MMS\_fractions} & Fraction of manure in each MMS & — & country-specific (Worksheet 10.A-9) & Eq.~10.23 & Uniform/Dirichlet \\
+\texttt{Bo} & Maximum CH$_4$ producing capacity & m$^3$ CH$_4$/kg VS & 0.13 (2019R ``Other regions, low productivity'' cattle); 2006 Africa = 0.10 & Eq.~10.23; Table 10.16(a) (Updated) & Normal \\
+\texttt{MCF} & Methane conversion factor (MMS) & — & per-MMS \& climate (e.g.\ 80\% lagoon tropical) & Eq.~10.23; Table 10.17 (Updated) & Normal/PERT \\
+\texttt{EF3} & Direct-N$_2$O EF (per MMS) & kg N$_2$O-N/kg N & per-MMS (e.g.\ 0.005 solid storage) & Eq.~10.25; Table 10.21 & Lognormal/PERT \\
+\texttt{Frac\_GasMS} & Fraction N volatilised (MMS) & — & per-MMS, e.g.\ 0.45 solid storage (2019R) & Eq.~10.26; Table 10.22 (Updated) & Normal \\
+\texttt{EF4} & EF for atmospheric deposition & kg N$_2$O-N/(kg NH$_3$-N+NO$_x$-N) & 0.010 aggregated 2019R (wet 0.014 / dry 0.005); 2006 = 0.010 & Eq.~10.27; Vol.4 Ch.11 Table 11.3 (Updated) & PERT \\
+\texttt{Frac\_LeachMS} & Fraction N leached (MMS) & — & per-MMS, e.g.\ 0.02 solid storage & Eq.~10.28; Table 10.23 (2019R) & PERT \\
+\texttt{EF5} & EF for leaching/runoff & kg N$_2$O-N/kg N & 0.011 (2019R); 2006 = 0.0075 & Eq.~10.29; Vol.4 Ch.11 Table 11.3 (Updated) & PERT \\
+\texttt{Frac\_PRP} & Fraction of time / N on pasture & — & country-specific & Vol.4 Ch.11 Eq.~11.5 ($MS_{(T,PRP)}$) & Uniform \\
+\texttt{EF3\_PRP} & Direct N$_2$O EF, pasture (cattle/poultry/pigs) & kg N$_2$O-N/kg N & 0.004 aggregated 2019R (wet 0.006 / dry 0.002); 2006 = 0.02 & Vol.4 Ch.11 Eq.~11.1; Table 11.1 (Updated) & PERT \\
+\texttt{Frac\_GasPRP} & Fraction N volatilised (PRP) & — & 0.21 (2019R FracGASM); 2006 = 0.20 & Vol.4 Ch.11 Eq.~11.9; Table 11.3 (Updated) & Normal \\
+\texttt{Frac\_LeachPRP} & Fraction N leached (PRP) & — & 0.24 (2019R wet); 2006 = 0.30; dry = 0 & Vol.4 Ch.11 Eq.~11.10; Table 11.3 (Updated) & PERT \\
 \end{longtable}
+\end{landscape}
 
 \newpage
 
@@ -144,7 +151,7 @@ The daily net energy requirement for maintenance ($NE_m$, MJ head$^{-1}$ day$^{-
 
 $$NE_m = C_{fi,\text{adj}} \times BW^{0.75}$$
 
-where $BW$ is the mean live body weight (kg head$^{-1}$) and $C_{fi}$ is a species/condition coefficient (MJ kg$^{-0.75}$ day$^{-1}$). For open-lot cattle in colder climates the 2006 Guidelines (Vol.4 Ch.10, text accompanying Eq. 10.3, and retained in the 2019 Refinement) prescribe a linear adjustment of $C_{fi}$ based on the mean daily winter temperature:
+where $BW$ is the mean live body weight (kg head$^{-1}$) and $C_{fi}$ is a species/condition coefficient (MJ kg$^{-0.75}$ day$^{-1}$). For open-lot cattle in colder climates the 2006 Guidelines (Vol.4 Ch.10, retained unchanged in the 2019 Refinement) prescribe a linear adjustment of $C_{fi}$ — IPCC Eq.~10.2, ``Coefficient for calculating net energy for maintenance'' — based on the mean daily winter temperature:
 
 $$C_{fi,\text{adj}} = C_{fi} + 0.0048 \times (20 - T_w) \quad \text{when } T_w < 20\text{°C}$$
 

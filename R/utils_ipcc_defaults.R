@@ -12,7 +12,14 @@ IPCC_DEFAULTS <- list(
   C_growth = list(female = 0.8, castrate = 1.0, bull = 1.2),
   pct_calving = 0.60, pct_pregnant_cows = 0.60, pct_pregnant_heifers = 0.20,
   milk_yield = 4.0, milk_fat = 4.0, Ym = 6.5, DE = 55.0,
-  Bo = 0.10, ASH = 0.08, UE = 0.04, CP = 10.0,
+  # IPCC alignment audit (2026-05): Bo updated 0.10 -> 0.13.
+  # 2019R Vol.4 Ch.10 Table 10.16(a) (Updated) gives Bo by region/productivity:
+  #   Dairy cattle:    0.24 (NA/W.Europe) / 0.24 (E.Europe) / 0.13 (Oceania,
+  #                    Other-regions low productivity)
+  #   Non-dairy cattle:0.19 / 0.18 / 0.17 / 0.17 / 0.18 / 0.13
+  # Africa maps to "Other regions, low productivity" -> 0.13.
+  # 2006 Africa cattle default was 0.10; we now follow 2019R.
+  Bo = 0.13, ASH = 0.08, UE = 0.04, CP = 10.0,
   # ----- IPCC alignment audit (2026-05) -----
   # Disambiguation: managed-storage (MS) vs pasture (PRP) N pathways are
   # different equations and pull from different IPCC tables.

@@ -808,34 +808,26 @@ app_server <- function(input, output, session) {
   })
 
   # EF correlation matrix — built from UI inputs whenever they change.
-  # 2026-05 audit follow-up: added the block-structured option (now default).
-  # Modes:
-  #   "none"    → NULL                          (independent EFs, IPCC default)
-  #   "block"   → make_block_corr(ef_names, …)  (within-literature correlations,
-  #                                              cross-block zero)
-  #   "uniform" → make_uniform_corr(n_ef, ρ)    (legacy single-ρ; kept for back-compat)
+  # 2026-05 audit follow-up: only two modes survive — "none" (IPCC default)
+  # and "block" (within-literature correlations, cross-block zero). The
+  # legacy "uniform" single-ρ option was removed because applying one ρ to
+  # 13 coefficients drawn from three unrelated measurement literatures
+  # (rumen fermentation / BMP-lagoon / NH₃ volatilisation) is statistically
+  # indefensible. make_uniform_corr() in mc_sampling.R is kept as an
+  # exported helper in case it is needed programmatically, but the UI no
+  # longer offers it.
   ef_corr_reactive <- reactive({
     req(rv$param_specs)
-    mode <- input$ef_corr_mode
-    if (is.null(mode) || mode == "none") return(NULL)
+    if (!isTRUE(input$ef_corr_mode == "block")) return(NULL)
     ef_params <- rv$param_specs[rv$param_specs$param_type == "coefficient", ]
-    n_ef <- nrow(ef_params)
-    if (n_ef < 2) return(NULL)
-    nms <- ef_params$parameter
-    if (mode == "block") {
-      rho_by_block <- list(
-        energy   = input$ef_rho_energy   %||% 0,
-        manureCH = input$ef_rho_manureCH %||% 0,
-        manureN  = input$ef_rho_manureN  %||% 0
-      )
-      if (all(unlist(rho_by_block) == 0)) return(NULL)  # nothing to apply
-      mat <- make_block_corr(nms, rho_by_block)
-    } else {  # legacy uniform
-      rho <- if (!is.null(input$ef_corr_rho)) input$ef_corr_rho else 0.3
-      mat <- make_uniform_corr(n_ef, rho)
-      rownames(mat) <- colnames(mat) <- nms
-    }
-    mat
+    if (nrow(ef_params) < 2) return(NULL)
+    rho_by_block <- list(
+      energy   = input$ef_rho_energy   %||% 0,
+      manureCH = input$ef_rho_manureCH %||% 0,
+      manureN  = input$ef_rho_manureN  %||% 0
+    )
+    if (all(unlist(rho_by_block) == 0)) return(NULL)  # nothing to apply
+    make_block_corr(ef_params$parameter, rho_by_block)
   })
 
   observe({
@@ -863,14 +855,10 @@ app_server <- function(input, output, session) {
         plotly::layout(title = "No EF correlation (independent sampling)",
                        xaxis = list(visible = FALSE), yaxis = list(visible = FALSE))
     } else {
-      title_str <- if (isTRUE(input$ef_corr_mode == "block")) {
-        sprintf("EF Correlation Matrix — block (energy=%.2f, manureCH=%.2f, manureN=%.2f)",
-                input$ef_rho_energy   %||% 0,
-                input$ef_rho_manureCH %||% 0,
-                input$ef_rho_manureN  %||% 0)
-      } else {
-        sprintf("EF Correlation Matrix (uniform rho = %.2f)", input$ef_corr_rho %||% 0)
-      }
+      title_str <- sprintf("EF Correlation Matrix — block (energy=%.2f, manureCH=%.2f, manureN=%.2f)",
+                           input$ef_rho_energy   %||% 0,
+                           input$ef_rho_manureCH %||% 0,
+                           input$ef_rho_manureN  %||% 0)
       plotly::plot_ly(z = mat, type = "heatmap",
                       x = colnames(mat), y = rownames(mat),
                       colorscale = list(c(0, "#FFFFFF"), c(1, "#2D6A4F")),
@@ -952,16 +940,11 @@ app_server <- function(input, output, session) {
     rv$sim_log <- paste0(rv$sim_log, "Iterations: ", n_iter_val, "\n")
     rv$sim_log <- paste0(rv$sim_log, "GWP: ", input$gwp_version, "\n")
     if (!is.null(rv$ef_corr_matrix)) {
-      if (isTRUE(input$ef_corr_mode == "block")) {
-        rv$sim_log <- paste0(rv$sim_log,
-          sprintf("EF correlation: block-structured (energy=%.2f, manureCH=%.2f, manureN=%.2f)\n",
-                  input$ef_rho_energy   %||% 0,
-                  input$ef_rho_manureCH %||% 0,
-                  input$ef_rho_manureN  %||% 0))
-      } else {
-        rho_val <- if (!is.null(input$ef_corr_rho)) input$ef_corr_rho else "?"
-        rv$sim_log <- paste0(rv$sim_log, "EF correlation: uniform rho = ", rho_val, " (legacy)\n")
-      }
+      rv$sim_log <- paste0(rv$sim_log,
+        sprintf("EF correlation: block-structured (energy=%.2f, manureCH=%.2f, manureN=%.2f)\n",
+                input$ef_rho_energy   %||% 0,
+                input$ef_rho_manureCH %||% 0,
+                input$ef_rho_manureN  %||% 0))
     } else {
       rv$sim_log <- paste0(rv$sim_log, "EF correlation: none (independent)\n")
     }
