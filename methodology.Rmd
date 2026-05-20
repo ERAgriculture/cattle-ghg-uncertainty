@@ -5,7 +5,7 @@ author: "CIAT / CGIAR Alliance — ClimateActionNetZero"
 date: "May 2026"
 output:
   pdf_document:
-    toc: true
+    toc: false
     toc_depth: 3
     number_sections: true
     latex_engine: pdflatex
@@ -53,6 +53,11 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 \textcolor{darkgrey}{Developed under the Global Methane Hub initiative}\\[4pt]
 \textcolor{cgiargreen}{\rule{14cm}{1.5pt}}
 \end{center}
+
+\newpage
+
+\renewcommand{\contentsname}{\textcolor{cgiargreen}{Contents}}
+\tableofcontents
 
 \newpage
 
@@ -328,15 +333,18 @@ This tool implements Approach 2. The simulation samples all input parameters sim
 Each parameter is assigned a probability distribution reflecting the state of knowledge about its true value. The tool supports:
 
 \begin{center}
-\begin{tabular}{p{2.8cm} p{4.5cm} p{4.5cm}}
+\begin{tabular}{p{2.8cm} p{4.5cm} p{6.5cm}}
 \toprule
 \textbf{Distribution} & \textbf{Parameterisation} & \textbf{Typical use} \\
 \midrule
 Normal & mean $\mu$, SD $\sigma$ & Body weight, milk yield, population counts with symmetric survey error \\[4pt]
-Lognormal & log-mean, log-SD (fitted from mean and CV\%) & Skewed parameters where negative values are impossible; milk yield in heterogeneous herds \\[4pt]
-PERT & minimum, most-likely, maximum & Emission factors with expert-elicited bounds; EF3\_PRP, EF4, EF5 \\[4pt]
-Uniform & lower, upper & Parameters with only plausible range known; MMS fractions \\[4pt]
-Triangular & minimum, most-likely, maximum & Similar to PERT but with sharper tails \\[4pt]
+Positive-Normal & Normal truncated at zero & Non-negative symmetric parameters where negative draws are implausible \\[4pt]
+Lognormal & log-mean, log-SD (fitted from mean and CV\%) & Strictly positive, right-skewed; milk yield in heterogeneous herds; some EFs \\[4pt]
+Beta & rescaled $\text{Beta}(\alpha,\beta)$ matching the supplied mean and bounds & Fractions in $[0,1]$ with mode strictly in the interior; pct\_calving, Cp \\[4pt]
+Truncated-Normal {[}0,1{]} & Normal clipped to $[0,1]$ & Fractions in $[0,1]$ when a symmetric error around the mean is appropriate \\[4pt]
+PERT & minimum, most-likely, maximum & Emission factors with expert-elicited bounds; EF3\_PRP, EF4, EF5, Bo, MCF \\[4pt]
+Triangular & minimum, most-likely, maximum & Similar to PERT but with sharper tails; Ca, C\_growth \\[4pt]
+Uniform & lower, upper & Parameters with only the plausible range known; MMS fractions \\[4pt]
 Constant & fixed value & Parameters treated as known exactly (uncertainty\_pct = 0) \\
 \bottomrule
 \end{tabular}
@@ -495,11 +503,18 @@ The tornado chart displays the top parameters ranked by $|\text{SRC}|$ or $|\tex
 
 ## Activity Data Correlations
 
-Correlations between activity data parameters (e.g. body weight and mature weight, milk yield and milk fat content) are specified via a user-supplied correlation matrix in the \texttt{AD\_Correlations} sheet of the uploaded template, or computed automatically from a multi-year time series (\texttt{Parameter\_TimeSeries} sheet) using Pearson product-moment correlation.
+Correlations between activity data parameters (e.g.\ body weight and mature weight, milk yield and milk fat content) are entered in the Tab~4 \emph{Activity-Data Correlations} card. Four modes are available:
+
+\begin{itemize}
+  \item \textbf{No correlations} (independence) — the default.
+  \item \textbf{Structural-defaults preset} — a small set of expert-elicited pairs drawn from the IPCC equation structure (see Section~``Structural-Defaults Preset'' below).
+  \item \textbf{From template (auto, time-series)} — the matrix is computed automatically from the \texttt{Parameter\_TimeSeries} sheet of the upload using \textbf{Spearman rank correlation} after detrending (first differences by default; linear and raw alternatives available). Spearman is preferred over Pearson because (i) it is robust to skewed marginals (Ym, Bo, milk yield), (ii) it matches the Iman--Conover sampler the tool uses to reproduce the correlation, and (iii) it is the natural choice when the user wants the \emph{rank} dependence preserved rather than a linear product-moment relationship that can be distorted by outliers.
+  \item \textbf{Manual entry} — the user uploads a square symmetric CSV.
+\end{itemize}
 
 ## Emission Factor Correlations
 
-Emission factors that are structurally linked (e.g. EF4 is applied to volatilised N, which is also affected by Frac\_GasMS) can be assigned correlations via the \texttt{EF\_Correlations} sheet.
+Emission factors that are structurally linked (e.g.\ EF4 is applied to volatilised N, whose magnitude is itself driven by Frac\_GasMS) can be assigned correlations in the Tab~4 \emph{Coefficient Correlations} card. The same four modes are offered; ``no correlations'' is the default. The EF block always uses the Gaussian copula sampler, even when the AD block uses Iman--Conover.
 
 ## Structural-Defaults Preset (Expert-Elicited)
 
@@ -527,13 +542,23 @@ The time-series matrix itself is computed as a \textbf{Spearman} rank correlatio
 
 # Validation and Quality Assurance
 
-The tool includes a QA/QC module that checks loaded parameter data for the following conditions before simulation:
+The tool includes a QA/QC module (\texttt{R/utils\_qaqc.R}) that runs a series of checks against the loaded parameter data before simulation. Each check returns one of five statuses:
 
-- **Error** — simulation cannot proceed: negative population counts; $DE_\% \leq 0$; missing required parameters; probability bounds that produce undefined distributions.
-- **Warning** — simulation proceeds but results should be checked: implausible parameter values (e.g. $BW > 1500$ kg or $BW < 50$ kg for cattle); $Y_m > 12\%$ (above IPCC upper limit); MMS fractions not summing to 1.0.
-- **Info** — advisory only: parameters auto-filled from IPCC defaults because no country-specific value was supplied.
+\begin{center}
+\begin{tabular}{p{1.8cm} p{4.0cm} p{8.0cm}}
+\toprule
+\textbf{Status} & \textbf{Trigger} & \textbf{What the user sees} \\
+\midrule
+\textbf{Pass}    & Value is within $\pm$50\% of the IPCC default for that parameter, and all structural checks pass. & Green tick; no action needed. \\[4pt]
+\textbf{Warn}    & Value deviates 50--200\% from the IPCC default; or implausible bounds ($BW > 1500$ kg, $Y_m > 12\%$); or a fractional parameter is using an unbounded distribution. & Amber row; the message either suggests a fix or asks the user to document the country-specific deviation. \\[4pt]
+\textbf{Fail}    & Value deviates more than 200\% from the IPCC default; or $DE_\% \leq 0$ or $\geq 100$; or $lower > upper$; or an MMS fraction-sum is more than 1\% off 100\%; or a Beta is configured with mean outside $(0,1)$. & Red row; simulation will still run but the result will be flagged in the report. \\[4pt]
+\textbf{Missing} & A core parameter was not supplied in the upload; auto-filled with the IPCC default. & Grey row; the message names the IPCC table or equation used and, for context-dependent parameters (EF3\_PRP, EF4, Frac\_LeachPRP, Bo, MCF, Ym, Cfi, Ca), appends an explicit hint of which alternative IPCC table row should be reviewed for the inventory's climate / production system / animal class. \\[4pt]
+\textbf{Info}    & Reserved for future advisory messages. & Blue row. \\
+\bottomrule
+\end{tabular}
+\end{center}
 
-Auto-filled parameters are displayed in an **Auto-filled parameters** panel in Tab 1 immediately after data upload. These should be reviewed and replaced with country-specific values wherever possible, as they directly affect emission estimates and their uncertainty.
+The benchmark comparison (Pass / Warn / Fail thresholds) is anchored on the \texttt{ipcc\_default} column of \texttt{PARAM\_CATALOGUE}, which is sourced from Vol.4 Ch.10 (Tables 10.4, 10.5, 10.7, 10.11, 10.12, 10.16(a), 10.17, 10.21, 10.22, 10.23) and Vol.4 Ch.11 (Tables 11.1, 11.3). Auto-filled parameters are listed in a banner on Tab~1 immediately after data upload; they should be replaced with country-specific values wherever possible, because both the central estimate and the propagated uncertainty depend on them.
 
 \newpage
 
@@ -552,7 +577,15 @@ Auto-filled parameters are displayed in an **Auto-filled parameters** panel in T
 
 \vspace{6pt}
 \hangindent=1.5em
-\noindent IPCC (2019). 2019 Refinement to the 2006 IPCC Guidelines for National Greenhouse Gas Inventories. Volume 4: Agriculture, Forestry and Other Land Use. Calvo Buendia, E., Tanabe, K., Kranjc, A., et al. (Eds). IPCC, Switzerland.
+\noindent IPCC (2019). 2019 Refinement to the 2006 IPCC Guidelines for National Greenhouse Gas Inventories. Volume 4: Agriculture, Forestry and Other Land Use, Chapter 10 (Emissions from Livestock and Manure Management) and Chapter 11 (N$_2$O Emissions from Managed Soils, and CO$_2$ Emissions from Lime and Urea Application). Calvo Buendia, E., Tanabe, K., Kranjc, A., et al. (Eds). IPCC, Switzerland.
+
+\vspace{6pt}
+\hangindent=1.5em
+\noindent IPCC (2019). 2019 Refinement to the 2006 IPCC Guidelines for National Greenhouse Gas Inventories. Volume 1: General Guidance and Reporting, Chapter 3: Uncertainties. IPCC, Switzerland.
+
+\vspace{6pt}
+\hangindent=1.5em
+\noindent Iman, R.L., and Conover, W.J. (1982). A distribution-free approach to inducing rank correlation among input variables. *Communications in Statistics — Simulation and Computation*, 11(3), 311--334. (The restricted-pairing algorithm explicitly cited in IPCC 2006 Vol.1 Ch.3 §3.2.3.2 and used by this tool whenever a Spearman correlation matrix is estimated from a time series.)
 
 \vspace{6pt}
 \hangindent=1.5em
@@ -580,7 +613,22 @@ Auto-filled parameters are displayed in an **Auto-filled parameters** panel in T
 
 \vspace{6pt}
 \hangindent=1.5em
-\noindent IPCC (2021). Climate Change 2021: The Physical Science Basis. Contribution of Working Group I to the Sixth Assessment Report. Table 7.SM.7: GWP values. Cambridge University Press.
+\noindent IPCC (2021). Climate Change 2021: The Physical Science Basis. Contribution of Working Group I to the Sixth Assessment Report (AR6), Chapter 7 Table 7.15 and Table 7.SM.7: 100-year GWP values for CH$_4$ (non-fossil) and N$_2$O. Cambridge University Press.
+
+\vspace{12pt}
+\textbf{R packages used by the simulation engine.}
+
+\vspace{4pt}
+\hangindent=1.5em
+\noindent Venables, W.N., and Ripley, B.D. (2002). \emph{Modern Applied Statistics with S} (4th ed.). Springer. (\texttt{MASS::mvrnorm} — multivariate-normal draws used by the Gaussian copula sampler.)
+
+\vspace{6pt}
+\hangindent=1.5em
+\noindent Bates, D., and Maechler, M. (2024). \emph{Matrix}: Sparse and Dense Matrix Classes and Methods. R package. (\texttt{Matrix::nearPD} — projection to the nearest positive-definite correlation matrix when a user-supplied $\boldsymbol{\Sigma}$ is not positive-definite.)
+
+\vspace{6pt}
+\hangindent=1.5em
+\noindent Pouillot, R., and Delignette-Muller, M.L. (2010). Evaluating variability and uncertainty separately in microbial quantitative risk assessment using two R packages. \emph{International Journal of Food Microbiology}, 142(3), 330--340. (\texttt{mc2d} — provides \texttt{cornode} for Iman--Conover restricted pairing, and \texttt{rtriang} / \texttt{rpert} for triangular and PERT marginals.)
 
 ---
 
