@@ -45,44 +45,73 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 # A free AI assistant for translating your data into the app template
 
-Filling the app's input template by hand can take several hours when your raw data isn't already in the right shape. The **GMH Uncertainty Translator** is a free Claude.ai assistant — loaded with the IPCC parameter catalogue, the template schema, and a library of mapping examples — that turns your own Excel or CSV files into a ready-to-upload template in roughly **10 minutes**. No installation, no payment.
+Filling the app's input template by hand can take several hours when your raw data isn't already in the right shape. The **GMH Uncertainty Translator** is a free, AI-powered helper — built on top of Claude.ai — that turns your own Excel or CSV files into a ready-to-upload template in roughly **10 minutes**. No installation, no payment, and you keep full control of your own data inside your own Claude account.
+
+This guide shows you how to set up your personal copy of the Translator. The whole process takes about 2 minutes the first time; after that, every new inventory is a fresh chat in the same Project you've already built.
 
 ## Before you start
 
 You will need:
 
-1. Your raw inventory data file(s) — Excel, CSV, or even a PDF / screenshot of a table.
-2. The filled **Pre-flight Questionnaire** (downloaded from the app's Resources tab).
-3. About 10 minutes.
+1. The **Translator kit (`translator_kit.zip`)** downloaded from the Cattle Uncertainty App's Resources tab. Unzip it anywhere — you'll see a `README.txt`, a `system_instructions.md` file, four knowledge files (`param_catalogue.md`, `template_schema.md`, `mapping_examples.md`, `questionnaire.md`), the **questionnaire** as a fillable Word document (`questionnaire.docx`), and a copy of this Getting Started guide.
+2. Your raw inventory data file(s) — Excel, CSV, or even a PDF / screenshot of a table.
+3. About 10 minutes (counting the 2 minutes of one-time setup).
 
 ## What the questionnaire is — and what your data file is
 
 The Translator chat has **two distinct inputs** that you must not confuse:
 
-- The **pre-flight questionnaire** is a one-page form (`.docx`) that you download, fill out, and then **copy-paste as text** into the chat box. It tells Claude about your inventory (country, year, sub-categories, manure systems, data fields, etc.) in one go, so the conversation can skip past warm-up questions and go straight to your data.
+- The **pre-flight questionnaire** is a one-page form (`questionnaire.docx`) that you download, fill out, and then **copy-paste as text** into the chat box. It tells Claude about your inventory (country, year, sub-categories, manure systems, data fields, etc.) in one go, so the conversation can skip past warm-up questions and go straight to your data.
 - Your **raw data file(s)** are what you **attach** to the chat using the paperclip icon. These are the actual numbers (population, body weight, milk yield, ...) that Claude maps into the template.
 
 In short: questionnaire = text you paste, data = file you attach.
 
-## Step-by-step
+## One-time setup: build your own Translator (~2 minutes)
 
-### 1. Open claude.ai and sign in (free)
+### 1. Sign up for a free Claude.ai account
 
-Go to **[claude.ai](https://claude.ai)** and click *Sign up* if you don't already have an account. The free tier is enough for this task. You can sign in with Google, email, or Apple — no payment details required.
+Go to **[claude.ai](https://claude.ai)** and click *Sign up*. The free tier is enough for this task. You can sign in with Google, email, or Apple — no payment details required.
 
-### 2. Open the Translator Project
+### 2. Create a new Project
 
-Click the shared link: **[GMH Uncertainty Translator](https://claude.ai/project/019e4594-d13d-761e-a6fb-71e242eb9804)**
+In the left sidebar of claude.ai, click **Projects** and then **Create project**. Name it whatever you like (e.g. *GMH Uncertainty Translator*) and add a short description. Click *Create*.
 
-You'll land in a chat window pre-loaded with the parameter catalogue, template schema, and mapping examples. Claude already knows everything it needs to translate your data.
+### 3. Paste the system instructions
+
+Open `system_instructions.md` from the kit in any text editor (Notepad, TextEdit, Word, ...). Select everything (Ctrl+A), copy (Ctrl+C). In your new Project page, find the **Instructions** field (top right) and click *Edit*. Paste (Ctrl+V) the contents into the field. Save.
+
+This is what teaches Claude how to behave as the Translator — it lays out the workflow, the IPCC rules, and the output format.
+
+### 4. Upload the four knowledge files
+
+Below the Instructions field there's a **Files** panel. Drag and drop these four files from the kit into it:
+
+- `param_catalogue.md` — the 27 IPCC-aligned parameters with codes, units, defaults
+- `template_schema.md` — the exact workbook layout and validation rules
+- `mapping_examples.md` — worked examples of "raw column → template field"
+- `questionnaire.md` — so Claude knows what the questionnaire looks like
+
+These are the reference materials Claude consults every time you chat with the Translator.
+
+### 5. You're set up
+
+That's the one-time setup done. Every inventory you translate from now on is just *open the Project, start a new chat*.
+
+## Using the Translator (per inventory)
+
+### 1. Fill the pre-flight questionnaire
+
+Open `questionnaire.docx` from the kit, type your answers directly into the form (country, year, sub-categories with head counts, manure systems with percentages, which data fields you have, where your uncertainty estimates come from). About 2 minutes.
+
+### 2. Start a new chat in your Project
+
+Open your Translator Project on claude.ai and click *Start a chat*.
 
 ### 3. Paste the filled questionnaire as your first message
 
-**This is text you paste, not a file you upload.** Open your filled `questionnaire.docx`, select everything (Ctrl+A), copy (Ctrl+C), and paste (Ctrl+V) into the chat box at the bottom of the Translator window. Click send.
+**This is text you paste, not a file you upload.** Select everything in your filled `questionnaire.docx`, copy, and paste into the chat box at the bottom of the window. Click send.
 
-Claude reads the whole questionnaire, briefly summarises back what it understood about your inventory (country, year, sub-categories, MMS systems, etc.), and then asks you to attach your raw data file(s).
-
-*Why a questionnaire? Without it, Claude has to ask you six warm-up questions one-by-one before it can do anything useful. The questionnaire gives Claude all those answers up front, so the conversation can go straight to inspecting your data.*
+Claude reads the whole questionnaire, briefly summarises back what it understood about your inventory, and then asks you to attach your raw data file(s).
 
 ### 4. Upload your raw data file(s)
 
@@ -118,6 +147,7 @@ You are now ready to run the uncertainty simulation.
 - **Tell Claude when something is wrong.** If a unit conversion looks off, just say *"wait — that should be 275 kg, not 599 kg"* and Claude will fix it.
 - **Ask Claude to explain.** *"Why did you set Ym = 6.5?"* is a fine question — it will cite the IPCC table.
 - **Don't worry about advanced parameters.** The 16 IPCC coefficients (`Cfi`, `Ca`, `Ym`, `EF3`, ...) ship with sensible defaults. You only need to provide them if you have country-specific measurements.
+- **Keep the same Project for every inventory.** You only set it up once. New chats reuse the same knowledge files and instructions automatically.
 
 ## When the AI gets it wrong
 
@@ -125,7 +155,11 @@ The Translator is a helper, not an oracle. Always:
 
 - **Spot-check** the key numbers (population, body weight, milk yield) by comparing with your original file.
 - **Watch the QA/QC tab** for amber and red flags after upload — those highlight values outside IPCC ranges.
-- **Tell us** when something is off. Use the in-app Feedback tab to report mistranslations so we can improve the prompt.
+- **Tell us** when something is off. Use the in-app Feedback tab to report mistranslations so we can improve the kit.
+
+## Updates to the kit
+
+If we update the parameter catalogue, schema, or mapping examples (e.g. after an IPCC alignment audit), download the new `translator_kit.zip` from the app's Resources tab and replace the corresponding files in your Project's **Files** panel — drag the new versions in and remove the old ones. The Instructions field rarely changes; if it does, the new version will be in the updated `system_instructions.md`.
 
 ---
 

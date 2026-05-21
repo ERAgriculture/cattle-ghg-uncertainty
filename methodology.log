@@ -1,9 +1,9 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (MiKTeX 26.5) (preloaded format=pdflatex 2026.5.19)  19 MAY 2026 09:11
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (MiKTeX 26.5) (preloaded format=pdflatex 2026.5.19)  20 MAY 2026 16:44
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**./www/methodology.tex
-(www/methodology.tex
+**./methodology.tex
+(methodology.tex
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-03-20>
 (C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/base\article.cls
@@ -497,6 +497,19 @@ Package caption Info: longtable package is loaded.
 (C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/caption\ltcaption.sty
 Package: ltcaption 2021/01/08 v1.4c longtable captions (AR)
 ))
+(C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/pdflscape\pdflscape.s
+ty
+Package: pdflscape 2022-10-27 v0.13 Display of landscape pages in PDF
+
+(C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/pdflscape\pdflscape-n
+ometadata.sty
+Package: pdflscape-nometadata 2022-10-28 v0.13 Display of landscape pages in PD
+F (HO)
+(C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/graphics\lscape.sty
+Package: lscape 2020/05/28 v3.02 Landscape Pages (DPC)
+)
+Package pdflscape Info: Auto-detected driver: pdftex on input line 81.
+))
 (C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/bookmark\bookmark.sty
 Package: bookmark 2023-12-10 v1.31 PDF bookmarks (HO)
 
@@ -509,7 +522,7 @@ File: bkm-pdftex.def 2023-12-10 v1.31 bookmark driver for pdfTeX and luaTeX (HO
 Package: xurl 2022/01/09 v 0.10 modify URL breaks
 )
 LaTeX Font Info:    Trying to load font information for T1+lmr on input line 11
-6.
+7.
 (C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/lm\t1lmr.fd
 File: t1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
@@ -520,24 +533,24 @@ File: l3backend-pdftex.def 2026-02-18 L3 backend support: PDF output (pdfTeX)
 ) (methodology.aux)
 \openout1 = `methodology.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 116.
-LaTeX Font Info:    ... okay on input line 116.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 116.
-LaTeX Font Info:    ... okay on input line 116.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 116.
-LaTeX Font Info:    ... okay on input line 116.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 116.
-LaTeX Font Info:    ... okay on input line 116.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 116.
-LaTeX Font Info:    ... okay on input line 116.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 116.
-LaTeX Font Info:    ... okay on input line 116.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 116.
-LaTeX Font Info:    ... okay on input line 116.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 116.
-LaTeX Font Info:    ... okay on input line 116.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 116.
-LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 117.
+LaTeX Font Info:    ... okay on input line 117.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 117.
+LaTeX Font Info:    ... okay on input line 117.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 117.
+LaTeX Font Info:    ... okay on input line 117.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 117.
+LaTeX Font Info:    ... okay on input line 117.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 117.
+LaTeX Font Info:    ... okay on input line 117.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 117.
+LaTeX Font Info:    ... okay on input line 117.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 117.
+LaTeX Font Info:    ... okay on input line 117.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 117.
+LaTeX Font Info:    ... okay on input line 117.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 117.
+LaTeX Font Info:    ... okay on input line 117.
 
 (C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/context/base/mkii\supp-pdf.
 mkii
@@ -598,13 +611,13 @@ File: epstopdf-sys.cfg 2021/03/18 v2.0 Configuration of epstopdf for MiKTeX
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-LaTeX Info: Redefining \microtypecontext on input line 116.
-Package microtype Info: Applying patch `item' on input line 116.
-Package microtype Info: Applying patch `toc' on input line 116.
-Package microtype Info: Applying patch `eqnum' on input line 116.
-Package microtype Info: Applying patch `footnote' on input line 116.
-Package microtype Info: Applying patch `verbatim' on input line 116.
-LaTeX Info: Redefining \microtypesetup on input line 116.
+LaTeX Info: Redefining \microtypecontext on input line 117.
+Package microtype Info: Applying patch `item' on input line 117.
+Package microtype Info: Applying patch `toc' on input line 117.
+Package microtype Info: Applying patch `eqnum' on input line 117.
+Package microtype Info: Applying patch `footnote' on input line 117.
+Package microtype Info: Applying patch `verbatim' on input line 117.
+LaTeX Info: Redefining \microtypesetup on input line 117.
 Package microtype Info: Generating PDF output.
 Package microtype Info: Character protrusion enabled (level 2).
 Package microtype Info: Using protrusion set `basicmath'.
@@ -619,36 +632,36 @@ Package microtype Info: No adjustment of character kerning.
 File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman 
 (RS)
 )
-Package hyperref Info: Link coloring OFF on input line 116.
+Package hyperref Info: Link coloring OFF on input line 117.
 Package caption Info: Begin \AtBeginDocument code.
 Package caption Info: End \AtBeginDocument code.
 LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 1
-18.
+19.
 (C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/lm\ot1lmr.fd
 File: ot1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OML+lmm on input line 1
-18.
+19.
 (C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/lm\omllmm.fd
 File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 
-118.
+119.
 (C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/lm\omslmsy.fd
 File: omslmsy.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 
-118.
+119.
 (C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/lm\omxlmex.fd
 File: omxlmex.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <12> on input line 118.
+(Font)              <12> on input line 119.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <8> on input line 118.
+(Font)              <8> on input line 119.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <6> on input line 118.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 118
+(Font)              <6> on input line 119.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 119
 .
 (C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
@@ -656,7 +669,7 @@ File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 g
 File: mt-msa.cfg 2006/02/04 v1.1 microtype config. file: AMS symbols (a) (RS)
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 118
+LaTeX Font Info:    Trying to load font information for U+msb on input line 119
 .
 (C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/amsfonts\umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
@@ -666,9 +679,10 @@ File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
 ) [1
 
 {C:/Users/mlolita/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map}{C:/Users/ml
-olita/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-ec.enc}]
+olita/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-ec.enc}] (methodology
+.toc
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <10.95> on input line 158.
+(Font)              <10.95> on input line 2.
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -677,101 +691,10 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [2{C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-rm.enc}
-]
-Underfull \hbox (badness 10000) in paragraph at lines 208--209
-[]|\T1/lmr/bx/n/10.95 (+20) Typical
- []
+])
+\tf@toc=\write3
+\openout3 = `methodology.toc'.
 
-
-Underfull \hbox (badness 10000) in paragraph at lines 213--214
-[]|\T1/lmr/bx/n/10.95 (+20) Typical
- []
-
-LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 2
-21.
-(C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/lm\t1lmtt.fd
-File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
-)
-Overfull \hbox (16.00566pt too wide) in paragraph at lines 223--223
-[]|\T1/lmr/m/n/10.95 (-20) MJ/kg$[]$/d| 
- []
-
-LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 2
-24.
-(C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/lm\ts1lmr.fd
-File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
-)
-Overfull \hbox (7.10085pt too wide) in paragraph at lines 226--226
-[]|\T1/lmr/m/n/10.95 (-20) kg/head/d| 
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 228--228
-[]|\T1/lmr/m/n/10.95 (+20) Coefficient for
- []
-
-
-Overfull \hbox (7.10085pt too wide) in paragraph at lines 229--229
-[]|\T1/lmr/m/n/10.95 (-20) kg/head/d| 
- []
-
-
-Overfull \hbox (27.931pt too wide) in paragraph at lines 229--230
-[]|\T1/lmr/m/n/10.95 (-20) Normal/Lognormal| 
- []
-
-
-Overfull \hbox (2.03313pt too wide) in paragraph at lines 231--231
-[]|\T1/lmr/m/n/10.95 (-20) h/head/d| 
- []
-
-
-Overfull \hbox (7.0171pt too wide) in paragraph at lines 234--235
-[]|\T1/lmr/m/n/10.95 (-20) Normal/PERT| 
- []
-
-
-Overfull \hbox (22.26189pt too wide) in paragraph at lines 235--236
-[]|\T1/lmr/m/n/10.95 (-20) Uniform/Dirichlet| 
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 236--236
-[]|\T1/lmr/m/n/10.95 (+20) m$[]$
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 236--236
-\T1/lmr/m/n/10.95 (+20) CH$[]$/kg
- []
-
-
-Overfull \hbox (7.0171pt too wide) in paragraph at lines 237--238
-[]|\T1/lmr/m/n/10.95 (-20) Normal/PERT| 
- []
-
-
-Overfull \hbox (22.3683pt too wide) in paragraph at lines 238--239
-[]|\T1/lmr/m/n/10.95 (-20) Lognormal/PERT| 
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 239--239
-[]|\T1/lmr/m/n/10.95 (+20) Fraction N volatilised
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 240--240
-\T1/lmr/m/n/10.95 (+20) N/kg
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 245--245
-[]|\T1/lmr/m/n/10.95 (+20) Fraction N volatilised
- []
-
-
-ignored: Infinite glue shrinkage found in box being split
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -779,9 +702,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[3{C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathit.
-enc}{C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-ts1.e
-nc}]
+[3]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -797,9 +718,491 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[5{C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathsy.
-enc}{C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathe
-x.enc}]
+[5]
+Underfull \hbox (badness 10000) in paragraph at lines 220--220
+[]|\T1/lmr/bx/n/10 (+20) IPCC
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 225--225
+[]|\T1/lmr/bx/n/10 (+20) IPCC
+ []
+
+LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 2
+33.
+(C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/lm\t1lmtt.fd
+File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+)
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <10> on input line 235.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <7> on input line 235.
+LaTeX Font Info:    External font `lmex10' loaded for size
+(Font)              <5> on input line 235.
+
+Overfull \hbox (8.64507pt too wide) in paragraph at lines 235--235
+[]|\T1/lmr/m/n/10 (-20) MJ/kg$[]$/d| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 235--235
+[]|\T1/lmr/m/n/10 (+20) 0.386
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 235--235
+\T1/lmr/m/n/10 (+20) (lact.)
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 235--235
+\T1/lmr/m/n/10 (+20) / 0.322
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 235--235
+\T1/lmr/m/n/10 (+20) (non-
+ []
+
+
+Underfull \hbox (badness 1184) in paragraph at lines 235--235
+\T1/lmr/m/n/10 (+20) lact.) /
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 235--235
+\T1/lmr/m/n/10 (+20) 0.370
+ []
+
+
+Underfull \hbox (badness 1112) in paragraph at lines 235--235
+[]|\T1/lmr/m/n/10 (+20) Eq. 10.3; Ta-ble 10.4 (Up-
+ []
+
+LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 2
+36.
+(C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/lm\ts1lmr.fd
+File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+)
+Underfull \hbox (badness 10000) in paragraph at lines 237--237
+[]|\T1/lmr/m/n/10 (+20) 0.00
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 237--237
+\T1/lmr/m/n/10 (+20) (stall) /
+ []
+
+
+Underfull \hbox (badness 1052) in paragraph at lines 237--237
+\T1/lmr/m/n/10 (+20) ture flat)
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 237--237
+\T1/lmr/m/n/10 (+20) / 0.36
+ []
+
+
+Underfull \hbox (badness 1112) in paragraph at lines 237--237
+[]|\T1/lmr/m/n/10 (+20) Eq. 10.4; Ta-ble 10.5 (Up-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 238--238
+[]|\T1/lmr/m/n/10 (+20) 0 (non-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 238--238
+\T1/lmr/m/n/10 (+20) growing
+ []
+
+
+Underfull \hbox (badness 1960) in paragraph at lines 240--240
+[]|\T1/lmr/m/n/10 (+20) Sex/condition co-ef-fi-cient
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 240--240
+[]|\T1/lmr/m/n/10 (+20) 0.8 (fe-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 240--240
+\T1/lmr/m/n/10 (+20) male) /
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 240--240
+\T1/lmr/m/n/10 (+20) 1.0 (cas-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 240--240
+\T1/lmr/m/n/10 (+20) trate) /
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 241--241
+[]|\T1/lmr/m/n/10 (+20) 4.0
+ []
+
+
+Underfull \hbox (badness 1975) in paragraph at lines 241--241
+[]|\T1/lmr/m/n/10 (+20) Eq. 10.8; An-nex 10A.1 /
+ []
+
+
+Overfull \hbox (8.69576pt too wide) in paragraph at lines 241--242
+[]|\T1/lmr/m/n/10 (-20) Normal/Lognormal| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 244--244
+[]|\T1/lmr/m/n/10 (+20) 3.3 ($\OMS/lmsy/m/n/10 ^^Y
+ []
+
+
+Underfull \hbox (badness 1067) in paragraph at lines 244--244
+[]|\T1/lmr/m/n/10 (+20) Eq. 10.33 (uses 6.38 milk-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 245--245
+[]|\T1/lmr/m/n/10 (+20) 0 (no
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 247--247
+[]|\T1/lmr/m/n/10 (+20) 55.0
+ []
+
+
+Overfull \hbox (5.65384pt too wide) in paragraph at lines 249--249
+[]|\T1/lmtt/m/n/10 MMS_fractions| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 249--249
+[]|\T1/lmr/m/n/10 (+20) country-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 249--249
+\T1/lmr/m/n/10 (+20) specific
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 249--249
+\T1/lmr/m/n/10 (+20) (Work-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 249--249
+\T1/lmr/m/n/10 (+20) sheet
+ []
+
+
+Overfull \hbox (3.51852pt too wide) in paragraph at lines 249--250
+[]|\T1/lmr/m/n/10 (-20) Uniform/Dirichlet| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 250--250
+[]|\T1/lmr/m/n/10 (+20) m$[]$
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 250--250
+\T1/lmr/m/n/10 (+20) CH$[]$/kg
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 250--250
+[]|\T1/lmr/m/n/10 (+20) 0.13
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 250--250
+\T1/lmr/m/n/10 (+20) (2019R
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 250--250
+\T1/lmr/m/n/10 (+20) ``Other
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 250--250
+\T1/lmr/m/n/10 (+20) re-gions,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 250--250
+\T1/lmr/m/n/10 (+20) low pro-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 250--250
+\T1/lmr/m/n/10 (+20) cat-tle);
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 250--250
+\T1/lmr/m/n/10 (+20) 2006
+ []
+
+
+Underfull \hbox (badness 2050) in paragraph at lines 250--250
+\T1/lmr/m/n/10 (+20) Africa =
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 251--251
+[]|\T1/lmr/m/n/10 (+20) per-MMS
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 251--251
+\T1/lmr/m/n/10 (+20) la-goon
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 252--252
+[]|\T1/lmr/m/n/10 (+20) Direct-N$[]$O EF (per
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 252--252
+[]|\T1/lmr/m/n/10 (+20) kg N$[]$O-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 252--252
+\T1/lmr/m/n/10 (+20) N/kg
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 252--252
+[]|\T1/lmr/m/n/10 (+20) per-MMS
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 252--252
+\T1/lmr/m/n/10 (+20) solid
+ []
+
+
+Overfull \hbox (3.61566pt too wide) in paragraph at lines 252--253
+[]|\T1/lmr/m/n/10 (-20) Lognormal/PERT| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 253--253
+[]|\T1/lmr/m/n/10 (+20) Fraction N volatilised
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 253--253
+[]|\T1/lmr/m/n/10 (+20) per-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 253--253
+\T1/lmr/m/n/10 (+20) stor-age
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 254--254
+[]|\T1/lmr/m/n/10 (+20) kg N$[]$O-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 254--254
+\T1/lmr/m/n/10 (+20) N/(kg
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 254--254
+\T1/lmr/m/n/10 (+20) NH$[]$-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 254--254
+\T1/lmr/m/n/10 (+20) N+NO$[]$-
+ []
+
+
+Underfull \hbox (badness 1577) in paragraph at lines 254--254
+[]|\T1/lmr/m/n/10 (+20) 0.010 ag-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 254--254
+\T1/lmr/m/n/10 (+20) gre-gated
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 254--254
+\T1/lmr/m/n/10 (+20) 2019R
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 254--254
+\T1/lmr/m/n/10 (+20) / dry
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 254--254
+\T1/lmr/m/n/10 (+20) 0.005);
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 254--254
+\T1/lmr/m/n/10 (+20) 2006 =
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 255--255
+[]|\T1/lmr/m/n/10 (+20) per-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 255--255
+[]|\T1/lmr/m/n/10 (+20) Eq. 10.28; Ta-ble 10.23
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 256--256
+[]|\T1/lmr/m/n/10 (+20) kg N$[]$O-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 256--256
+\T1/lmr/m/n/10 (+20) N/kg
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 256--256
+[]|\T1/lmr/m/n/10 (+20) 0.011
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 256--256
+\T1/lmr/m/n/10 (+20) (2019R);
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 256--256
+\T1/lmr/m/n/10 (+20) 2006 =
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 257--257
+[]|\T1/lmr/m/n/10 (+20) country-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 257--257
+[]|\T1/lmr/m/n/10 (+20) Vol.4 Ch.11 Eq. 11.5
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 258--258
+[]|\T1/lmr/m/n/10 (+20) kg N$[]$O-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 258--258
+\T1/lmr/m/n/10 (+20) N/kg
+ []
+
+
+Underfull \hbox (badness 1577) in paragraph at lines 258--258
+[]|\T1/lmr/m/n/10 (+20) 0.004 ag-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 258--258
+\T1/lmr/m/n/10 (+20) gre-gated
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 258--258
+\T1/lmr/m/n/10 (+20) 2019R
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 258--258
+\T1/lmr/m/n/10 (+20) / dry
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 258--258
+\T1/lmr/m/n/10 (+20) 0.002);
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 258--258
+\T1/lmr/m/n/10 (+20) 2006 =
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 259--259
+[]|\T1/lmr/m/n/10 (+20) Fraction N volatilised
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 259--259
+[]|\T1/lmr/m/n/10 (+20) 0.21
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 259--259
+\T1/lmr/m/n/10 (+20) (2019R
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 259--259
+\T1/lmr/m/n/10 (+20) Frac-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 259--259
+\T1/lmr/m/n/10 (+20) GASM);
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 259--259
+\T1/lmr/m/n/10 (+20) 2006 =
+ []
+
+
+Overfull \hbox (5.65384pt too wide) in paragraph at lines 260--260
+[]|\T1/lmtt/m/n/10 Frac_LeachPRP| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 260--260
+[]|\T1/lmr/m/n/10 (+20) 0.24
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 260--260
+\T1/lmr/m/n/10 (+20) (2019R
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 260--260
+\T1/lmr/m/n/10 (+20) wet);
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 260--260
+\T1/lmr/m/n/10 (+20) 2006 =
+ []
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -807,7 +1210,11 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[6]
+[6
+
+{C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathit.en
+c}{C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-ts1.enc
+}]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -815,7 +1222,8 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[7]
+[7{C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathsy.
+enc}]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -832,35 +1240,6 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [9]
-Underfull \hbox (badness 7203) in paragraph at lines 536--536
-\T1/lmr/m/n/10.95 (+20) pop-u-la-tion counts with
- []
-
-
-Underfull \hbox (badness 1642) in paragraph at lines 537--537
-[]|\T1/lmr/m/n/10.95 (+20) log-mean, log-SD (fit-ted
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 538--538
-[]|\T1/lmr/m/n/10.95 (+20) Emission fac-tors with
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 538--538
-\T1/lmr/m/n/10.95 (+20) expert-elicited bounds;
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 541--542
-[]|\T1/lmr/m/n/10.95 (+20) Parameters treated as
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 541--542
-\T1/lmr/m/n/10.95 (+20) known ex-actly (un-cer-
- []
-
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -876,7 +1255,10 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[11]
+[11
+
+{C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/lm/lm-mathex.en
+c}]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -909,6 +1291,10 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [15]
+Overfull \hbox (95.72781pt too wide) in paragraph at lines 537--546
+ [] 
+ []
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -917,6 +1303,20 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [16]
+Underfull \hbox (badness 1325) in paragraph at lines 593--593
+[]|\T1/lmr/m/n/10.95 (+20) Non-negative sym-met-ric pa-ram-e-ters
+ []
+
+
+Underfull \hbox (badness 1642) in paragraph at lines 594--594
+[]|\T1/lmr/m/n/10.95 (+20) log-mean, log-SD (fit-ted
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 596--596
+[]|\T1/lmr/m/n/10.95 (+20) Truncated-
+ []
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -956,39 +1356,145 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[21] (methodology.aux)
+[21]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[22]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[23]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[24]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[25]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[26]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[27]
+Underfull \hbox (badness 7631) in paragraph at lines 1059--1059
+[]|\T1/lmr/m/n/10.95 (+20) Value de-vi-ates more
+ []
+
+
+Underfull \hbox (badness 2617) in paragraph at lines 1059--1059
+\T1/lmr/m/n/10.95 (+20) than 200% from the
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1059--1059
+\T1/lmr/m/n/10.95 (+20) IPCC de-fault; or
+ []
+
+
+Underfull \hbox (badness 2818) in paragraph at lines 1059--1059
+\T1/lmr/m/n/10.95 (+20) MMS fraction-sum is
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1059--1059
+\T1/lmr/m/n/10.95 (+20) with mean out-side
+ []
+
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[28]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[29]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[30]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[31] (methodology.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-03-20>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 16072 strings out of 467691
- 261552 string characters out of 5414019
- 734159 words of memory out of 5000000
- 44592 multiletter control sequences out of 15000+600000
- 707462 words of font info for 189 fonts, out of 8000000 for 9000
+ 16275 strings out of 467691
+ 265515 string characters out of 5414019
+ 749373 words of memory out of 5000000
+ 44703 multiletter control sequences out of 15000+600000
+ 722876 words of font info for 236 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 69i,13n,79p,1014b,639s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 69i,13n,79p,1010b,709s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx10.
 pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx1
 2.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lme
 x10.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/l
 mmi10.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm
 /lmmi6.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/public/l
-m/lmmi8.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/public/
-lm/lmr10.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/public
-/lm/lmr12.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/publi
-c/lm/lmr17.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/publ
-ic/lm/lmr6.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/publ
-ic/lm/lmr8.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/publ
-ic/lm/lmri10.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/pu
-blic/lm/lmsy10.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/
-public/lm/lmsy8.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1
-/public/lm/lmtt10.pfb>
-Output written on methodology.pdf (21 pages, 382306 bytes).
+m/lmmi7.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/public/
+lm/lmmi8.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/public
+/lm/lmr10.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/publi
+c/lm/lmr12.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/publ
+ic/lm/lmr17.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/pub
+lic/lm/lmr6.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/pub
+lic/lm/lmr7.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/pub
+lic/lm/lmr8.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/pub
+lic/lm/lmri10.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/p
+ublic/lm/lmsy10.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1
+/public/lm/lmsy8.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type
+1/public/lm/lmtt10.pfb>
+Output written on methodology.pdf (31 pages, 455399 bytes).
 PDF statistics:
- 417 PDF objects out of 1000 (max. 8388607)
- 94 named destinations out of 1000 (max. 500000)
- 47465 words of extra memory for PDF output out of 51595 (max. 10000000)
+ 530 PDF objects out of 1000 (max. 8388607)
+ 107 named destinations out of 1000 (max. 500000)
+ 55673 words of extra memory for PDF output out of 61914 (max. 10000000)
 

@@ -286,8 +286,13 @@ message("✓ wrote template_schema.md")
 # ---------------------------------------------------------------------------
 www_dir <- "www"
 if (!dir.exists(www_dir)) dir.create(www_dir, recursive = TRUE)
-user_facing <- c("questionnaire.md", "getting_started.md",
-                 "param_catalogue.md", "template_schema.md")
+# system_instructions.md is staged too — users paste it into the "Instructions"
+# field of their own Claude Project (DIY-kit flow). The other four .md files
+# are the project knowledge.
+user_facing <- c("system_instructions.md",
+                 "questionnaire.md", "getting_started.md",
+                 "param_catalogue.md", "template_schema.md",
+                 "mapping_examples.md")
 for (f in user_facing) {
   src <- file.path(out_dir, f)
   dst <- file.path(www_dir, f)
@@ -353,6 +358,112 @@ if (requireNamespace("rmarkdown", quietly = TRUE)) {
 } else {
   message("(rmarkdown package not installed — ",
           "install.packages('rmarkdown') to enable styled PDF/DOCX.)")
+}
+
+# ---------------------------------------------------------------------------
+# 3c. Build translator_kit.zip — the bundle users download to set up their
+# OWN Claude Project (DIY-kit flow). Public sharing of Claude Projects is
+# limited on personal accounts, so instead of pointing users at a shared
+# project URL we ship them everything they need to recreate it on their
+# own claude.ai account in ~2 minutes.
+#
+# Zip contents:
+#   README.txt              — one-page quick-start (created here, inline)
+#   getting_started.pdf     — the polished step-by-step with screenshots
+#   system_instructions.md  — paste into the Project's "Instructions" field
+#   param_catalogue.md      ┐
+#   template_schema.md      │ upload as Project "Files" (knowledge base)
+#   mapping_examples.md     │
+#   questionnaire.md        ┘
+#   questionnaire.docx      — the fillable form the user pastes per chat
+# ---------------------------------------------------------------------------
+kit_files <- c("system_instructions.md", "param_catalogue.md",
+               "template_schema.md", "mapping_examples.md",
+               "questionnaire.md", "questionnaire.docx",
+               "getting_started.pdf")
+kit_files_present <- kit_files[file.exists(file.path(out_dir, kit_files))]
+
+# Inline README.txt — gives the user the 5-step recipe at a glance.
+readme_lines <- c(
+  "GMH UNCERTAINTY TRANSLATOR — DIY KIT",
+  "=====================================",
+  "",
+  paste("Built:", stamp),
+  "",
+  "WHAT THIS IS",
+  "------------",
+  "A free AI helper that turns your raw cattle inventory data (Excel/CSV)",
+  "into the input template expected by the Cattle Uncertainty App. The",
+  "kit lets you set up your OWN Translator on claude.ai in about 2",
+  "minutes — no payment, no installation.",
+  "",
+  "QUICK-START (5 STEPS)",
+  "---------------------",
+  "1. Sign up for a free account at https://claude.ai (Google / email / Apple).",
+  "",
+  "2. In the left sidebar, click 'Projects' then 'Create project'.",
+  "   Name it 'GMH Uncertainty Translator' (or anything you like).",
+  "",
+  "3. Open the project and find the 'Instructions' field (top right).",
+  "   Open `system_instructions.md` from this kit in any text editor,",
+  "   select all, copy, and paste the contents into that field. Save.",
+  "",
+  "4. Below the Instructions field is a 'Files' panel. Drag-and-drop",
+  "   these four files into it:",
+  "      - param_catalogue.md",
+  "      - template_schema.md",
+  "      - mapping_examples.md",
+  "      - questionnaire.md",
+  "",
+  "5. Open `questionnaire.docx`, fill it in (country, year, sub-categories,",
+  "   manure systems, etc. — about 2 minutes). Then start a new chat in",
+  "   your Project, paste the filled questionnaire as the first message,",
+  "   and follow the conversation. Claude will ask you to upload your",
+  "   data file(s) next.",
+  "",
+  "For the full walkthrough with screenshots, open getting_started.pdf",
+  "in this kit.",
+  "",
+  "NEED HELP?",
+  "----------",
+  "Contact: M.Lolita@cgiar.org",
+  ""
+)
+writeLines(readme_lines, file.path(out_dir, "README.txt"), useBytes = TRUE)
+kit_files_present <- c("README.txt", kit_files_present)
+
+zip_path <- normalizePath(file.path(www_dir, "translator_kit.zip"),
+                           winslash = "/", mustWork = FALSE)
+if (file.exists(zip_path)) file.remove(zip_path)
+
+# Build the zip with paths flattened (no claude_project_assets/ prefix inside
+# the archive). Switch into out_dir so the file names in the archive match the
+# short names the README references.
+old_wd <- getwd()
+setwd(out_dir)
+zip_ok <- tryCatch({
+  if (requireNamespace("zip", quietly = TRUE)) {
+    zip::zip(zipfile = zip_path, files = kit_files_present,
+             mode = "cherry-pick")
+  } else {
+    utils::zip(zipfile = zip_path, files = kit_files_present,
+               flags = "-q9X")
+  }
+  TRUE
+}, error = function(e) {
+  message("  zip build failed: ", conditionMessage(e))
+  FALSE
+})
+setwd(old_wd)
+zip_ok <- zip_ok && file.exists(zip_path)
+
+if (zip_ok) {
+  message("✓ translator_kit.zip  (",
+          file.info(zip_path)$size, " bytes, ",
+          length(kit_files_present), " files)")
+} else {
+  message("✗ translator_kit.zip — neither zip::zip nor utils::zip worked. ",
+          "install.packages('zip') and try again.")
 }
 
 # ---------------------------------------------------------------------------

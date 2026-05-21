@@ -119,20 +119,20 @@ If you do not yet have uncertainty estimates, see Section 2.4 for guidance on ob
 
 ## AI-assisted data preparation (optional, free)
 
-If your raw inventory data lives in your own Excel or CSV files with column names that do not match the template, you can use the free **GMH Uncertainty Translator** on \texttt{claude.ai} to do the column-mapping and unit-conversion work for you. The Translator is a pre-built Claude Project loaded with the parameter catalogue, template schema, and ten worked mapping examples. It is free to use with a free claude.ai account and requires no installation.
+If your raw inventory data lives in your own Excel or CSV files with column names that do not match the template, you can use the free **GMH Uncertainty Translator** on \texttt{claude.ai} to do the column-mapping and unit-conversion work for you. The Translator is a small AI assistant — loaded with the parameter catalogue, the template schema, and ten worked mapping examples — that you set up once inside your own free Claude.ai account and then reuse for every inventory. It is free, requires no installation, and your data stays inside your own account.
 
-\textbf{Workflow.} The chat with the Translator has two distinct inputs you provide: a \textbf{pre-flight questionnaire} that you \textit{paste as text} into the chat, and your \textbf{raw data file(s)} that you \textit{attach} when Claude prompts you. The questionnaire is not a separate upload — it is a one-page form whose contents you copy-paste into the chat box, so Claude knows about your inventory up front and can skip its warm-up questions.
+\textbf{One-time setup (about 2 minutes).} The Resources tab offers a downloadable \texttt{translator\_kit.zip} containing a system-instructions file plus four small knowledge files. After signing up for a free Claude.ai account, you create a Project in claude.ai (Projects $\to$ Create project), paste the contents of \texttt{system\_instructions.md} into the Project's \emph{Instructions} field, then drag the four knowledge files (\texttt{param\_catalogue.md}, \texttt{template\_schema.md}, \texttt{mapping\_examples.md}, \texttt{questionnaire.md}) into the Project's \emph{Files} panel. That is the whole setup --- you only do it once. Step-by-step screenshots are in the Getting Started guide available from the Resources tab.
+
+\textbf{Workflow (each inventory).} The chat with the Translator has two distinct inputs you provide: a \textbf{pre-flight questionnaire} that you \textit{paste as text} into the chat, and your \textbf{raw data file(s)} that you \textit{attach} when Claude prompts you. The questionnaire is not a separate upload --- it is a one-page form whose contents you copy-paste into the chat box, so Claude knows about your inventory up front and can skip its warm-up questions.
 
 \begin{enumerate}
-\item Download the \textbf{pre-flight questionnaire} from the Resources tab and fill it out — country, year, IPCC version, your sub-categories, manure systems, data fields, uncertainty source (about 2 minutes).
-\item Sign up for a free claude.ai account if you do not already have one, then click \emph{Open the Translator on claude.ai} in the Resources tab.
-\item In the Translator chat, \textbf{paste the filled questionnaire as your first message}. This is text you copy-paste, not a file you attach. Claude will summarise back what it understood and then ask you to upload your data.
+\item Download the \textbf{pre-flight questionnaire} (\texttt{.docx}) from the Resources tab and fill it out --- country, year, IPCC version, your sub-categories, manure systems, data fields, uncertainty source (about 2 minutes).
+\item Open your Translator Project on claude.ai and click \emph{Start a new chat}.
+\item In the chat box, \textbf{paste the filled questionnaire as your first message}. This is text you copy-paste, not a file you attach. Claude will summarise back what it understood and then ask you to upload your data.
 \item \textbf{Attach your raw data file(s)} using the paperclip icon in the chat input box (\texttt{.xlsx}, \texttt{.csv}, or even a PDF / screenshot of a table).
 \item Claude proposes a column mapping with confidence flags; confirm ambiguities (typically 2--5 short questions, e.g. \textit{``Is your column} \texttt{weight} \textit{body weight or mature weight?''}).
 \item Download the produced \texttt{filled\_template\_for\_app.xlsx} and upload it in Tab 1 (Data Input).
 \end{enumerate}
-
-A 1-page \textbf{Getting Started} guide with screenshots is available from the Resources tab.
 
 \textbf{When to use.} The Translator is most useful when (a) your data is in a non-standard shape, (b) your column names differ from the template (e.g. \texttt{cattle\_pop}, \texttt{live\_wt\_lb}), (c) you have data in inconsistent units (lbs vs kg, fractions vs percentages), or (d) you want IPCC defaults filled in for the parameters you do not measure.
 

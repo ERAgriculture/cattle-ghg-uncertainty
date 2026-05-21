@@ -274,34 +274,62 @@ app_ui <- function() {
             tags$p(style = "margin-bottom: 12px;",
               "Filling the template by hand can take hours if your raw data isn't already in the right shape. ",
               "The ", tags$strong("GMH Uncertainty Translator"),
-              " is a free Claude.ai assistant that takes your own Excel/CSV files and produces a ready-to-upload template in about 10 minutes. ",
-              "No installation, no payment — you just need a free claude.ai account."),
-            tags$h6("How to use it"),
+              " is a free, AI-powered helper — built on top of Claude.ai — that turns your own Excel/CSV files into a ready-to-upload template in roughly 10 minutes. ",
+              "No installation, no payment, and you keep full control of your own data inside your own Claude account."),
+            tags$h6("How to set it up (one time, about 2 minutes)"),
             tags$ol(
               tags$li(
-                tags$strong("Download and fill the pre-flight questionnaire."),
-                " It's a one-page form — country, year, IPCC version, your cattle sub-categories, your manure systems, which data fields you have. About 2 minutes. ",
-                tags$em("This is what tells Claude about your inventory in one go, so it doesn't have to ask you each question separately.")
+                tags$strong("Download the Translator kit (.zip)"),
+                " using the button below. Unzip it anywhere on your computer."
               ),
               tags$li(
-                tags$strong("Open the Translator"),
-                " on claude.ai (button below) — sign up for the free account if you don't already have one."
+                tags$strong("Sign up for a free Claude.ai account"),
+                " at ",
+                tags$a(href = "https://claude.ai", target = "_blank",
+                       rel = "noopener noreferrer", "claude.ai"),
+                " if you don't already have one. No payment details required."
               ),
               tags$li(
-                tags$strong("Paste the filled questionnaire as your first chat message."),
+                tags$strong("In claude.ai, click Projects → Create project."),
+                " Name it whatever you like (e.g. ", tags$em("GMH Uncertainty Translator"), ")."
+              ),
+              tags$li(
+                tags$strong("Paste ", tags$code("system_instructions.md"), " into the Project's Instructions field."),
+                " Open the file in any text editor, select all, copy, paste."
+              ),
+              tags$li(
+                tags$strong("Drag the four knowledge files into the Project's Files panel:"),
                 " ",
-                tags$em("This is text you copy-paste into the chat box, not a file you upload."),
-                " Claude reads it and confirms what it understood."
+                tags$code("param_catalogue.md"), ", ",
+                tags$code("template_schema.md"), ", ",
+                tags$code("mapping_examples.md"), ", and ",
+                tags$code("questionnaire.md"), "."
+              )
+            ),
+            tags$h6("How to use it (each inventory)"),
+            tags$ol(
+              tags$li(
+                tags$strong("Fill the pre-flight questionnaire."),
+                " It's a one-page form — country, year, IPCC version, your sub-categories, manure systems, data fields. About 2 minutes."
               ),
               tags$li(
-                tags$strong("Upload your raw data file(s)"),
-                " when Claude prompts you — click the paperclip icon. Excel, CSV, even a PDF or a screenshot of a table all work."
+                tags$strong("Start a new chat in your Translator Project"),
+                " on claude.ai."
+              ),
+              tags$li(
+                tags$strong("Paste the filled questionnaire as your first message."),
+                " ",
+                tags$em("Text you copy-paste, not a file you upload."),
+                " Claude confirms what it understood."
+              ),
+              tags$li(
+                tags$strong("Attach your raw data file(s)"),
+                " using the paperclip icon — Excel, CSV, even a PDF or screenshot of a table."
               ),
               tags$li(
                 tags$strong("Answer 2–5 short clarification questions"),
                 " about anything ambiguous (e.g. ",
-                tags$em("\"Is your weight column body weight or mature weight?\""),
-                ")."
+                tags$em("\"Is your weight column body weight or mature weight?\""), ")."
               ),
               tags$li(
                 tags$strong("Download the filled template"),
@@ -311,18 +339,17 @@ app_ui <- function() {
             ),
             div(style = "margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap;",
               tags$a(
-                href = "https://claude.ai/project/019e4594-d13d-761e-a6fb-71e242eb9804",
-                target = "_blank",
-                rel = "noopener noreferrer",
+                href = "translator_kit.zip",
+                download = "translator_kit.zip",
                 class = "btn btn-success",
-                icon("robot"), " Open the Translator on claude.ai"
+                icon("box-archive"), " Download Translator kit (.zip)"
               ),
               tags$a(
                 href = "getting_started.pdf",
                 target = "_blank",
                 rel = "noopener noreferrer",
                 class = "btn btn-outline-success",
-                icon("file-pdf"), " Getting started (1-page guide)"
+                icon("file-pdf"), " Getting started (full guide)"
               ),
               tags$a(
                 href = "questionnaire.docx",
@@ -331,7 +358,13 @@ app_ui <- function() {
                 class = "btn btn-outline-success",
                 icon("clipboard-list"), " Pre-flight questionnaire (.docx)"
               )
-            )
+            ),
+            div(style = "margin-top: 10px; font-size: 0.82rem; color: #666;",
+              "Already set up? ",
+              tags$a(href = "https://claude.ai/projects", target = "_blank",
+                     rel = "noopener noreferrer",
+                     "Open claude.ai → Projects"),
+              " to start a new chat in your Translator.")
           )
         ),
 
@@ -516,16 +549,16 @@ app_ui <- function() {
               icon("robot"),
               tags$strong(" Don't have the template filled yet?"),
               tags$br(),
-              "Use the free ",
-              tags$a(href = "https://claude.ai/project/019e4594-d13d-761e-a6fb-71e242eb9804", target = "_blank",
-                     rel = "noopener noreferrer", "AI Translator"),
-              " to turn your own Excel/CSV into a ready-to-upload template in ~10 minutes. ",
+              "Download the free ",
+              tags$a(href = "translator_kit.zip", download = "translator_kit.zip",
+                     "AI Translator kit"),
+              " and set up your own Claude.ai assistant in ~2 minutes. ",
               tags$a(href = "getting_started.pdf", target = "_blank",
                      rel = "noopener noreferrer", "Getting started (PDF)"),
               " · ",
               tags$a(href = "questionnaire.docx", target = "_blank",
                      download = "questionnaire.docx", "Questionnaire (.docx)"),
-              " · see the Resources tab for details."),
+              " · see the Resources tab for the full walkthrough."),
             hr(),
             h5("3. Upload your filled template"),
             fileInput("data_upload", "Upload Excel Template (.xlsx)",
