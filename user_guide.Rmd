@@ -459,7 +459,7 @@ Parameters outside the chosen subgroup are sampled independently of everything e
 If you prefer to specify correlations manually:
 \begin{enumerate}
   \item Select \textbf{Advanced --- manual entry} under Activity Data Correlations.
-  \item Upload a square, symmetric CSV matrix of correlation coefficients ($-1$ to $+1$, diagonal = 1). The matrix is interpreted as a Gaussian-scale correlation (the value you enter for cell $(i, j)$ is the correlation of the underlying normal copula).
+  \item Upload a square, symmetric CSV matrix of correlation coefficients ($-1$ to $+1$, diagonal = 1). The value you enter for cell $(i, j)$ is the \textbf{Spearman rank correlation} between parameters $i$ and $j$, which the tool preserves through Monte Carlo per IPCC Vol.1 Ch.3 §3.2.3.2.
   \item The tool verifies positive-definiteness and projects onto the nearest positive-definite correlation matrix if needed; you are warned if any entry shifts by more than 0.01.
 \end{enumerate}
 

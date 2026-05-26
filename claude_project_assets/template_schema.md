@@ -1,4 +1,4 @@
-# Template schema — auto-generated 2026-05-21
+# Template schema — auto-generated 2026-05-26
 
 The app expects an `.xlsx` workbook with the sheets and columns below.
 Sheet names and column headers are **case-sensitive and must match exactly**.

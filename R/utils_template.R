@@ -23,8 +23,8 @@
 # correlation mode without requiring a separate upload.
 #
 # 2026-05 audit follow-up:
-#   - Switched from Pearson to Spearman rank correlation (matches the Iman-Conover
-#     sampler default for the time-series path).
+#   - Switched from Pearson to Spearman rank correlation (matches the rank
+#     correlation the sampler reproduces, per IPCC Vol.1 Ch.3 §3.2.3.2).
 #   - Added optional detrending. Default is first differences, which strips the
 #     shared long-run growth common to most national livestock series. Linear
 #     detrend and "none" (raw, legacy behaviour) are also available.

@@ -10,7 +10,7 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
                                # named vectors. NULL = fall back to IPCC 2019
                                # defaults inside calc_indirect_n2o_mm.
                                frac_gas_values = NULL, frac_leach_values = NULL,
-                               # Round 7 T4.3: unified copula across AD + coefficients
+                               # Round 7 T4.3: unified correlation across AD + coefficients
                                unified_corr_matrix = NULL,
                                # Round 7 R1.14: pre-sampled coefficient block (trend mode)
                                pre_sampled_coefficients = NULL,
@@ -20,13 +20,13 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
                                # deterministic constants (pre-fix behaviour).
                                mcf_samples = NULL, ef3_samples = NULL,
                                frac_gas_samples = NULL, frac_leach_samples = NULL,
-                               # 2026-05 audit follow-up: AD-block sampler choice.
-                               # "iman_conover" is the default for the time-series path
-                               # (Spearman rank matrix is reproduced exactly);
-                               # "copula" is the default for preset/manual paths
-                               # (user-supplied Sigma is Pearson-on-Gaussian-scale).
-                               sampler = c("copula", "iman_conover")) {
-  sampler <- match.arg(sampler)
+                               # Correlated sampling uses the rank-correlation-
+                               # preserving restricted-pairing procedure per IPCC
+                               # Vol.1 Ch.3 §3.2.3.2. The argument is retained as a
+                               # single-value match for back-compat with any caller
+                               # that still passes it explicitly.
+                               sampler = "iman_conover") {
+  sampler <- match.arg(sampler, choices = "iman_conover")
   # Andreas 2026-05 follow-up: the Dirichlet `mms_fractions_matrix` argument
   # was removed because the Dirichlet MMS-allocation sampling it enabled is
   # not cited in IPCC 2006 / 2019 guidance. MMS% is now deterministic.
@@ -139,11 +139,14 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
 # Run simulation across multiple systems/subsystems
 run_inventory_simulation <- function(systems_data, n_iter = 10000, gwp = "AR5",
                                       seed = NULL, Tw = 20, pct_calving = 1,
-                                      # 2026-05 audit follow-up: AD-block sampler.
-                                      # Caller (app_server.R) picks "iman_conover"
-                                      # when corr_mode == "timeseries", "copula" otherwise.
-                                      sampler = c("copula", "iman_conover")) {
-  sampler <- match.arg(sampler)
+                                      # Correlated sampling uses the rank-
+                                      # correlation-preserving procedure per IPCC
+                                      # Vol.1 Ch.3 §3.2.3.2. Kept as an argument
+                                      # for back-compat with callers that still
+                                      # pass it; the only accepted value is
+                                      # "iman_conover".
+                                      sampler = "iman_conover") {
+  sampler <- match.arg(sampler, choices = "iman_conover")
   by_system <- list()
 
   for (sys_name in names(systems_data)) {

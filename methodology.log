@@ -1,9 +1,9 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (MiKTeX 26.5) (preloaded format=pdflatex 2026.5.19)  20 MAY 2026 16:44
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (MiKTeX 26.5) (preloaded format=pdflatex 2026.5.19)  26 MAY 2026 17:27
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**./methodology.tex
-(methodology.tex
+**./www/methodology.tex
+(www/methodology.tex
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-03-20>
 (C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/base\article.cls
@@ -1389,6 +1389,16 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [25]
+LaTeX Font Info:    Trying to load font information for TS1+lmtt on input line 
+962.
+(C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/lm\ts1lmtt.fd
+File: ts1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
+)
+Underfull \hbox (badness 10000) in paragraph at lines 958--965
+\T1/lmtt/m/n/10.95 correlated-sampling procedure used for activity data (Sectio
+n\T1/lmr/m/n/10.95 (+20) Correlated Sam-pling''
+ []
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1405,28 +1415,15 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [27]
-Underfull \hbox (badness 7631) in paragraph at lines 1059--1059
-[]|\T1/lmr/m/n/10.95 (+20) Value de-vi-ates more
+Underfull \hbox (badness 10000) in paragraph at lines 1047--1054
+\T1/lmtt/m/n/10.95 $n_{\text{iter}} \times n_{\text{coef}}$ matrix and reuses i
+t for every year.
  []
 
 
-Underfull \hbox (badness 2617) in paragraph at lines 1059--1059
-\T1/lmr/m/n/10.95 (+20) than 200% from the
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 1059--1059
-\T1/lmr/m/n/10.95 (+20) IPCC de-fault; or
- []
-
-
-Underfull \hbox (badness 2818) in paragraph at lines 1059--1059
-\T1/lmr/m/n/10.95 (+20) MMS fraction-sum is
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 1059--1059
-\T1/lmr/m/n/10.95 (+20) with mean out-side
+Underfull \hbox (badness 10000) in paragraph at lines 1055--1066
+\T1/lmtt/m/n/10.95 uncertainties when comparing two years as part of trend anal
+ysis will decrease
  []
 
 
@@ -1437,6 +1434,30 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [28]
+Underfull \hbox (badness 7631) in paragraph at lines 1083--1083
+[]|\T1/lmr/m/n/10.95 (+20) Value de-vi-ates more
+ []
+
+
+Underfull \hbox (badness 2617) in paragraph at lines 1083--1083
+\T1/lmr/m/n/10.95 (+20) than 200% from the
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1083--1083
+\T1/lmr/m/n/10.95 (+20) IPCC de-fault; or
+ []
+
+
+Underfull \hbox (badness 2818) in paragraph at lines 1083--1083
+\T1/lmr/m/n/10.95 (+20) MMS fraction-sum is
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1083--1083
+\T1/lmr/m/n/10.95 (+20) with mean out-side
+ []
+
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1460,20 +1481,28 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[31] (methodology.aux)
+[31]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[32] (methodology.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-03-20>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 16275 strings out of 467691
- 265515 string characters out of 5414019
- 749373 words of memory out of 5000000
- 44703 multiletter control sequences out of 15000+600000
- 722876 words of font info for 236 fonts, out of 8000000 for 9000
+ 16305 strings out of 467691
+ 266287 string characters out of 5414019
+ 750380 words of memory out of 5000000
+ 44739 multiletter control sequences out of 15000+600000
+ 722596 words of font info for 231 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 69i,13n,79p,1010b,709s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 69i,13n,79p,1014b,709s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx10.
 pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx1
 2.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lme
@@ -1492,9 +1521,9 @@ lic/lm/lmri10.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/p
 ublic/lm/lmsy10.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1
 /public/lm/lmsy8.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type
 1/public/lm/lmtt10.pfb>
-Output written on methodology.pdf (31 pages, 455399 bytes).
+Output written on methodology.pdf (32 pages, 461849 bytes).
 PDF statistics:
- 530 PDF objects out of 1000 (max. 8388607)
+ 536 PDF objects out of 1000 (max. 8388607)
  107 named destinations out of 1000 (max. 500000)
  55673 words of extra memory for PDF output out of 61914 (max. 10000000)
 

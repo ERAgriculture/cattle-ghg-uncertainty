@@ -242,7 +242,7 @@ app_ui <- function() {
             tags$h5("How this tool works"),
             tags$ul(
               tags$li("Equation chain: IPCC 2006 Vol 4 Ch 10 (Eq 10.1–10.34) and Ch 11 for the per-head emission factor; population × EF for the per-sub-category total."),
-              tags$li("Monte Carlo: Approach 2 from IPCC 2006 Vol 1 Ch 3. Correlations are sampled via Iman-Conover restricted pairing (IPCC Vol 1 Ch 3 §3.2.3.2) when the matrix is estimated from a time-series upload, and via a Gaussian copula for preset / manual / structural-defaults paths."),
+              tags$li("Monte Carlo: Approach 2 from IPCC 2006 Vol 1 Ch 3. Correlations are sampled via the rank-correlation-preserving restricted-pairing procedure per IPCC Vol 1 Ch 3 §3.2.3.2 — the same method is used for every correlated path (time-series, preset, manual, structural defaults)."),
               tags$li("Sensitivity: Standardised regression coefficients (SRC) and partial rank correlation (PRCC) on the sampled inputs vs each output.")
             ),
             div(style = "margin-top: 16px; display: flex; gap: 12px; flex-wrap: wrap;",

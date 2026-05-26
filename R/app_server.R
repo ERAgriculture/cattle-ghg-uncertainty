@@ -1212,10 +1212,9 @@ app_server <- function(input, output, session) {
             # removed. pct_calving is still read here as a single global
             # value (Cp pro-rate applies inventory-wide).
             pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1,
-            # 2026-05 audit follow-up: time-series mode uses Iman-Conover
-            # (the IPCC-cited restricted-pairing method); other modes use the
-            # Gaussian copula because the user is specifying Sigma directly.
-            sampler = if (isTRUE(input$corr_mode == "timeseries")) "iman_conover" else "copula"
+            # All correlated paths use the rank-correlation-preserving
+            # restricted-pairing procedure (IPCC Vol.1 Ch.3 §3.2.3.2).
+            sampler = "iman_conover"
           )
 
           # T1.12: zero out per-source contributions the user has unchecked.
@@ -1340,13 +1339,11 @@ app_server <- function(input, output, session) {
               sd
             }
 
-            .sampler_choice <- if (isTRUE(input$corr_mode == "timeseries")) "iman_conover" else "copula"
             systems_ad <- lapply(systems_data, fix_params, fix_type = "coefficient")
             ad_result  <- run_inventory_simulation(
               systems_ad, n_iter = n_iter_val,
               gwp = input$gwp_version, seed = input$seed,
-              pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1,
-              sampler = .sampler_choice
+              pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1
             )
 
             setProgress(0.70, detail = sprintf("Running EF-only simulation (%d group(s))...",
@@ -1355,8 +1352,7 @@ app_server <- function(input, output, session) {
             ef_result  <- run_inventory_simulation(
               systems_ef, n_iter = n_iter_val,
               gwp = input$gwp_version, seed = input$seed,
-              pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1,
-              sampler = .sampler_choice
+              pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1
             )
 
             rv$decomposition <- list(

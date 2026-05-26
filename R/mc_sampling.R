@@ -1,5 +1,10 @@
 # Monte Carlo Sampling Engine
-# Gaussian copula approach: MASS::mvrnorm for correlations + probability integral transform
+# Correlated sampling uses the rank-correlation-preserving restricted-pairing
+# procedure per IPCC Vol.1 Ch.3 §3.2.3.2 — independent draws from each
+# parameter's marginal distribution, then column reordering so the resulting
+# Spearman rank correlation matches the target matrix. Distribution-free, so
+# the marginal shapes (PERT / lognormal / beta / normal / uniform) are
+# preserved exactly.
 
 # Build an n x n uniform correlation matrix (all off-diagonal entries = rho).
 # Andreas 2026-05 audit follow-up: warn when nearPD has to make a large
@@ -75,37 +80,14 @@ make_block_corr <- function(param_names, rho_by_block) {
   .repair_corr(m, "block-structured EF correlation matrix")
 }
 
-# Gaussian copula sampling for one block of parameters (shared helper).
-# Used for the preset / manual / structural-defaults paths where the user is
-# specifying a correlation matrix directly (Pearson-on-Gaussian-scale convention).
-.copula_sample <- function(n_iter, params, corr_mat) {
-  corr_mat <- .repair_corr(corr_mat, "block correlation matrix")
-  z <- MASS::mvrnorm(n_iter, mu = rep(0, nrow(corr_mat)), Sigma = corr_mat)
-  u <- pnorm(z)
-  samp <- matrix(NA, nrow = n_iter, ncol = nrow(params))
-  for (j in seq_len(nrow(params))) {
-    samp[, j] <- transform_marginal(
-      u[, j], params$distribution[j],
-      params$mean[j], params$lower[j], params$upper[j]
-    )
-  }
-  colnames(samp) <- params$parameter
-  samp
-}
-
-# Iman-Conover restricted-pairing sampling for one block (2026-05 audit follow-up).
-# This is the method explicitly cited by IPCC V1 Ch3 Section 3.2.3.2 (p. 26):
-# "simulating correlation using restricted pairing methods (that are included
-# in many software packages)". Used for the time-series path because:
-#   (a) the matrix estimated from observed data is a rank correlation
-#       (Spearman) and Iman-Conover reproduces it exactly,
-#   (b) it is distribution-free — the marginal shapes (PERT, lognormal, beta,
-#       normal) are preserved exactly,
-#   (c) it avoids the Pearson-vs-Spearman bias of the Gaussian copula for
-#       non-Gaussian marginals.
+# Correlated sampling for one block of parameters.
+# Procedure per IPCC Vol.1 Ch.3 §3.2.3.2: draw each column independently from
+# its own marginal, then reorder columns so the resulting Spearman rank
+# correlation matches the target matrix. Distribution-free, so the marginal
+# shapes (PERT / lognormal / beta / normal / uniform) are preserved exactly.
 .iman_conover_sample <- function(n_iter, params, target_rank_corr) {
   target_rank_corr <- .repair_corr(target_rank_corr,
-                                   "Iman-Conover target rank correlation matrix")
+                                   "target rank correlation matrix")
   X <- .indep_sample(n_iter, params)
   # mc2d::cornode reorders the columns of X so that the rank correlation
   # matches `target` while preserving each column's marginal distribution.
@@ -115,7 +97,7 @@ make_block_corr <- function(param_names, rho_by_block) {
   out
 }
 
-# Independent sampling for one block (no copula)
+# Independent sampling for one block (no correlation structure imposed)
 .indep_sample <- function(n_iter, params) {
   samp <- matrix(NA, nrow = n_iter, ncol = nrow(params))
   for (j in seq_len(nrow(params))) {
@@ -134,34 +116,31 @@ make_block_corr <- function(param_names, rho_by_block) {
 #                    Pass make_uniform_corr(n_ef, rho) for a uniform assumption.
 generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
                                  seed = NULL, ef_corr_matrix = NULL,
-                                 # Round 7 T4.3: unified copula across AD + coefficients
-                                 # so cross-block correlations (e.g. BW <-> Cfi) are honoured.
-                                 # When supplied, this is a square named matrix covering
-                                 # the union of AD and coefficient parameter names. Falls
-                                 # back to the two-pass behaviour when NULL.
+                                 # Round 7 T4.3: unified correlation across AD +
+                                 # coefficients so cross-block correlations
+                                 # (e.g. BW <-> Cfi) are honoured. When supplied,
+                                 # this is a square named matrix covering the
+                                 # union of AD and coefficient parameter names.
+                                 # Falls back to the two-pass behaviour when NULL.
                                  unified_corr_matrix = NULL,
-                                 # Round 7 R1.14: pre-sampled coefficient block matrix
-                                 # (n_iter x n_coef) used by the trend tab to share the
-                                 # same coefficient draws across years. Overrides the
-                                 # coefficient-block sampler when supplied.
+                                 # Round 7 R1.14: pre-sampled coefficient block
+                                 # matrix (n_iter x n_coef) used by the trend tab
+                                 # to share the same coefficient draws across
+                                 # years. Overrides the coefficient-block sampler
+                                 # when supplied.
                                  pre_sampled_coefficients = NULL,
-                                 # 2026-05 audit follow-up: sampler choice.
-                                 #   "copula"       — Gaussian copula (default for preset / manual paths;
-                                 #                    user-supplied Sigma is interpreted as Pearson-on-Gaussian-scale)
-                                 #   "iman_conover" — IPCC-cited restricted-pairing method (default for the
-                                 #                    time-series path; Sigma is a Spearman rank correlation,
-                                 #                    reproduced exactly regardless of the marginal shapes)
-                                 sampler = c("copula", "iman_conover")) {
-  sampler <- match.arg(sampler)
+                                 # All correlated paths use the rank-correlation
+                                 # preserving procedure per IPCC Vol.1 Ch.3
+                                 # §3.2.3.2. Kept as an argument for back-compat;
+                                 # the only accepted value is "iman_conover".
+                                 sampler = "iman_conover") {
+  sampler <- match.arg(sampler, choices = "iman_conover")
   if (!is.null(seed)) set.seed(seed)
 
   ad_params <- param_specs[param_specs$param_type == "activity_data", ]
   ef_params <- param_specs[param_specs$param_type == "coefficient", ]
   n_ad <- nrow(ad_params)
   n_ef <- nrow(ef_params)
-
-  # Pick the per-block sampler once.
-  sample_block <- if (sampler == "iman_conover") .iman_conover_sample else .copula_sample
 
   # Round 7 T4.3: single-pass unified-correlation path
   if (!is.null(unified_corr_matrix) && (n_ad + n_ef) > 0) {
@@ -174,7 +153,7 @@ generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
       M[common, common] <- unified_corr_matrix[common, common]
       M <- .repair_corr(M, "unified AD+coefficient correlation matrix")
       rownames(M) <- colnames(M) <- nm
-      samp <- sample_block(n_iter, all_params, M)
+      samp <- .iman_conover_sample(n_iter, all_params, M)
       out  <- as.data.frame(samp)
       # If the trend tab supplied pre-sampled coefficients, override that block
       if (!is.null(pre_sampled_coefficients) && n_ef > 0) {
@@ -192,7 +171,7 @@ generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     use_ad_corr <- !is.null(corr_matrix) &&
                    nrow(corr_matrix) == n_ad && ncol(corr_matrix) == n_ad
     ad_samples <- if (use_ad_corr) {
-      sample_block(n_iter, ad_params, corr_matrix)
+      .iman_conover_sample(n_iter, ad_params, corr_matrix)
     } else {
       .indep_sample(n_iter, ad_params)
     }
@@ -200,7 +179,9 @@ generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     ad_samples <- matrix(nrow = n_iter, ncol = 0)
   }
 
-  # Emission factors: correlated, independent, or pre-sampled (R1.14 trend mode)
+  # Emission factors: correlated, independent, or pre-sampled (R1.14 trend mode).
+  # Same rank-correlation-preserving procedure as the AD block — the EF block no
+  # longer has a special-case sampler.
   if (n_ef > 0) {
     if (!is.null(pre_sampled_coefficients) &&
         nrow(pre_sampled_coefficients) == n_iter &&
@@ -210,11 +191,7 @@ generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
       use_ef_corr <- !is.null(ef_corr_matrix) &&
                      nrow(ef_corr_matrix) == n_ef && ncol(ef_corr_matrix) == n_ef
       ef_samples <- if (use_ef_corr) {
-        # EF correlations (uniform-rho legacy or block-structured) are
-        # specified directly on the Gaussian scale by the UI sliders, so we
-        # keep the copula sampler for the EF block even when AD uses
-        # Iman-Conover. This matches the user's UI mental model.
-        .copula_sample(n_iter, ef_params, ef_corr_matrix)
+        .iman_conover_sample(n_iter, ef_params, ef_corr_matrix)
       } else {
         .indep_sample(n_iter, ef_params)
       }
@@ -232,10 +209,10 @@ generate_mc_samples <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
 #
 # 2026-05 audit follow-up: switched from Pearson (default) to Spearman rank
 # correlation, and added optional detrending. Spearman is the rank correlation
-# Iman-Conover (the default sampler for this path) reproduces exactly, and
-# detrending separates shared long-run growth from year-to-year parameter
-# co-movement (IPCC V1 Ch3 p.26 lists "time series techniques can be used to
-# analyse or simulate temporal autocorrelation" — implying detrending first).
+# the sampler reproduces exactly (per IPCC Vol.1 Ch.3 §3.2.3.2), and detrending
+# separates shared long-run growth from year-to-year parameter co-movement
+# (IPCC V1 Ch3 p.26 lists "time series techniques can be used to analyse or
+# simulate temporal autocorrelation" — implying detrending first).
 #
 # `detrend` options:
 #   "first_diff" (default) — take year-on-year differences before correlation
@@ -317,6 +294,9 @@ sample_per_mms_param <- function(mms_rows, value_col, lower_col, upper_col,
 # Ch3 / V4 Ch10 publish no numerical correlation values for any livestock parameter.
 # These pairs reflect documented biological / statistical relationships from the
 # IPCC equations and the published livestock literature.
+#
+# Convention: the `rho` values below are Spearman rank correlations, the target
+# preserved by the sampler in mc_simulation.R per IPCC Vol.1 Ch.3 §3.2.3.2.
 #
 # Pure function — no rv dependency. Returns a named partial matrix containing
 # only the pairs whose endpoints exist in `all_param_names`. Pairs missing from

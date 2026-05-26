@@ -358,17 +358,16 @@ for a normal distribution, or equivalent transformations for lognormal and PERT.
 
 ## Correlated Sampling
 
-When parameters are correlated (e.g. body weight and mature weight are positively correlated; diet quality and methane conversion factor may be negatively correlated), ignoring correlation underestimates or overestimates combined uncertainty. The tool supports two complementary algorithms.
+When parameters are correlated (e.g.\ body weight and mature weight are positively correlated; diet quality and methane conversion factor may be negatively correlated), ignoring correlation underestimates or overestimates combined uncertainty. The tool applies the same correlated-sampling procedure to every path that supplies a correlation matrix --- the structural-defaults preset, a manually uploaded matrix, and the matrix estimated automatically from a time-series upload all flow through the same algorithm.
 
-\textbf{Gaussian copula} (used for the preset / manual / structural-defaults paths). The Gaussian copula imposes a desired correlation structure while preserving the marginal distributions:
+\textbf{Procedure} (per IPCC Volume 1 Chapter 3 §3.2.3.2):
 
-1. Draw $n_{\text{iter}}$ samples from a multivariate normal distribution $\mathbf{Z} \sim \mathcal{N}(\mathbf{0}, \boldsymbol{\Sigma})$ via \texttt{MASS::mvrnorm}, which uses the eigendecomposition of $\boldsymbol{\Sigma}$ (numerically equivalent to a Cholesky factorisation for a positive-definite $\boldsymbol{\Sigma}$).
-2. Transform each column $Z_j$ to uniform margins via $U_j = \Phi(Z_j)$.
-3. Apply the inverse CDF of the target marginal to obtain samples $X_j = F_j^{-1}(U_j)$.
+1. For each parameter $j$, draw $n_{\text{iter}}$ independent samples from the parameter's own marginal distribution (normal, PERT, lognormal, beta, triangular, uniform, or constant, exactly as specified in the template).
+2. Reorder the columns of the resulting $n_{\text{iter}} \times p$ sample matrix so that the realised Spearman rank correlation between columns matches the target matrix $\boldsymbol{\Sigma}$ (implemented via \texttt{mc2d::cornode}, which performs the restricted-pairing operation IPCC §3.2.3.2 cites under ``restricted pairing methods that are included in many software packages'').
 
-If $\boldsymbol{\Sigma}$ is not positive definite, the tool projects it onto the nearest positive-definite correlation matrix via \texttt{Matrix::nearPD(corr = TRUE)} and emits a warning whenever any entry shifts by more than 0.01. The tool does \textit{not} silently fall back to uncorrelated sampling.
+This procedure is distribution-free: the marginal shapes are preserved exactly, regardless of whether the user has mixed normal / lognormal / PERT / beta parameters in the same correlation block. The target $\boldsymbol{\Sigma}$ is interpreted as a Spearman rank correlation matrix throughout --- the same convention the time-series matrix is computed under (Spearman rank correlation of the user's annual values, after detrending; see Section ``Correlation Structure'').
 
-\textbf{Iman–Conover restricted pairing} (used for the time-series path). This is the method explicitly cited by IPCC Volume 1 Chapter 3 §3.2.3.2. Iman–Conover is distribution-free, reproduces the target Spearman rank correlation exactly, and is preferred when the correlation matrix has been estimated from observed data: the resulting samples have the right rank dependence regardless of the marginal shapes.
+If $\boldsymbol{\Sigma}$ is not positive definite (e.g.\ a manually entered matrix that turns out to be inconsistent), the tool projects it onto the nearest positive-definite correlation matrix via \texttt{Matrix::nearPD(corr = TRUE)} and emits a warning whenever any individual entry is shifted by more than 0.01. The tool does \textit{not} silently fall back to uncorrelated sampling.
 
 The tool supports both within-block and across-block correlations. The default scope is independence; a single unified correlation matrix spanning AD + coefficients is used whenever cross-block pairs are specified.
 
@@ -508,13 +507,13 @@ Correlations between activity data parameters (e.g.\ body weight and mature weig
 \begin{itemize}
   \item \textbf{No correlations} (independence) — the default.
   \item \textbf{Structural-defaults preset} — a small set of expert-elicited pairs drawn from the IPCC equation structure (see Section~``Structural-Defaults Preset'' below).
-  \item \textbf{From template (auto, time-series)} — the matrix is computed automatically from the \texttt{Parameter\_TimeSeries} sheet of the upload using \textbf{Spearman rank correlation} after detrending (first differences by default; linear and raw alternatives available). Spearman is preferred over Pearson because (i) it is robust to skewed marginals (Ym, Bo, milk yield), (ii) it matches the Iman--Conover sampler the tool uses to reproduce the correlation, and (iii) it is the natural choice when the user wants the \emph{rank} dependence preserved rather than a linear product-moment relationship that can be distorted by outliers.
+  \item \textbf{From template (auto, time-series)} — the matrix is computed automatically from the \texttt{Parameter\_TimeSeries} sheet of the upload using \textbf{Spearman rank correlation} after detrending (first differences by default; linear and raw alternatives available). Spearman is preferred over Pearson because (i) it is robust to skewed marginals (Ym, Bo, milk yield), (ii) it matches the rank-correlation target the sampler reproduces (per IPCC Vol.1 Ch.3 §3.2.3.2), and (iii) it is the natural choice when the user wants the \emph{rank} dependence preserved rather than a linear product-moment relationship that can be distorted by outliers.
   \item \textbf{Manual entry} — the user uploads a square symmetric CSV.
 \end{itemize}
 
 ## Emission Factor Correlations
 
-Emission factors that are structurally linked (e.g.\ EF4 is applied to volatilised N, whose magnitude is itself driven by Frac\_GasMS) can be assigned correlations in the Tab~4 \emph{Coefficient Correlations} card. The same four modes are offered; ``no correlations'' is the default. The EF block always uses the Gaussian copula sampler, even when the AD block uses Iman--Conover.
+Emission factors that are structurally linked (e.g.\ EF4 is applied to volatilised N, whose magnitude is itself driven by Frac\_GasMS) can be assigned correlations in the Tab~4 \emph{Coefficient Correlations} card. The same four modes are offered; ``no correlations'' is the default. The same correlated-sampling procedure used for activity data (Section ``Correlated Sampling'' above) is applied to the coefficient block --- no special-case sampler.
 
 ## Structural-Defaults Preset (Expert-Elicited)
 
@@ -526,17 +525,9 @@ The tool provides a **structural-defaults preset** correlation matrix as a middl
 
 The preset and the manual / time-series matrices support cross-block correlations (i.e. correlations between an activity-data parameter and a coefficient — for example BW $\leftrightarrow$ Cfi). This is implemented via a single unified correlation matrix that spans the union of all parameter names; the sampler draws from one multivariate distribution covering both blocks rather than two independent block-level distributions. Independence within and across blocks is the default.
 
-## Gaussian Copula Implementation
+## Time-Series Correlation Matrix
 
-For the manual / preset / advanced paths, the correlated sampling procedure draws from a multivariate normal $\mathbf{Z} \sim \mathcal{N}(\mathbf{0}, \boldsymbol{\Sigma})$ using the eigendecomposition of $\boldsymbol{\Sigma}$ provided by \texttt{MASS::mvrnorm} (numerically equivalent to a Cholesky factorisation for a positive-definite $\boldsymbol{\Sigma}$). The draws are then transformed to uniform margins via $\Phi(\cdot)$ and finally to each parameter's target marginal via its inverse CDF.
-
-If the supplied $\boldsymbol{\Sigma}$ is not positive definite (which can occur with manually entered or imputed matrices), the tool projects it onto the nearest positive-definite correlation matrix using \texttt{Matrix::nearPD(corr = TRUE)}. A warning is issued whenever any individual entry is shifted by more than 0.01 (a 1\% absolute change), with the actual maximum shift reported. The tool does \textit{not} silently fall back to uncorrelated sampling.
-
-## Iman–Conover for Time-Series Correlations
-
-When the correlation matrix is computed from an uploaded time series (the recommended path), the tool uses the \textbf{Iman–Conover restricted-pairing method} (\texttt{mc2d::cornode}) rather than the Gaussian copula. Iman–Conover is the technique explicitly cited by IPCC Volume 1 Chapter 3 Section 3.2.3.2 (p. 26: ``simulating correlation using restricted pairing methods that are included in many software packages''), is distribution-free, and reproduces the target Spearman rank correlation exactly. This eliminates a subtle bias of the Gaussian copula whereby, for non-Gaussian marginals (lognormal, PERT, beta), the output Pearson correlation differs from the input correlation by an amount that depends on the marginal shapes.
-
-The time-series matrix itself is computed as a \textbf{Spearman} rank correlation of the user's annual values, after \textbf{detrending} (first differences by default, with a UI option to switch to linear detrend or raw series). Detrending separates shared long-run growth — which is not the year-to-year joint uncertainty Approach 2 is meant to capture — from genuine parameter co-movement.
+When the user uploads a \texttt{Parameter\_TimeSeries} sheet, the correlation matrix is computed automatically as a \textbf{Spearman} rank correlation of the annual values, after \textbf{detrending} (first differences by default, with a UI option to switch to linear detrend or raw series). Detrending separates shared long-run growth --- which is not the year-to-year joint uncertainty Approach 2 is meant to capture --- from genuine parameter co-movement. The resulting matrix is then projected onto the nearest positive-definite correlation matrix via \texttt{Matrix::nearPD(corr = TRUE)} so it can be supplied directly to the sampler described in the ``Correlated Sampling'' section above.
 
 ## Year-to-Year Coefficient Correlation (Trend Mode)
 
@@ -550,13 +541,13 @@ The tool exposes three options on the Simulate tab when Trend mode is selected. 
 \textbf{Option} & \textbf{What happens inside one Monte Carlo iteration} \\
 \midrule
 \textbf{Fully correlated (default)} & The coefficient draw for year $t$ is the \textit{same} as for year 0. If Ym is drawn at 6.2\% for year 0, it is 6.2\% for every other year in that iteration. The trend then reflects activity-data changes only — coefficient uncertainty cancels when subtracting two years. Matches IPCC 2019 §3.2.2.4 default behaviour and the Ogle et al. (2003) ``identical random seed'' construction cited in V1 Ch3 Box 3.2. \\[6pt]
-\textbf{Partial (AR(1), $\rho=0.7$)} & Coefficients drift slowly between years via an autoregressive-1 Gaussian copula: the draw for year $t$ is $0.7$ times the previous year's standard-normal latent plus $\sqrt{1-0.7^2} \approx 0.71$ times a fresh innovation. Neighbouring years share most of the same observational basis but the coefficient can move over a decade. Appropriate when the EF is re-estimated periodically (e.g. every 3--5 years). \\[6pt]
+\textbf{Partial (AR(1), $\rho=0.7$)} & Coefficients drift slowly between years with a rank correlation of $\rho^{|i-j|}$ between year $i$ and year $j$ ($\rho = 0.7$). Independent samples are drawn for each year from the coefficient's marginal and then reordered across years so the realised Spearman rank correlation matches the AR(1) target --- the same restricted-pairing procedure used within a year (per IPCC Vol.1 Ch.3 §3.2.3.2), applied across years. Neighbouring years share most of the same observational basis but the coefficient can move over a decade. Appropriate when the EF is re-estimated periodically (e.g.\ every 3--5 years). \\[6pt]
 \textbf{Independent} & Each year gets a fresh, independent coefficient draw. Maximises the EF contribution to trend uncertainty. Realistic only when every emission factor is genuinely re-measured with new field data every year, which is uncommon for national inventories. \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-The choice is implemented in \texttt{R/trend\_tab.R}. The ``full'' branch pre-samples a single $n_{\text{iter}} \times n_{\text{coef}}$ matrix and reuses it for every year. The ``partial'' branch builds an AR(1) Gaussian copula of length $n_{\text{years}}$ for each coefficient, then runs each year's MC with the corresponding column slice. The ``independent'' branch re-samples coefficients inside every per-year call.
+The choice is implemented in \texttt{R/trend\_tab.R}. The ``full'' branch pre-samples a single $n_{\text{iter}} \times n_{\text{coef}}$ matrix and reuses it for every year. The ``partial'' branch builds an $n_{\text{iter}} \times n_{\text{years}}$ rank-correlated draw for each coefficient against an AR(1) target rank correlation matrix, then runs each year's MC with the corresponding column slice. The ``independent'' branch re-samples coefficients inside every per-year call.
 
 \textbf{Direction of effect.} For an emission factor whose uncertainty is largely systematic, full correlation produces the \textit{smallest} trend uncertainty (because the EF cancels) and independent sampling the \textit{largest}. IPCC V1 Ch3 p. 25 explicitly notes that ``positive correlations in uncertainties when comparing two years as part of trend analysis will decrease uncertainty in the trend''. Choosing ``independent'' when the EFs are in fact reused will over-state trend uncertainty; choosing ``full'' when the EFs are in fact re-measured each year will under-state it. The IPCC default (``full'') is the conservative choice for the typical case where the inventory compiler is using IPCC defaults or a single national estimation programme.
 
@@ -642,7 +633,7 @@ The benchmark comparison (Pass / Warn / Fail thresholds) is anchored on the \tex
 
 \vspace{4pt}
 \hangindent=1.5em
-\noindent Venables, W.N., and Ripley, B.D. (2002). \emph{Modern Applied Statistics with S} (4th ed.). Springer. (\texttt{MASS::mvrnorm} — multivariate-normal draws used by the Gaussian copula sampler.)
+\noindent Pouillot, R., and Delignette-Muller, M.-L. (2010). \emph{Evaluating variability and uncertainty separately in microbial quantitative risk assessment: a primer using R and a freely-available package, mc2d.} International Journal of Food Microbiology, 142(3), 330--340. (\texttt{mc2d::cornode} --- restricted-pairing reordering used to reproduce the target rank correlation matrix per IPCC Vol.1 Ch.3 §3.2.3.2.)
 
 \vspace{6pt}
 \hangindent=1.5em

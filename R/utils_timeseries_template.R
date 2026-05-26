@@ -77,8 +77,8 @@ generate_timeseries_template <- function(filepath) {
      paste("This workbook is used to supply historical time series data so the tool can",
            "estimate correlations between activity data parameters.",
            "When you upload this file in Tab 4 (Correlations > Activity Data > Upload time series),",
-           "the tool computes a Pearson correlation matrix from your data and uses it during",
-           "Monte Carlo sampling via a Gaussian copula.",
+           "the tool computes a Spearman rank correlation matrix from your data and",
+           "preserves it through Monte Carlo sampling per IPCC Vol.1 Ch.3 §3.2.3.2.",
            "You do NOT need to fill in every column — include only the parameters you have",
            "historical data for. The tool will treat unspecified parameters as uncorrelated",
            "with everything else (correlation = 0)."))

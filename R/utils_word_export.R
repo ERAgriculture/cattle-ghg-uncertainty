@@ -576,7 +576,7 @@ build_trend_summary_docx <- function(path,
   yc_text <- switch(
     year_corr,
     full    = "Coefficient draws (the 23 IPCC equation parameters) are sampled once and reused across every year, while activity data (animal population N) is re-drawn fresh for each year. This is the IPCC 2019 Refinement Vol 1 Ch 3 §3.2.2.4 default for emission-factor uncertainty: same EF every year, AD re-estimated annually. The trend uncertainty in this configuration reflects only the AD changes between years.",
-    partial = "Coefficient draws are correlated across years via an AR(1) Gaussian copula with ρ = 0.7. This represents partial year-to-year correlation per IPCC §3.2.2.4 — a moderate assumption for cases where coefficients drift over time but neighbouring years share most of the same observational basis.",
+    partial = "Coefficient draws are correlated across years with an AR(1) rank-correlation target (ρ = 0.7), reproduced through restricted-pairing reordering per IPCC Vol.1 Ch.3 §3.2.3.2. This represents partial year-to-year correlation per IPCC §3.2.2.4 — a moderate assumption for cases where coefficients drift over time but neighbouring years share most of the same observational basis.",
     none    = "Coefficient draws and activity-data draws are both independent for each year. This is the most conservative assumption and tends to inflate trend uncertainty; per IPCC §3.2.2.4 it is appropriate only when each year's emission factors come from genuinely independent measurement campaigns."
   )
   doc <- .add_p(doc, yc_text)

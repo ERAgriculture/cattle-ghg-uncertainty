@@ -79,30 +79,41 @@ trend_df_from_population <- function(population, base_specs,
   samp
 }
 
-# Round 7 R1.14: build AR(1)-correlated samples of one coefficient across years.
-# rho is the year-to-year correlation; default 0.7 mirrors a moderate "partially
-# correlated" assumption per IPCC 2019 §3.2.2.4. Returns an n_iter x n_years
-# matrix where each row is one coefficient's annual draw.
+# Build AR(1)-correlated samples of one coefficient across years.
+# rho is the year-to-year rank correlation; default 0.7 mirrors a moderate
+# "partially correlated" assumption per IPCC Vol.1 Ch.3 §3.2.2.4. Returns an
+# n_iter x n_years matrix where each row is one coefficient's annual draw.
+#
+# Procedure (per IPCC Vol.1 Ch.3 §3.2.3.2): draw n_iter independent samples
+# from the coefficient's marginal for each year, then reorder columns so the
+# resulting Spearman rank correlation across years matches the AR(1) target
+# matrix rho^|i-j|. Distribution-free — the coefficient's PERT/lognormal/beta
+# shape is preserved exactly.
 .ar1_samples_one_coef <- function(spec, n_iter, n_years, rho = 0.7) {
-  R <- outer(seq_len(n_years), seq_len(n_years), function(i, j) rho ^ abs(i - j))
-  z <- MASS::mvrnorm(n_iter, mu = rep(0, n_years), Sigma = R)
-  u <- pnorm(z)
-  out <- matrix(NA_real_, nrow = n_iter, ncol = n_years)
+  # Independent draws per year from the coefficient's marginal
+  X <- matrix(NA_real_, nrow = n_iter, ncol = n_years)
   for (k in seq_len(n_years)) {
-    out[, k] <- transform_marginal(
-      u[, k], spec$distribution, spec$mean, spec$lower, spec$upper)
+    X[, k] <- sample_distribution(n_iter, spec$distribution,
+                                   spec$mean, spec$lower, spec$upper)
   }
-  out
+  # AR(1) rank-correlation target across years
+  R <- outer(seq_len(n_years), seq_len(n_years), function(i, j) rho ^ abs(i - j))
+  # Reorder columns to hit the target rank correlation (preserves marginals)
+  mc2d::cornode(X, target = R, outrank = FALSE, result = FALSE)
 }
 
 run_trend_analysis <- function(trend_df, base_specs, n_iter = 2000,
                                 gwp = "AR5", seed = 42,
-                                # Round 7 R1.14: year-to-year correlation mode per
-                                # IPCC 2019 Vol 1 Ch 3 §3.2.2.4.
+                                # Year-to-year correlation mode per IPCC Vol.1
+                                # Ch.3 §3.2.2.4.
                                 #   "full"    = same coefficient draws every year
                                 #               (default). AD redrawn per year.
-                                #   "partial" = AR(1) copula across years (rho=0.7)
-                                #               for each coefficient.
+                                #   "partial" = AR(1) rank-correlation across
+                                #               years (rho=0.7) for each
+                                #               coefficient, applied via the same
+                                #               restricted-pairing procedure as
+                                #               the within-year correlations
+                                #               (IPCC Vol.1 Ch.3 §3.2.3.2).
                                 #   "none"    = independent per year (pre-Round-7
                                 #               behaviour).
                                 year_corr = c("full", "partial", "none"),

@@ -1,4 +1,4 @@
-# Parameter catalogue — auto-generated 2026-05-21
+# Parameter catalogue — auto-generated 2026-05-26
 
 Single source of truth for the 27 IPCC-aligned parameters the cattle uncertainty app expects.
 When you (Claude) translate a user's raw column to a template field, use this table.
