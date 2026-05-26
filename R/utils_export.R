@@ -7,9 +7,36 @@ format_ipcc_table <- function(uncertainty_decomposition, country = "", year = ""
 
   # IPCC 2006 Vol 1 Ch 3 Table 3.3 defines "% uncertainty" as the half-width of
   # the 95% confidence interval divided by the mean — i.e. moe_pct, not cv_pct.
+  #
+  # Andreas 2026-05-21 follow-up: the variable names produced by
+  # calc_all_uncertainty() reflect the column names of the input frame, and
+  # there are TWO conventions in use:
+  #   - per-system results (s$results): `enteric_ch4_total`, `manure_ch4_total`,
+  #     `direct_n2o_mm_total`, ... (the suffix convention)
+  #   - aggregated inventory (run_inventory_simulation()$inventory):
+  #     `total_enteric_ch4`, `total_manure_ch4`, `total_direct_n2o_mm`, ...
+  #     (the prefix convention)
+  # The legacy decompose_uncertainty() path (mc_uncertainty.R) fed the per-system
+  # frame, so historical IPCC tables matched the suffix convention. The current
+  # app_server.R Stage-4 path (R/app_server.R L1336-1337) feeds the aggregated
+  # inventory frame instead, which uses the prefix convention. Without this
+  # lookup helper, six of the nine IPCC rows silently come back NA because the
+  # variable names don't match. The pair below maps both conventions to a
+  # single canonical (suffix) lookup so the table populates regardless of which
+  # caller built the uncertainty frame.
+  alt_name <- function(var) {
+    # Map the suffix-style canonical name to its prefix-style sibling:
+    #   "enteric_ch4_total"   <-> "total_enteric_ch4"
+    #   "direct_n2o_mm_total" <-> "total_direct_n2o_mm"
+    # "total_ch4" / "total_n2o" / "total_co2e" are the same in both
+    # conventions and are returned unchanged.
+    if (!endsWith(var, "_total")) return(var)
+    paste0("total_", sub("_total$", "", var))
+  }
   get_moe <- function(df, var) {
-    row <- df[df$variable == var, ]
-    if (nrow(row) == 0) return(NA)
+    row <- df[df$variable == var, , drop = FALSE]
+    if (nrow(row) == 0L) row <- df[df$variable == alt_name(var), , drop = FALSE]
+    if (nrow(row) == 0L) return(NA_real_)
     round(row$moe_pct, 1)
   }
 
