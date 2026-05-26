@@ -1196,18 +1196,50 @@ app_server <- function(input, output, session) {
           # recomputed to reflect the selection.
           srcs <- input$emission_sources %||% character()
           gwp_vals <- GWP_VALUES[[input$gwp_version]]
+          # Andreas 2026-05-21 bug: the per-system results frame names the
+          # per-source columns `enteric_ch4_total`, `manure_ch4_total`,
+          # `direct_n2o_mm_total`, ..., while the aggregated `inventory` frame
+          # built in run_inventory_simulation() uses `total_enteric_ch4`,
+          # `total_manure_ch4`, `total_direct_n2o_mm`, ..., a different
+          # convention. The single-year run filters BOTH frames through
+          # .apply_source_selection() below — so the function has to accept
+          # either naming. Previously it knew only the per-system names, so
+          # when applied to the inventory frame every column lookup returned
+          # NULL, the arithmetic collapsed to length 0, and downstream code
+          # surfaced the cryptic "replacement has 0 rows" / "missing value
+          # where TRUE/FALSE required" error. The helper below resolves a
+          # column by either name, with a numeric-0 fallback when the column
+          # genuinely does not exist (so per-system frames that legitimately
+          # lack PRP columns still work).
+          .col_or_zero <- function(df, suffix_name, prefix_name) {
+            if (!is.null(df[[suffix_name]])) df[[suffix_name]]
+            else if (!is.null(df[[prefix_name]])) df[[prefix_name]]
+            else 0
+          }
           .apply_source_selection <- function(df) {
-            ch4 <- (if ("enteric_ch4" %in% srcs) df$enteric_ch4_total else 0) +
-                   (if ("manure_ch4"  %in% srcs) df$manure_ch4_total  else 0)
+            ch4 <- (if ("enteric_ch4" %in% srcs)
+                      .col_or_zero(df, "enteric_ch4_total", "total_enteric_ch4")
+                    else 0) +
+                   (if ("manure_ch4"  %in% srcs)
+                      .col_or_zero(df, "manure_ch4_total",  "total_manure_ch4")
+                    else 0)
             # Andreas 2026-05 #27: pasture direct and indirect are separate IPCC
             # reporting categories — splitting the single legacy `pasture_n2o`
             # checkbox into two. Old `pasture_n2o` kept as a back-compat alias
             # for any saved bookmarks / URLs.
             legacy_pasture <- "pasture_n2o" %in% srcs
-            n2o <- (if ("manure_n2o_direct"   %in% srcs) df$direct_n2o_mm_total   else 0) +
-                   (if ("manure_n2o_indirect" %in% srcs) df$indirect_n2o_mm_total else 0) +
-                   (if (legacy_pasture || "pasture_n2o_direct"   %in% srcs) df$direct_n2o_prp_total   else 0) +
-                   (if (legacy_pasture || "pasture_n2o_indirect" %in% srcs) df$indirect_n2o_prp_total else 0)
+            n2o <- (if ("manure_n2o_direct"   %in% srcs)
+                      .col_or_zero(df, "direct_n2o_mm_total",   "total_direct_n2o_mm")
+                    else 0) +
+                   (if ("manure_n2o_indirect" %in% srcs)
+                      .col_or_zero(df, "indirect_n2o_mm_total", "total_indirect_n2o_mm")
+                    else 0) +
+                   (if (legacy_pasture || "pasture_n2o_direct"   %in% srcs)
+                      .col_or_zero(df, "direct_n2o_prp_total",   "total_direct_n2o_prp")
+                    else 0) +
+                   (if (legacy_pasture || "pasture_n2o_indirect" %in% srcs)
+                      .col_or_zero(df, "indirect_n2o_prp_total", "total_indirect_n2o_prp")
+                    else 0)
             df$total_ch4  <- ch4
             df$total_n2o  <- n2o
             df$co2e_ch4   <- ch4 * gwp_vals$CH4
