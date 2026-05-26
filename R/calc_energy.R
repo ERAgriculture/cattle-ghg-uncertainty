@@ -24,7 +24,13 @@ calc_nea <- function(nem, Ca) {
 
 # Net Energy for Growth (Eq 10.6) - MJ/head/day
 calc_neg <- function(live_weight, weight_gain, C, mature_weight) {
-  if (weight_gain <= 0 || mature_weight <= 0) return(0)
+  # Andreas 2026-05-26 follow-up: `isTRUE(x <= 0)` instead of bare `x <= 0`
+  # so NAs in weight_gain or mature_weight (e.g. a blank yellow cell) don't
+  # trip `if(NA)` with "missing value where TRUE/FALSE needed". When either
+  # is NA we fall through to the equation, which will produce NA — that NA
+  # propagates downstream and the pre-run NA-mean check in the simulation
+  # observer is what blocks the run with a helpful message.
+  if (isTRUE(weight_gain <= 0) || isTRUE(mature_weight <= 0)) return(0)
   22.02 * ((live_weight / (C * mature_weight)) ^ 0.75) * (weight_gain ^ 1.097)
 }
 

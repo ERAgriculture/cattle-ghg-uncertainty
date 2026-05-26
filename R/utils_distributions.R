@@ -16,6 +16,19 @@
 sample_distribution <- function(n, type, mean_val, lower, upper) {
   type <- tolower(type)
 
+  # Andreas 2026-05-26 follow-up: short-circuit when any of mean/lower/upper
+  # is NA — this happens when a user uploads a template with a blank yellow
+  # cell. Passing NA to mc2d::rpert / mc2d::rtriang / rnorm trips
+  # "missing value where TRUE/FALSE needed" deep inside an `if (any(check))`
+  # in mc2d that doesn't understand NA inputs. Returning NA samples here
+  # lets the simulation finish and propagates the NA into the per-iteration
+  # results so the user sees missing values in the QA/QC tab rather than a
+  # cryptic crash. The pre-run NA-mean check in the simulation observer
+  # (R/app_server.R) is the canonical block; this is defence-in-depth.
+  if (is.na(mean_val) || is.na(lower) || is.na(upper)) {
+    return(rep(NA_real_, n))
+  }
+
   switch(type,
     "normal" = , "posnorm" = {
       sd_est <- (upper - lower) / (2 * 1.96)
@@ -60,6 +73,11 @@ sample_distribution <- function(n, type, mean_val, lower, upper) {
 # Transform uniform [0,1] to target distribution (for Gaussian copula)
 transform_marginal <- function(u, distribution, mean_val, lower, upper) {
   type <- tolower(distribution)
+
+  # Same NA short-circuit as sample_distribution() — see comment there.
+  if (is.na(mean_val) || is.na(lower) || is.na(upper)) {
+    return(rep(NA_real_, length(u)))
+  }
 
   switch(type,
     "normal" = , "posnorm" = {

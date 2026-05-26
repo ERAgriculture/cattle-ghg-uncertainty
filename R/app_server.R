@@ -937,6 +937,34 @@ app_server <- function(input, output, session) {
                            "Auto-fill: ", comp$message, "\n")
     }
 
+    # Andreas 2026-05-26 follow-up: block the run when the user has left a
+    # required `mean` cell blank (NA after parsing). ensure_completeness()
+    # above auto-fills entirely-missing parameter rows from IPCC defaults but
+    # cannot help here — the parameter row exists, the user just hasn't typed
+    # a number into it. Without this guard the NA flows into rnorm() at
+    # sampling time, produces NA draws, and trips `if (milk_yield > 0)` /
+    # `if (weight_gain > 0)` inside calc_n_excretion / calc_neg with the
+    # cryptic "missing value where TRUE/FALSE needed".
+    na_mean_rows <- which(is.na(rv$param_specs$mean))
+    if (length(na_mean_rows) > 0) {
+      preview_cols <- intersect(c("cattle_type", "aggregation_level",
+                                    "sub_category", "parameter"),
+                                 names(rv$param_specs))
+      preview <- rv$param_specs[na_mean_rows, preview_cols, drop = FALSE]
+      preview_txt <- paste(apply(preview, 1, function(r)
+        paste(trimws(r), collapse = " / ")), collapse = "; ")
+      msg <- sprintf(
+        paste0("Cannot run simulation: %d Parameters row(s) have a blank ",
+               "`value` cell. Open the Parameters sheet, fill the yellow ",
+               "cells, then re-upload. Missing: %s"),
+        length(na_mean_rows),
+        if (nchar(preview_txt) > 400) paste0(substr(preview_txt, 1, 400), " ...")
+        else preview_txt)
+      showNotification(msg, type = "error", duration = 15)
+      rv$sim_log <- paste0(rv$sim_log, msg, "\n")
+      return()
+    }
+
     rv$sim_running <- TRUE
     rv$sim_error   <- NULL
     # selectInput returns a character string; coerce once here so all downstream
@@ -1423,7 +1451,25 @@ app_server <- function(input, output, session) {
                            type = "message", duration = 4)
 
         }, error = function(e) {
-          rv$sim_log   <- paste0(rv$sim_log, "ERROR: ", e$message, "\n")
+          # Andreas 2026-05-26 follow-up: capture the R call stack alongside
+          # the error message so cryptic errors (especially "missing value
+          # where TRUE/FALSE needed", which gives no location otherwise)
+          # come with a traceback we can read off the simulation log on
+          # Tab 5. sys.calls() is captured INSIDE the handler frame so we
+          # see the chain from the simulation observer down to the failing
+          # call. Capped at the last 40 frames to keep the log readable.
+          stack <- tryCatch({
+            sc <- sys.calls()
+            tail(vapply(sc, function(call)
+              substr(paste(deparse(call), collapse = " "), 1, 240),
+              character(1)), 40)
+          }, error = function(.e) character(0))
+          rv$sim_log <- paste0(rv$sim_log,
+            "ERROR: ", e$message, "\n",
+            if (length(stack) > 0)
+              paste0("call stack (innermost last):\n  ",
+                     paste(stack, collapse = "\n  "), "\n")
+            else "")
           rv$sim_error <- e$message
           rv$sim_running <- FALSE
         })
