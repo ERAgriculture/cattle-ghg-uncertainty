@@ -819,6 +819,45 @@ section_F <- function() {
   check_bool("F5", "F",
              "Empty source selection detectable by simulation observer gate",
              is_empty)
+
+  # F6 — source-aware gate dependency map (Andreas 2026-05-27). A CH4-only
+  # selection must not require any manure-N2O / PRP parameter.
+  ch4_needed <- params_needed_for_sources(c("enteric_ch4", "manure_ch4"))
+  excluded   <- c("EF3_S", "Frac_GASMS", "Frac_LEACH_H",
+                  "EF3_PRP", "EF4", "EF5",
+                  "Frac_GASM_PRP", "Frac_LEACH_PRP")
+  check_bool("F6", "F",
+             "Source-aware deps: CH4-only excludes all manure-N2O / PRP params",
+             !any(excluded %in% ch4_needed) &&
+               all(c("Ym", "UE", "ASH", "Bo") %in% ch4_needed),
+             notes = "CH4 needs Ym/UE/ASH/Bo; not the N2O EFs")
+
+  # F7 — the gate lets a CH4-only run through when only manure-N2O params are
+  # blank. Mirror the observer's filter: na_block = NA-mean rows that are in
+  # the needed set for the selected sources.
+  specs_blank_n2o <- make_golden_specs()
+  # Retired params aren't in the catalogue any more, so simulate the situation
+  # by blanking parameters the CH4 run does not use (EF3_PRP / EF4 / EF5).
+  specs_blank_n2o$mean[specs_blank_n2o$parameter %in% c("EF3_PRP","EF4","EF5")] <- NA_real_
+  needed_ch4 <- params_needed_for_sources(c("enteric_ch4","manure_ch4"))
+  na_block_ch4 <- sum(is.na(specs_blank_n2o$mean) &
+                      specs_blank_n2o$parameter %in% needed_ch4)
+  check_bool("F7", "F",
+             "Gate allows CH4-only run when only N2O params (EF3_PRP/EF4/EF5) are blank",
+             na_block_ch4 == 0,
+             notes = sprintf("blocking cells = %d", na_block_ch4))
+
+  # F8 — the gate still catches a genuinely-needed blank: blank Ym with
+  # enteric selected must be flagged.
+  specs_blank_ym <- make_golden_specs()
+  specs_blank_ym$mean[specs_blank_ym$parameter == "Ym"] <- NA_real_
+  needed_ent <- params_needed_for_sources("enteric_ch4")
+  na_block_ym <- sum(is.na(specs_blank_ym$mean) &
+                     specs_blank_ym$parameter %in% needed_ent)
+  check_bool("F8", "F",
+             "Gate still blocks blank Ym when enteric_ch4 is selected",
+             na_block_ym == 1,
+             notes = sprintf("blocking cells = %d", na_block_ym))
 }
 
 # =============================================================================

@@ -945,7 +945,16 @@ app_server <- function(input, output, session) {
     # sampling time, produces NA draws, and trips `if (milk_yield > 0)` /
     # `if (weight_gain > 0)` inside calc_n_excretion / calc_neg with the
     # cryptic "missing value where TRUE/FALSE needed".
-    na_mean_rows <- which(is.na(rv$param_specs$mean))
+    #
+    # Andreas 2026-05-27 follow-up: make the gate SOURCE-AWARE. Only require a
+    # parameter to be non-blank if at least one *selected* emission source
+    # actually consumes it (per SOURCE_PARAM_DEPS in utils_ipcc_defaults.R).
+    # A CH4-only run must not be blocked by blank manure-N2O parameters
+    # (EF3_S / Frac_GASMS / Frac_LEACH_H), which (a) aren't used by CH4 and
+    # (b) are sourced per-MMS from the Manure_Management tab anyway.
+    needed_params <- params_needed_for_sources(input$emission_sources)
+    na_mean_rows <- which(is.na(rv$param_specs$mean) &
+                          rv$param_specs$parameter %in% needed_params)
     if (length(na_mean_rows) > 0) {
       preview_cols <- intersect(c("cattle_type", "aggregation_level",
                                     "sub_category", "parameter"),

@@ -49,11 +49,14 @@ make_uniform_corr <- function(n, rho) {
   energy   = c("Cfi", "Ca", "C", "C_growth", "Cp", "Ym", "Ym_pct"),
   # Manure-CH4 coefficients (BMP / lagoon literature)
   manureCH = c("Bo", "MCF", "ASH", "ash"),
-  # Manure-N coefficients (NH3 / N2O volatilisation literature)
-  manureN  = c("EF3_PRP", "EF3_S", "EF3",
-               "Frac_GASMS", "Frac_GASM_PRP", "Frac_GASM",
+  # Manure-N coefficients (NH3 / N2O volatilisation literature).
+  # Andreas 2026-05-27: EF3_S / Frac_GASMS / Frac_LEACH_H dropped from the
+  # Parameters sheet (now per-MMS in Manure_Management); legacy aliases
+  # ("EF3", "Frac_GASM", "Frac_LEACH") retained so old uploads still map.
+  manureN  = c("EF3_PRP", "EF3",
+               "Frac_GASM_PRP", "Frac_GASM",
                "EF4", "EF5",
-               "Frac_LEACH_H", "Frac_LEACH_PRP", "Frac_LEACH",
+               "Frac_LEACH_PRP", "Frac_LEACH",
                "UE")
 )
 

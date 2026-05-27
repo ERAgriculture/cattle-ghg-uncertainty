@@ -320,6 +320,50 @@ DISTRIBUTION_LABELS <- c(
 PARAM_TYPES <- c("activity_data", "coefficient", "emission_factor")  # emission_factor accepted as legacy alias
 
 # ==========================================================================
+# PARAMETER -> EMISSION-SOURCE DEPENDENCY MAP
+# Andreas 2026-05-27 feedback: the pre-run "blank value cell" gate must only
+# require a parameter to be non-blank if at least one *selected* emission
+# source actually consumes it. A CH4-only run should not be blocked by blank
+# manure-N2O parameters.
+#
+# .GE_BLOCK are the parameters that feed Gross Energy (IPCC Eq. 10.16) and
+# therefore every downstream source (enteric CH4, manure CH4, all N2O via Nex).
+# Tw is deliberately excluded — calc_nem() handles NA Tw gracefully (no
+# cold-climate adjustment when Tw is NA), so a blank Tw never breaks a run.
+# ==========================================================================
+.GE_BLOCK <- c("N", "BW", "MW", "WG", "Milk", "Fat", "pct_calving", "DE",
+               "Cfi", "Ca", "C", "Cp", "hours")
+
+SOURCE_PARAM_DEPS <- list(
+  enteric_ch4          = c(.GE_BLOCK, "Ym"),
+  manure_ch4           = c(.GE_BLOCK, "UE", "ASH", "Bo"),
+  manure_n2o_direct    = c(.GE_BLOCK, "CP", "MilkPR"),
+  manure_n2o_indirect  = c(.GE_BLOCK, "CP", "MilkPR", "EF4", "EF5"),
+  pasture_n2o_direct   = c(.GE_BLOCK, "CP", "MilkPR", "EF3_PRP"),
+  pasture_n2o_indirect = c(.GE_BLOCK, "CP", "MilkPR", "EF4", "EF5",
+                           "Frac_GASM_PRP", "Frac_LEACH_PRP")
+)
+# Parameters NEVER required by the gate, because their value comes from
+# elsewhere or a blank is harmless:
+#   - EF3_S, Frac_GASMS, Frac_LEACH_H : specified per-MMS in Manure_Management
+#       (or fall back to hardcoded IPCC defaults); the Parameters-tab copies
+#       are not consumed by the equation chain.
+#   - Tw : NA-safe in calc_nem().
+
+# Union of parameters genuinely required by the selected emission sources.
+# Returns character(0) when no sources are selected (the "tick at least one
+# source" gate handles that case separately).
+params_needed_for_sources <- function(sources) {
+  if (is.null(sources) || length(sources) == 0) return(character(0))
+  # Legacy single "pasture_n2o" checkbox -> both PRP sources.
+  if ("pasture_n2o" %in% sources)
+    sources <- unique(c(sources, "pasture_n2o_direct", "pasture_n2o_indirect"))
+  hit <- intersect(sources, names(SOURCE_PARAM_DEPS))
+  if (length(hit) == 0) return(character(0))
+  unique(unlist(SOURCE_PARAM_DEPS[hit], use.names = FALSE))
+}
+
+# ==========================================================================
 # EXPANDED DEFAULT LOOKUPS BY NEW SUB-CATEGORY
 # ==========================================================================
 

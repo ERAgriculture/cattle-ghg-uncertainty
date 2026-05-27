@@ -1,12 +1,14 @@
 # QA/QC checks for uploaded parameter specifications
 # run_qaqc() returns a tidy data.frame: one row per (group x parameter x check)
 
-# C1: IPCC-aligned names; legacy names auto-renamed by parse_uploaded_template
-ASYMMETRIC_PARAMS <- c("EF3_PRP", "EF3_S", "EF4", "EF5",
-                        "Frac_LEACH_H", "Frac_GASMS",
+# C1: IPCC-aligned names; legacy names auto-renamed by parse_uploaded_template.
+# Andreas 2026-05-27: EF3_S / Frac_GASMS / Frac_LEACH_H removed from the
+# Parameters sheet (now specified per-MMS in Manure_Management), so they are
+# no longer Parameters-tab QA/QC targets. Kept as legacy aliases tolerated on
+# upload but not benchmarked here.
+ASYMMETRIC_PARAMS <- c("EF3_PRP", "EF4", "EF5",
                         "Frac_GASM_PRP", "Frac_LEACH_PRP")
 FRACTION_PARAMS   <- c("pct_calving", "ASH", "UE",
-                        "Frac_GASMS", "Frac_LEACH_H",
                         "Frac_GASM_PRP", "Frac_LEACH_PRP")
 
 # IPCC alignment audit (2026-05): for parameters whose IPCC default depends

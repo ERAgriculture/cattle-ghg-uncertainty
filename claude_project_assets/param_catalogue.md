@@ -1,4 +1,4 @@
-# Parameter catalogue — auto-generated 2026-05-26
+# Parameter catalogue — auto-generated 2026-05-27
 
 Single source of truth for the 27 IPCC-aligned parameters the cattle uncertainty app expects.
 When you (Claude) translate a user's raw column to a template field, use this table.
@@ -25,11 +25,8 @@ All parameter codes are case-sensitive.
 | `ASH` | advanced | coefficient | fraction | 0.08 | 25% | pert | Eq 10.24 | ash | Ash content of manure — IPCC default 0.08 (Eq 10.24 footnote) |
 | `UE` | advanced | coefficient | fraction | 0.04 | 25% | pert | Eq 10.24 | (none) | Urinary energy as fraction of gross energy — IPCC default 0.04 (Eq 10.24 footnote) |
 | `EF3_PRP` | advanced | coefficient | kg N2O-N/kg N | 0.004 | (asymmetric — use bounds) | pert | Ch.11 Table 11.1 | (none) | N₂O emission factor for dung/urine on pasture (IPCC Vol.4 Ch.11 Table 11.1). 2019R EF3_PRP,CPP for cattle/poultry/pigs: aggregated 0.004; wet climate 0.006; dry climate 0.002. 2006 = 0.02. |
-| `EF3_S` | advanced | coefficient | kg N2O-N/kg N | 0.005 | (asymmetric — use bounds) | pert | Table 10.21 | (none) | N₂O emission factor for managed manure storage — weighted-average broadcast over MMS (IPCC Table 10.21) |
-| `Frac_GASMS` | advanced | coefficient | fraction | 0.21 | (asymmetric — use bounds) | pert | Table 10.22 | Frac_GASM, Frac_GasMS | Fraction of managed manure N volatilised as NH3/NOx — manure management (IPCC 2019 Table 10.22) |
 | `EF4` | advanced | coefficient | kg N2O-N/kg N | 0.01 | (asymmetric — use bounds) | lognormal | Ch.11 Table 11.3 | (none) | N₂O EF for atmospheric N deposition (IPCC Vol.4 Ch.11 Table 11.3). 2019R aggregated EF4 = 0.010 (range 0.002-0.018); wet climate 0.014; dry climate 0.005. 2006 = 0.010. |
 | `EF5` | advanced | coefficient | kg N2O-N/kg N | 0.011 | (asymmetric — use bounds) | lognormal | Ch.11 Table 11.3 | (none) | N₂O EF for N leaching/runoff (IPCC Vol.4 Ch.11 Table 11.3). 2019R EF5 = 0.011 (range 0.000-0.020), no climate disaggregation. 2006 = 0.0075. |
-| `Frac_LEACH_H` | advanced | coefficient | fraction | 0.02 | (asymmetric — use bounds) | lognormal | Table 10.23 | Frac_LEACH, Frac_LeachMS | Fraction of managed N lost through leaching — manure management (IPCC 2019 Refinement Vol.4 Ch.10 Table 10.23) |
 | `Frac_GASM_PRP` | advanced | coefficient | fraction | 0.21 | (asymmetric — use bounds) | pert | Ch.11 Table 11.3 | Frac_GasPRP | Fraction of N volatilised from dung/urine on pasture (IPCC Vol.4 Ch.11 Table 11.3, FracGASM). 2019R = 0.21 (range 0.00-0.31); 2006 = 0.20. |
 | `Frac_LEACH_PRP` | advanced | coefficient | fraction | 0.24 | (asymmetric — use bounds) | pert | Ch.11 Table 11.3 | Frac_LeachPRP | Fraction of N leached from pasture deposition (IPCC Vol.4 Ch.11 Table 11.3, FracLEACH-(H), wet climates only). 2019R = 0.24 (range 0.01-0.73); 2006 = 0.30; in dry climates = 0. |
 | `MilkPR` | core | coefficient | % | 3.3 | 10% | normal | Eq 10.33 | protein_milk | Protein content of milk — feeds the milk-N term in IPCC Vol.4 Ch.10 Eq 10.33 (N retention for cattle, where the 6.38 milk-protein-to-N conversion is defined) |
@@ -42,11 +39,8 @@ These parameters use absolute IPCC-derived lower/upper bounds rather than a symm
 | code | lower | central | upper |
 |------|-------|---------|-------|
 | `EF3_PRP` | 0.007 | 0.004 | 0.06 |
-| `EF3_S` | 0.001 | 0.005 | 0.025 |
-| `Frac_GASMS` | 0.1 | 0.21 | 0.4 |
 | `EF4` | 0.002 | 0.01 | 0.02 |
 | `EF5` | 0.0005 | 0.011 | 0.025 |
-| `Frac_LEACH_H` | 0.01 | 0.02 | 0.1 |
 | `Frac_GASM_PRP` | 0.05 | 0.21 | 0.5 |
 | `Frac_LEACH_PRP` | 0.05 | 0.24 | 0.8 |
 

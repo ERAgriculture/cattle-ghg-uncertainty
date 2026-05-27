@@ -1,11 +1,11 @@
 # AUDIT_REPORT.md — Statistician's end-to-end audit
 
-Generated 2026-05-26 18:37 CEST by `_audit.R`.
+Generated 2026-05-27 11:31 CEST by `_audit.R`.
 
 ## Summary
 
-- Tests run: **52**
-- Pass: **52**
+- Tests run: **55**
+- Pass: **55**
 - Fail: **0**
 - Skip: **0**
 - Verdict: **AUDIT CLEAN**
@@ -76,9 +76,12 @@ Synthetic single-sub-category dairy inventory with all 27 IPCC-aligned parameter
 | F3 | F | validate_param_specs flags lower>upper as invalid | ✅ PASS |  |
 | F4 | F | N=0: simulation completes, total_co2e = 0, no NaN | ✅ PASS |  |
 | F5 | F | Empty source selection detectable by simulation observer gate | ✅ PASS |  |
-| G1 | G | export_results_xlsx produces non-empty file | ✅ PASS | 9589 bytes |
+| F6 | F | Source-aware deps: CH4-only excludes all manure-N2O / PRP params | ✅ PASS | CH4 needs Ym/UE/ASH/Bo; not the N2O EFs |
+| F7 | F | Gate allows CH4-only run when only N2O params (EF3_PRP/EF4/EF5) are blank | ✅ PASS | blocking cells = 0 |
+| F8 | F | Gate still blocks blank Ym when enteric_ch4 is selected | ✅ PASS | blocking cells = 1 |
+| G1 | G | export_results_xlsx produces non-empty file | ✅ PASS | 9588 bytes |
 | G2 | G | CSV write of uncertainty frame produces non-empty file | ✅ PASS | 1874 bytes |
-| G3 | G | build_run_summary_docx produces Word file > 50 KB | ✅ PASS | 75490 bytes |
+| G3 | G | build_run_summary_docx produces Word file > 50 KB | ✅ PASS | 75488 bytes |
 
 ## Detailed numerics
 
@@ -133,6 +136,9 @@ Synthetic single-sub-category dairy inventory with all 27 IPCC-aligned parameter
 | F3 | TRUE | TRUE | PASS |
 | F4 | TRUE | TRUE | PASS |
 | F5 | TRUE | TRUE | PASS |
+| F6 | TRUE | TRUE | PASS |
+| F7 | TRUE | TRUE | PASS |
+| F8 | TRUE | TRUE | PASS |
 | G1 | TRUE | TRUE | PASS |
 | G2 | TRUE | TRUE | PASS |
 | G3 | TRUE | TRUE | PASS |

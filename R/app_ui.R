@@ -947,11 +947,11 @@ app_ui <- function() {
 
               sliderInput("ef_rho_manureN",
                           label = tagList(
-                            "Within-block ρ — Manure-N coefficients (EF3, EF4, EF5, Frac_GASMS, Frac_LEACH, UE) ",
+                            "Within-block ρ — Manure-N coefficients (EF3_PRP, EF4, EF5, Frac_GASM_PRP, Frac_LEACH_PRP, UE) ",
                             bslib::tooltip(
                               span(icon("circle-question"),
                                    style = "color:#2D6A4F; cursor:help; vertical-align:middle;"),
-                              "Move toward 0.5 if EF3, EF4, EF5, Frac_GASMS, Frac_LEACH all come from the same NH₃ / N₂O volatilisation programme. Move toward 0 if independent. ρ = 0.3 means moderate shared bias.",
+                              "Move toward 0.5 if EF3_PRP, EF4, EF5, Frac_GASM_PRP, Frac_LEACH_PRP all come from the same NH₃ / N₂O volatilisation programme. Move toward 0 if independent. ρ = 0.3 means moderate shared bias.",
                               placement = "right"
                             )
                           ),
@@ -1497,8 +1497,8 @@ app_ui <- function() {
             tags$strong("AD vs EF column convention: "),
             "in this version, ", tags$em("AD"),
             " = population uncertainty only (N), and ", tags$em("EF"),
-            " = the per-head emission factor uncertainty driven by the 23 coefficients (live weight, feed quality, ",
-            "Ym, Bo, Frac_GASMS, etc.). This matches IPCC Volume 1 Chapter 3 reporting conventions."),
+            " = the per-head emission factor uncertainty driven by the IPCC coefficients (live weight, feed quality, ",
+            "Ym, Bo, EF3_PRP, etc.). This matches IPCC Volume 1 Chapter 3 reporting conventions."),
         bslib::card(
           bslib::card_header("IPCC Table 3.3 - Uncertainty Report"),
           bslib::card_body(
