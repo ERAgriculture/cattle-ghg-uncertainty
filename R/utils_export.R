@@ -83,9 +83,16 @@ export_results_xlsx <- function(results, uncertainty, sensitivity, ipcc_table, f
     placeholder("IPCC summary unavailable. Enable 'Run uncertainty decomposition (AD/EF/Combined)' on Tab 5 and re-run to populate this sheet.")
   else ipcc_table
 
-  uncertainty_df <- if (is.null(uncertainty) || !is.data.frame(uncertainty) || nrow(uncertainty) == 0)
+  # 2026-06: drop the cv_pct column from the Uncertainty_Metrics sheet so the
+  # Excel export aligns with every other user-facing surface (in-app tables,
+  # Word report, IPCC Annex 7), which all report 95% MoE as the single
+  # uncertainty metric. moe_pct stays; raw mean / sd / quantiles stay so
+  # advanced users can still re-derive CV manually if needed.
+  uncertainty_df <- if (is.null(uncertainty) || !is.data.frame(uncertainty) || nrow(uncertainty) == 0) {
     placeholder("No uncertainty metrics available. Run a Monte Carlo simulation on Tab 5 first.")
-  else uncertainty
+  } else {
+    uncertainty[, setdiff(names(uncertainty), "cv_pct"), drop = FALSE]
+  }
 
   src_df <- if (!is.null(sensitivity) && is.data.frame(sensitivity$src) && nrow(sensitivity$src) > 0)
     sensitivity$src

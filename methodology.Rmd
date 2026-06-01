@@ -425,7 +425,7 @@ The coefficient of variation (CV\%) expresses uncertainty relative to the mean:
 
 $$\text{CV\%} = \frac{\sigma}{\bar{x}} \times 100$$
 
-where $\sigma$ is the standard deviation and $\bar{x}$ is the mean. CV\% is \textbf{still computed} for every emission source and is available in the by-system / by-category in-app tables and in the CSV download alongside MoE, but it is no longer the headline metric — IPCC Annex 7 expects MoE, not CV. It is undefined (reported as NA) when the mean emission is zero (e.g. pasture N$_2$O for fully housed systems).
+where $\sigma$ is the standard deviation and $\bar{x}$ is the mean. CV\% is \textbf{still computed internally} for every emission source (kept in the underlying \texttt{calc\_all\_uncertainty()} data frame for advanced reproducibility) but as of the June 2026 standardisation pass it is no longer surfaced in any user-facing display — IPCC Annex 7 expects MoE\%, not CV\%, and reporting both was causing reviewers to ask which figure to use. It is undefined (reported as NA) when the mean emission is zero (e.g. pasture N$_2$O for fully housed systems).
 
 ## IPCC Table 3.3 Format
 

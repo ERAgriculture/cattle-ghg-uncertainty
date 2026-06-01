@@ -1958,9 +1958,9 @@ app_server <- function(input, output, session) {
       make_diag_badge(
         "Precision (MCSE)",
         paste0("Monte Carlo Standard Error: measures how much the reported mean would shift if ",
-               "you re-ran with a different random seed. Formula: CV% ÷ √n. ",
-               "Aim for < 0.5% (green). At 10,000 iterations a CV of 20% gives MCSE = 0.2%, which is fine. ",
-               "At 1,000 iterations it would be 0.6% — borderline."),
+               "you re-ran with a different random seed. Aim for < 0.5% of the mean (green). ",
+               "At 10,000 iterations a typical livestock-inventory MCSE is ~0.2% — comfortably inside the green band. ",
+               "At 1,000 iterations it would be ~0.6%, which is borderline; raise the iteration count if you see this."),
         sprintf("%.2f%% of mean", d$mcse_pct),
         mcse_s
       ),
@@ -2131,8 +2131,9 @@ app_server <- function(input, output, session) {
         `Mean CH₄ (t)` = round(mean(res$total_ch4), 2),
         `Mean N₂O (t)` = round(mean(res$total_n2o), 4),
         `Mean CO₂eq (t)` = round(m, 2),
+        # 2026-06: dropped CV column — every user-facing uncertainty figure
+        # in the app reports as 95% MoE (IPCC Vol.1 Ch.3 Table 3.3 convention).
         `MoE 95% (%)` = round(((hi - lo) / 2) / m * 100, 1),
-        `CV (%)` = round(sd(res$total_co2e) / m * 100, 1),
         `CI lower (t CO₂eq)` = round(lo, 2),
         `CI upper (t CO₂eq)` = round(hi, 2),
         check.names = FALSE
@@ -2207,8 +2208,11 @@ app_server <- function(input, output, session) {
           `Mean (t CH₄)`       = if (s$gas == "CH4") round(m_raw, 3)  else NA_real_,
           `Mean (t N₂O)`       = if (s$gas == "N2O") round(m_raw, 4)  else NA_real_,
           `Mean (t CO₂eq)`     = round(m_co2e, 2),
+          # 2026-06: dropped the redundant CV (%) column — every user-facing
+          # uncertainty figure in the app now reports as 95% MoE (the IPCC Vol.1
+          # Ch.3 Table 3.3 convention). cv_pct is still in calc_all_uncertainty()
+          # output for advanced reproducibility.
           `MoE 95% (%)`        = if (m_co2e > 0) round(((hi - lo) / 2) / m_co2e * 100, 1) else NA_real_,
-          `CV (%)`             = if (m_co2e > 0) round(sd(co2e) / m_co2e * 100, 1) else NA_real_,
           `CI lower (t CO₂eq)` = round(lo, 2),
           `CI upper (t CO₂eq)` = round(hi, 2),
           check.names = FALSE
@@ -2242,23 +2246,26 @@ app_server <- function(input, output, session) {
     unc_with    <- calc_all_uncertainty(rv$mc_results$inventory)
     unc_without <- calc_all_uncertainty(rv$comparison_result$inventory)
 
-    get_cv <- function(unc, v) {
+    # 2026-06: switched from cv_pct to moe_pct to match the IPCC 2006 Vol.1
+    # Ch.3 Table 3.3 reporting convention used by every other uncertainty
+    # display in the app (Results tables, IPCC Annex 7, Word report).
+    get_moe <- function(unc, v) {
       row <- unc[unc$variable == v, ]
-      if (nrow(row) > 0) round(row$cv_pct, 1) else NA_real_
+      if (nrow(row) > 0) round(row$moe_pct, 1) else NA_real_
     }
 
-    cv_with    <- sapply(vars, get_cv, unc = unc_with)
-    cv_without <- sapply(vars, get_cv, unc = unc_without)
+    moe_with    <- sapply(vars, get_moe, unc = unc_with)
+    moe_without <- sapply(vars, get_moe, unc = unc_without)
 
     plotly::plot_ly() %>%
-      plotly::add_bars(x = labels, y = cv_with,    name = "With correlations",
+      plotly::add_bars(x = labels, y = moe_with,    name = "With correlations",
                        marker = list(color = "#2D6A4F")) %>%
-      plotly::add_bars(x = labels, y = cv_without, name = "Without correlations",
+      plotly::add_bars(x = labels, y = moe_without, name = "Without correlations",
                        marker = list(color = "#90A4AE")) %>%
       plotly::layout(
         barmode = "group",
-        title   = "CV% comparison: with vs. without correlations",
-        yaxis   = list(title = "Coefficient of Variation (%)"),
+        title   = "95% MoE comparison: with vs. without correlations",
+        yaxis   = list(title = "95% MoE (%)"),
         xaxis   = list(title = ""),
         legend  = list(orientation = "h", y = -0.25)
       )
@@ -2976,7 +2983,10 @@ app_server <- function(input, output, session) {
     req(rv_trend$results)
     df <- rv_trend$results
     last <- df[nrow(df), ]
-    sprintf("Year %d  ·  CV%% %.1f", last$Year, last$CV_pct)
+    # 2026-06: switched from CV% to 95% MoE to match the IPCC Vol.1 Ch.3
+    # Table 3.3 reporting convention used by every other uncertainty display
+    # in the app. CV_pct still in the trend results frame for re-derivation.
+    sprintf("Year %d  ·  ±%.1f%% (95%% MoE)", last$Year, last$MoE_95_pct)
   })
 
   output$vb_trend_yoy <- renderText({
@@ -3058,7 +3068,13 @@ app_server <- function(input, output, session) {
 
   output$trend_table <- DT::renderDT({
     req(rv_trend$results)
-    DT::datatable(rv_trend$results, rownames = FALSE,
+    # 2026-06: drop the CV_pct column so the trend table aligns with the
+    # single-year results tables (every user-facing uncertainty display in
+    # the app reports as 95% MoE only). CV_pct is still in rv_trend$results
+    # for internal/audit access.
+    df <- rv_trend$results[, setdiff(names(rv_trend$results), "CV_pct"),
+                            drop = FALSE]
+    DT::datatable(df, rownames = FALSE,
                   options = list(pageLength = 25, dom = "t"))
   })
 

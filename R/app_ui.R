@@ -922,7 +922,7 @@ app_ui <- function() {
           " to check that the model runs. Use a ", tags$strong("minimum of 10,000 iterations"),
           " for any result you intend to use — convergence is not guaranteed below 10,000. ",
           "Higher is always better: 25,000–30,000 is recommended for final reporting, especially when correlations are enabled or you have many sub-categories. ",
-          "To verify convergence, re-run with a different random seed: if the CV% changes by more than 1–2 percentage points, increase the number of iterations."),
+          "To verify convergence, re-run with a different random seed: if the 95% MoE changes by more than ~2 percentage points, increase the number of iterations."),
       # R1.5: view toggle — output.sim_view is "settings" or "results"
       conditionalPanel(
         condition = "output.sim_view != 'results'",
@@ -940,7 +940,7 @@ app_ui <- function() {
                 bslib::tooltip(
                   span(icon("circle-question"),
                        style = "color:#2D6A4F; cursor:help; vertical-align:middle;"),
-                  "Fixing the seed makes results exactly reproducible — anyone using the same data, settings, and seed will get the same numbers. To check convergence, re-run with a different seed (e.g. 123 or 456): if the CV% changes by more than ~1 percentage point, increase the number of iterations.",
+                  "Fixing the seed makes results exactly reproducible — anyone using the same data, settings, and seed will get the same numbers. To check convergence, re-run with a different seed (e.g. 123 or 456): if the 95% MoE changes by more than ~2 percentage points, increase the number of iterations.",
                   placement = "right"
                 )
               ),
@@ -1285,7 +1285,7 @@ app_ui <- function() {
           bslib::card(
             bslib::card_header("Trend table"),
             bslib::card_body(
-              p(tags$em("Year-by-year mean, 95% CI bounds, CV%, MoE%, Δ vs. base year, and year-over-year change.")),
+              p(tags$em("Year-by-year mean, 95% CI bounds, 95% MoE, Δ vs. base year, and year-over-year change.")),
               DT::DTOutput("trend_table")
             )
           ),

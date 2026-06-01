@@ -425,7 +425,6 @@ build_run_summary_docx <- function(path,
   m   <- total_row$mean
   lo  <- total_row$ci_lower
   hi  <- total_row$ci_upper
-  cv  <- total_row$cv_pct
   moe <- total_row$moe_pct
 
   # Top driver from sensitivity (SRC if available)
@@ -443,10 +442,13 @@ build_run_summary_docx <- function(path,
   }
 
   n_iter_str <- .fmt_int(settings$n_iter)
+  # 2026-06: dropped the parallel "Coefficient of variation: …" sentence so the
+  # exec summary leads with the single IPCC-aligned metric (95% MoE) used
+  # throughout the rest of the report.
   sprintf(
-    "Total emissions: %s t CO2eq with a 95%% confidence interval of [%s, %s]. Coefficient of variation: %s%%; 95%% margin of error: %s%%.%s These figures are based on %s Monte Carlo iterations under the IPCC Approach 2 method.",
+    "Total emissions: %s t CO2eq with a 95%% confidence interval of [%s, %s]. 95%% margin of error: %s%%.%s These figures are based on %s Monte Carlo iterations under the IPCC Approach 2 method.",
     .fmt_num(m, 0), .fmt_num(lo, 0), .fmt_num(hi, 0),
-    .fmt_num(cv, 1), .fmt_num(moe, 1),
+    .fmt_num(moe, 1),
     driver_text, n_iter_str
   )
 }
