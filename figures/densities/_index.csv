@@ -5,7 +5,7 @@ mature_weight,Mature weight (kg),normal,300,10,270.0,330.0,activity_data,mature_
 weight_gain,Weight gain (kg/day),pert,0.1,30,0.07,0.13,activity_data,weight_gain.png
 milk_yield,Milk yield (kg/head/day),normal,4,20,3.2,4.8,activity_data,milk_yield.png
 milk_fat,Milk fat (%),normal,4,10,3.6,4.4,activity_data,milk_fat.png
-pct_calving,Fraction of females calving in a year (0-1),beta,0.6,20,0.48,0.72,activity_data,pct_calving.png
+pct_pregnant,Fraction of females pregnant in a year (0-1) — includes pregnant heifers,beta,0.6,20,0.48,0.72,activity_data,pct_pregnant.png
 DE_pct,Digestible energy (% of GE),normal,55,10,49.5,60.5,activity_data,DE_pct.png
 Cfi,Maintenance coefficient (MJ/day/kg^0.75),pert,0.386,5,0.3667,0.4053,activity_data,Cfi.png
 Ca,Activity coefficient,triangular,0.17,20,0.136,0.204,activity_data,Ca.png

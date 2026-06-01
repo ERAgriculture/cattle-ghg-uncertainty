@@ -11,7 +11,7 @@
 # 2007 / IPCC software approximation of the weight-gain term in Eq 10.33;
 # the full IPCC Eq 10.33 requires protein-content data not in the
 # standard input set).
-calc_n_excretion <- function(ge, CP, milk_yield = 0, pct_calving = 0,
+calc_n_excretion <- function(ge, CP, milk_yield = 0, pct_pregnant = 0,
                               weight_gain = 0, MilkPR = 3.3) {
   # IPCC 2006 / 2019 Refinement Vol.4 Ch.10 Eq 10.32 (N intake rates for cattle):
   #   N_intake = (GE / 18.45) * (CP% / 100) / 6.25
@@ -32,19 +32,19 @@ calc_n_excretion <- function(ge, CP, milk_yield = 0, pct_calving = 0,
 
   N_retained <- 0
   # Andreas 2026-05-26 follow-up: `isTRUE(x > 0)` instead of bare `x > 0` so
-  # an NA in milk_yield / pct_calving / weight_gain (e.g. a yellow-required
+  # an NA in milk_yield / pct_pregnant / weight_gain (e.g. a yellow-required
   # cell the user left blank in the template) collapses to FALSE here instead
   # of tripping `if(NA)` with "missing value where TRUE/FALSE needed". The
   # NA itself still propagates through the subtraction below so the user
   # sees an NA in the per-iteration result rather than a silent zero; the
   # pre-run NA-mean check in the simulation observer is the canonical
   # safeguard.
-  if (isTRUE(milk_yield > 0) && isTRUE(pct_calving > 0)) {
+  if (isTRUE(milk_yield > 0) && isTRUE(pct_pregnant > 0)) {
     # IPCC Vol.4 Ch.10 Eq 10.33 (N retention rates for cattle, milk-N term):
-    # milk_yield is daily kg per lactating animal; pct_calving averages across
+    # milk_yield is daily kg per lactating animal; pct_pregnant averages across
     # the sub-category. MilkPR is in % (e.g. 3.3); /6.38 is the milk-protein
     # to milk-N conversion (Jones casein factor) defined inside Eq 10.33.
-    N_retained <- milk_yield * pct_calving * MilkPR / 100 / 6.38
+    N_retained <- milk_yield * pct_pregnant * MilkPR / 100 / 6.38
   }
   if (isTRUE(weight_gain > 0)) {
     N_retained <- N_retained + weight_gain * 0.032

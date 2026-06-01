@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (MiKTeX 26.5) (preloaded format=pdflatex 2026.5.19)  27 MAY 2026 11:32
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (MiKTeX 26.5) (preloaded format=pdflatex 2026.5.19)  1 JUN 2026 13:53
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -885,6 +885,31 @@ Overfull \hbox (5.65384pt too wide) in paragraph at lines 249--249
 
 
 Underfull \hbox (badness 10000) in paragraph at lines 249--249
+\T1/lmr/m/n/10 (+20) / \T1/lmtt/m/n/10 upper_fraction \T1/lmr/m/n/10 (+20) /
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 249--249
+\T1/lmtt/m/n/10 distribution_fraction
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 249--249
+\T1/lmr/m/n/10 (+20) columns on the Ma-
+ []
+
+
+Underfull \hbox (badness 2253) in paragraph at lines 249--249
+\T1/lmr/m/n/10 (+20) pling within the user's
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 249--249
+\T1/lmr/m/n/10 (+20) bounds, renor-malised
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 249--249
 []|\T1/lmr/m/n/10 (+20) country-
  []
 
@@ -904,8 +929,23 @@ Underfull \hbox (badness 10000) in paragraph at lines 249--249
  []
 
 
-Overfull \hbox (3.51852pt too wide) in paragraph at lines 249--250
-[]|\T1/lmr/m/n/10 (-20) Uniform/Dirichlet| 
+Underfull \hbox (badness 10000) in paragraph at lines 249--250
+[]|\T1/lmr/m/n/10 (+20) Deterministic
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 249--250
+\T1/lmr/m/n/10 (+20) (de-fault) or
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 249--250
+\T1/lmr/m/n/10 (+20) per-MMS
+ []
+
+
+Overfull \hbox (7.80096pt too wide) in paragraph at lines 249--250
+\T1/lmr/m/n/10 (-20) PERT/Normal/etc.
  []
 
 
@@ -1291,7 +1331,7 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [15]
-Overfull \hbox (95.72781pt too wide) in paragraph at lines 537--546
+Overfull \hbox (95.72781pt too wide) in paragraph at lines 539--548
  [] 
  []
 
@@ -1303,17 +1343,17 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [16]
-Underfull \hbox (badness 1325) in paragraph at lines 593--593
+Underfull \hbox (badness 1325) in paragraph at lines 595--595
 []|\T1/lmr/m/n/10.95 (+20) Non-negative sym-met-ric pa-ram-e-ters
  []
 
 
-Underfull \hbox (badness 1642) in paragraph at lines 594--594
+Underfull \hbox (badness 1642) in paragraph at lines 596--596
 []|\T1/lmr/m/n/10.95 (+20) log-mean, log-SD (fit-ted
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 596--596
+Underfull \hbox (badness 10000) in paragraph at lines 598--598
 []|\T1/lmr/m/n/10.95 (+20) Truncated-
  []
 
@@ -1390,13 +1430,32 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 
 [25]
 LaTeX Font Info:    Trying to load font information for TS1+lmtt on input line 
-962.
+972.
 (C:\Users\mlolita\AppData\Local\Programs\MiKTeX\tex/latex/lm\ts1lmtt.fd
 File: ts1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-Underfull \hbox (badness 10000) in paragraph at lines 958--965
-\T1/lmtt/m/n/10.95 correlated-sampling procedure used for activity data (Sectio
-n\T1/lmr/m/n/10.95 (+20) Correlated Sam-pling''
+Underfull \hbox (badness 2205) in paragraph at lines 970--977
+[]\T1/lmr/m/it/10.95 (+20) UI gat-ing. \T1/lmr/m/n/10.95 (+20) Modes whose pre-
+req-ui-sites are miss-ing are greyed out au-to-mat-i-cally and
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 970--977
+\T1/lmr/m/n/10.95 (+20) can-not be se-lected: \T1/lmtt/m/n/10.95 From template\
+TS1/lmtt/m/n/10.95 '' \T1/lmtt/m/n/10.95 is disabled when the upload has no usa
+ble
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 970--977
+\T1/lmtt/m/n/10.95 custom upload) is loaded. The Run button additionally blocks
+ the simulation with
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 970--977
+\T1/lmtt/m/n/10.95 an explicit error if a no-op mode somehow slips through. The
+se gates were added in
  []
 
 
@@ -1415,13 +1474,29 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
 [27]
-Underfull \hbox (badness 10000) in paragraph at lines 1047--1054
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[28]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[29]
+Underfull \hbox (badness 10000) in paragraph at lines 1115--1122
 \T1/lmtt/m/n/10.95 $n_{\text{iter}} \times n_{\text{coef}}$ matrix and reuses i
 t for every year.
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1055--1066
+Underfull \hbox (badness 10000) in paragraph at lines 1123--1134
 \T1/lmtt/m/n/10.95 uncertainties when comparing two years as part of trend anal
 ysis will decrease
  []
@@ -1433,47 +1508,31 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[28]
-Underfull \hbox (badness 7631) in paragraph at lines 1083--1083
+[30]
+Underfull \hbox (badness 7631) in paragraph at lines 1151--1151
 []|\T1/lmr/m/n/10.95 (+20) Value de-vi-ates more
  []
 
 
-Underfull \hbox (badness 2617) in paragraph at lines 1083--1083
+Underfull \hbox (badness 2617) in paragraph at lines 1151--1151
 \T1/lmr/m/n/10.95 (+20) than 200% from the
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1083--1083
+Underfull \hbox (badness 10000) in paragraph at lines 1151--1151
 \T1/lmr/m/n/10.95 (+20) IPCC de-fault; or
  []
 
 
-Underfull \hbox (badness 2818) in paragraph at lines 1083--1083
+Underfull \hbox (badness 2818) in paragraph at lines 1151--1151
 \T1/lmr/m/n/10.95 (+20) MMS fraction-sum is
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 1083--1083
+Underfull \hbox (badness 10000) in paragraph at lines 1151--1151
 \T1/lmr/m/n/10.95 (+20) with mean out-side
  []
 
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[29]
-
-Package fancyhdr Warning: \headheight is too small (12.0pt): 
-(fancyhdr)                Make it at least 13.59999pt, for example:
-(fancyhdr)                \setlength{\headheight}{13.59999pt}.
-(fancyhdr)                You might also make \topmargin smaller:
-(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
-
-[30]
 
 Package fancyhdr Warning: \headheight is too small (12.0pt): 
 (fancyhdr)                Make it at least 13.59999pt, for example:
@@ -1489,18 +1548,34 @@ Package fancyhdr Warning: \headheight is too small (12.0pt):
 (fancyhdr)                You might also make \topmargin smaller:
 (fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
 
-[32] (methodology.aux)
+[32]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[33]
+
+Package fancyhdr Warning: \headheight is too small (12.0pt): 
+(fancyhdr)                Make it at least 13.59999pt, for example:
+(fancyhdr)                \setlength{\headheight}{13.59999pt}.
+(fancyhdr)                You might also make \topmargin smaller:
+(fancyhdr)                \addtolength{\topmargin}{-1.59999pt}.
+
+[34] (methodology.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-03-20>
  ***********
  ) 
 Here is how much of TeX's memory you used:
- 16305 strings out of 467691
- 266287 string characters out of 5414019
- 750380 words of memory out of 5000000
- 44739 multiletter control sequences out of 15000+600000
- 722596 words of font info for 231 fonts, out of 8000000 for 9000
+ 16324 strings out of 467691
+ 266564 string characters out of 5414019
+ 751455 words of memory out of 5000000
+ 44740 multiletter control sequences out of 15000+600000
+ 723271 words of font info for 239 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  69i,13n,79p,1014b,709s stack positions out of 10000i,1000n,20000p,200000b,200000s
 <C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/public/lm/lmbx10.
@@ -1521,9 +1596,9 @@ lic/lm/lmri10.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1/p
 ublic/lm/lmsy10.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type1
 /public/lm/lmsy8.pfb><C:/Users/mlolita/AppData/Local/Programs/MiKTeX/fonts/type
 1/public/lm/lmtt10.pfb>
-Output written on methodology.pdf (32 pages, 461849 bytes).
+Output written on methodology.pdf (34 pages, 475334 bytes).
 PDF statistics:
- 536 PDF objects out of 1000 (max. 8388607)
- 107 named destinations out of 1000 (max. 500000)
+ 546 PDF objects out of 1000 (max. 8388607)
+ 109 named destinations out of 1000 (max. 500000)
  55673 words of extra memory for PDF output out of 61914 (max. 10000000)
 

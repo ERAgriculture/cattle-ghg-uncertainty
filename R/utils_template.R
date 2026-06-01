@@ -73,6 +73,91 @@ compute_corr_from_population <- function(population,
   }, error = function(e) NULL)
 }
 
+# Andreas 28/5/26 follow-up: country-name → continental region lookup.
+# Used by normalise_metadata_region() to rescue legacy uploads that only
+# have a free-text "Country / region" cell (without the new Continental
+# region dropdown). The list is illustrative — it covers the cases
+# inventory teams in our partner network are likely to type. Country
+# names are matched case-insensitively after stripping whitespace.
+# Anything not in this list falls through to "global", which preserves
+# the prior behaviour (no false BW benchmark warning).
+COUNTRY_TO_REGION <- c(
+  # Africa
+  "zimbabwe" = "africa", "kenya" = "africa", "uganda" = "africa",
+  "tanzania" = "africa", "ethiopia" = "africa", "south africa" = "africa",
+  "rwanda" = "africa", "burundi" = "africa", "madagascar" = "africa",
+  "ghana" = "africa", "nigeria" = "africa", "senegal" = "africa",
+  "mali" = "africa", "burkina faso" = "africa", "niger" = "africa",
+  "mozambique" = "africa", "zambia" = "africa", "malawi" = "africa",
+  "botswana" = "africa", "namibia" = "africa", "egypt" = "africa",
+  "morocco" = "africa", "tunisia" = "africa", "algeria" = "africa",
+  "cote d'ivoire" = "africa", "ivory coast" = "africa", "cameroon" = "africa",
+  # Asia
+  "india" = "asia", "china" = "asia", "pakistan" = "asia",
+  "bangladesh" = "asia", "vietnam" = "asia", "thailand" = "asia",
+  "indonesia" = "asia", "philippines" = "asia", "myanmar" = "asia",
+  "nepal" = "asia", "sri lanka" = "asia", "cambodia" = "asia",
+  "laos" = "asia", "mongolia" = "asia", "kazakhstan" = "asia",
+  "japan" = "asia", "south korea" = "asia", "korea" = "asia",
+  "iran" = "asia", "iraq" = "asia", "turkey" = "asia",
+  # Europe
+  "united kingdom" = "europe", "uk" = "europe", "ireland" = "europe",
+  "france" = "europe", "germany" = "europe", "italy" = "europe",
+  "spain" = "europe", "portugal" = "europe", "netherlands" = "europe",
+  "belgium" = "europe", "denmark" = "europe", "sweden" = "europe",
+  "norway" = "europe", "finland" = "europe", "poland" = "europe",
+  "czech republic" = "europe", "switzerland" = "europe", "austria" = "europe",
+  "greece" = "europe", "romania" = "europe", "ukraine" = "europe",
+  # Americas
+  "united states" = "americas", "usa" = "americas", "us" = "americas",
+  "canada" = "americas", "mexico" = "americas", "brazil" = "americas",
+  "argentina" = "americas", "colombia" = "americas", "peru" = "americas",
+  "chile" = "americas", "uruguay" = "americas", "paraguay" = "americas",
+  "bolivia" = "americas", "ecuador" = "americas", "venezuela" = "americas",
+  "costa rica" = "americas", "guatemala" = "americas", "honduras" = "americas",
+  "nicaragua" = "americas", "panama" = "americas",
+  # Oceania
+  "australia" = "oceania", "new zealand" = "oceania",
+  "fiji" = "oceania", "papua new guinea" = "oceania"
+)
+
+# Resolve the metadata `region` field from either:
+#   (a) the new "Continental region" cell (case-insensitive match to
+#       africa / asia / europe / americas / oceania / global), OR
+#   (b) the legacy single "Country / region" cell — by looking up the
+#       country in COUNTRY_TO_REGION.
+# Anything unresolved falls through to "global" (the existing default).
+normalise_metadata_region <- function(metadata) {
+  if (is.null(metadata) || !is.data.frame(metadata)) return(metadata)
+
+  # The transposed-layout parser turns label -> column-name by stripping
+  # everything after a slash and converting spaces to underscores. So a
+  # template cell labelled "Continental region" lands in
+  # `metadata$continental_region`; "Region" lands in `metadata$region`.
+  # Look for either, plus the legacy combined "Country / region" cell
+  # (which the parser stripped down to just `country`). First match wins.
+  pull <- function(key) {
+    if (!key %in% names(metadata)) return(NA_character_)
+    v <- as.character(metadata[[key]][1])
+    if (is.na(v)) NA_character_ else tolower(trimws(v))
+  }
+  region_raw <- pull("region")
+  if (is.na(region_raw) || !nzchar(region_raw))
+    region_raw <- pull("continental_region")
+  country_raw <- pull("country")
+
+  valid <- c("africa","asia","europe","americas","oceania","global")
+  resolved <- if (!is.na(region_raw) && nzchar(region_raw) &&
+                  region_raw %in% valid) {
+    region_raw                                          # (a) explicit
+  } else if (!is.na(country_raw) && nzchar(country_raw) &&
+             country_raw %in% names(COUNTRY_TO_REGION)) {
+    COUNTRY_TO_REGION[[country_raw]]                    # (b) country fallback
+  } else "global"
+  metadata$region <- resolved
+  metadata
+}
+
 # C1: parameter renaming map (legacy → IPCC-aligned).
 # parse_uploaded_template applies these so existing user templates keep working.
 # New canonical names match the IPCC Inventory Software v2.95 symbols.
@@ -109,12 +194,16 @@ PARAM_ALIASES <- c(
   # Legacy "W" and "live_weight" still accepted on upload.
   "W"            = "BW",
   "live_weight"  = "BW",
-  # Andreas 2026-05 #9 (final consolidation 2026-05-19): the previous
-  # `pct_lactating` parameter is consolidated into `pct_calving` —
-  # IPCC's "Percent of females that give birth in a year" (Vol 4 Ch 10
-  # p.20 of the 2019 Refinement; used to weight Cpregnancy in Eq 10.13).
-  "pct_lactating" = "pct_calving",
-  "pct_pregnant"  = "pct_calving"
+  # Andreas 28/5/26 #2: canonical name is now `pct_pregnant` (was
+  # `pct_calving`). This aligns with IPCC wording in Vol.4 Ch.10 Eq 10.13
+  # (Cpregnancy is weighted by proportion of females pregnant) and extends
+  # the parameter to pregnant heifers that have not yet calved. Legacy
+  # `pct_calving` and `pct_lactating` are accepted on upload and renamed to
+  # the canonical here. For sub-categories where lactation and pregnancy
+  # populations differ, users should enter pct_pregnant (the tool also uses
+  # it as the lactation-weight in Eq 10.8 NEl by convention).
+  "pct_lactating" = "pct_pregnant",
+  "pct_calving"   = "pct_pregnant"
 )
 
 # ---------------------------------------------------------------------------
@@ -137,7 +226,7 @@ PARAM_CATALOGUE <- data.frame(
   # PRP direct EF (EF3_PRP) remain — they have no per-MMS equivalent.
   parameter = c(
     "N","BW","MW","WG",
-    "Milk","Fat","pct_calving","DE",
+    "Milk","Fat","pct_pregnant","DE",
     "Cfi","Ca","C","Cp","hours","CP",
     "Ym","Bo","ASH","UE",
     "EF3_PRP","EF4","EF5",
@@ -148,9 +237,9 @@ PARAM_CATALOGUE <- data.frame(
     "Average live body weight of the animals",
     "Mature (adult) body weight of the animals",
     "Average daily weight gain — set 0 for non-growing (adult) animals",
-    "Daily milk yield per lactating cow (not sub-category-average — the tool multiplies by pct_calving internally). Set 0 for sub-categories that do not lactate.",
+    "Daily milk yield per lactating cow (not sub-category-average — the tool multiplies by pct_pregnant internally). Set 0 for sub-categories that do not lactate.",
     "Fat content of milk (% by weight)",
-    "Fraction of females in this sub-category that give birth (calve) during the year, between 0 and 1.",
+    "Fraction of females in this sub-category that are pregnant during the year, between 0 and 1 — includes pregnant heifers that have not yet calved. Weights Cpregnancy in IPCC Eq 10.13 (NEp) and the milk-N retention term in Eq 10.33; the tool also applies it as the lactation-weight in Eq 10.8 (NEl). For sub-categories where lactation and pregnancy populations differ, enter the pregnancy fraction.",
     "Digestible energy as a percentage of gross energy — typical range 45-75%",
     "Maintenance energy coefficient — depends on sex and lactation status (IPCC Table 10.4)",
     "Activity coefficient for locomotion energy — depends on feeding situation (IPCC Table 10.5)",
@@ -275,7 +364,7 @@ PARAM_CATALOGUE <- data.frame(
     "WG — Daily weight gain (Average Daily Feed Intake tab)",
     "Milk — Average daily milk production (kg/day)",
     "Fat — Fat content of milk (% by weight)",
-    "pct_calving — Fraction of females that calve in a year",
+    "pct_pregnant — Fraction of females pregnant in a year (Cpregnancy weight in Eq 10.13; includes pregnant heifers)",
     "DE% — Feed digestibility (%)",
     "Cfi — Coefficient for calculating Net Energy for Maintenance",
     "Ca — Activity coefficient",
@@ -396,6 +485,12 @@ generate_template_openxlsx <- function(filepath, include_example,
   V_PTYPE     <- c("activity_data","coefficient")
   V_QUALITY   <- c("measured","country_specific","regional_default",
                    "ipcc_default","expert_judgement")
+  # Andreas 28/5/26 follow-up: the QA benchmark deviation check for BW reads
+  # the user's continent from `region`. The old single "Country / region"
+  # field was free text and got typed as a country name ("Zimbabwe"),
+  # which silently fell back to the global default. The new template has a
+  # separate dropdown-constrained Continental region cell using these slugs.
+  V_REGION    <- c("africa","asia","europe","americas","oceania","global")
   # TT.3: MMS list sourced from MMS_DEFAULTS (covers IPCC 2006 + 2019).
   # Round 7.1 (Andreas Template #3 follow-up): the MMS dropdown now filters to
   # the systems valid for the chosen IPCC version, instead of always showing
@@ -423,7 +518,8 @@ generate_template_openxlsx <- function(filepath, include_example,
     ptype   = V_PTYPE,    # col C
     quality = V_QUALITY,  # col D
     mms     = V_MMS,      # col E
-    species = V_SPECIES   # col F
+    species = V_SPECIES,  # col F
+    region  = V_REGION    # col G  (Andreas 28/5/26 follow-up: BW benchmark)
   )
 
   # Helper: return Excel range string for a named list
@@ -548,8 +644,19 @@ generate_template_openxlsx <- function(filepath, include_example,
 
   # Write as label-value pairs (transposed layout — more readable)
   meta_fields <- list(
-    list(label="Country / region",         col="country",       req=TRUE,
-         hint="Free text, e.g. Country-X or Region-A",            dropdown=NULL),
+    list(label="Country",                  col="country",       req=TRUE,
+         hint="Free text, e.g. Zimbabwe. Used in the report header.",
+         dropdown=NULL),
+    # Andreas 28/5/26 follow-up: split the old free-text "Country / region"
+    # cell into a free-text Country (above) and a dropdown-constrained
+    # Continental region (below). The region drives the QA benchmark
+    # deviation check for BW (Vol.4 Ch.10 Annex Tables 10A.1 / 10A.2 /
+    # 10A.3). Free-text country names like "Zimbabwe" were silently
+    # falling back to the global default; the dropdown makes that
+    # impossible.
+    list(label="Continental region",       col="region",        req=TRUE,
+         hint="Select your continent — drives the IPCC continental BW benchmark (Annex 10A.1/10A.2/10A.3).",
+         dropdown="region"),
     list(label="Inventory year",           col="inventory_year",req=TRUE,
          hint="Integer year, e.g. 2021",                          dropdown=NULL),
     list(label="Livestock species",        col="species",       req=TRUE,
@@ -574,7 +681,8 @@ generate_template_openxlsx <- function(filepath, include_example,
   apply_style("Inventory_Metadata", s_hdr, rows=1, cols=1:4)
 
   example_vals <- list(
-    country="Country X", inventory_year=2021, species="cattle_non_dairy",
+    country="Country X", region="africa",
+    inventory_year=2021, species="cattle_non_dairy",
     ipcc_version=ipcc_version,
     prepared_by="National GHG Inventory Team",
     notes="Hypothetical example inventory — replace with your country's data.")
@@ -879,13 +987,21 @@ generate_template_openxlsx <- function(filepath, include_example,
   # app reads it from the Parameters sheet only. The earlier MM column was
   # never consumed and lacked uncertainty inputs (#22d), so it created
   # confusion without affecting calculations.
+  # Andreas 28/5/26 #4: per-MMS uncertainty on the fraction_pct allocation.
+  # The new columns (lower_fraction / upper_fraction / distribution_fraction)
+  # let users specify uncertainty around each MMS share. The sampler then
+  # surfaces each sampled column as fraction_<mms> in the sensitivity output
+  # so MMS allocation can finally show up as an influential parameter.
+  # Per-iteration rows are renormalised so they sum to 1.
   MM_COLS   <- c("cattle_type","aggregation_level","sub_category",
                  "mms_type","fraction_pct",
+                 "lower_fraction","upper_fraction","distribution_fraction",
                  "MCF_pct","lower_mcf","upper_mcf","distribution_mcf",
                  "EF3","lower_ef3","upper_ef3","distribution_ef3",
                  "Frac_GasMS_pct","lower_frac_gas","upper_frac_gas","distribution_frac_gas",
                  "Frac_LeachMS_pct","lower_frac_leach","upper_frac_leach","distribution_frac_leach")
-  MM_WIDTHS <- c(14, 20, 16, 18, 12, 10, 10, 10, 15, 10, 10, 10, 15,
+  MM_WIDTHS <- c(14, 20, 16, 18, 12, 12, 12, 18,
+                 10, 10, 10, 15, 10, 10, 10, 15,
                  14, 12, 12, 18, 14, 12, 12, 18)
   MM_NCOL   <- length(MM_COLS)
 
@@ -913,6 +1029,9 @@ generate_template_openxlsx <- function(filepath, include_example,
     sub_category="Optional: cows / heifers / calves (free text)",
     mms_type="Select from dropdown",
     fraction_pct="% of manure to this MMS (all rows per sub-cat must sum to 100)",
+    lower_fraction="Optional: min % for the fraction_pct uncertainty range (leave blank if known exactly)",
+    upper_fraction="Optional: max % for the fraction_pct uncertainty range (leave blank if known exactly)",
+    distribution_fraction="Distribution for fraction_pct uncertainty — select from dropdown (default pert). Per-iteration rows are renormalised to sum to 100%.",
     MCF_pct="Methane conv. factor % — look up IPCC Table 10.17 in Vocab sheet",
     lower_mcf="Optional: min value for asymmetric MCF distribution",
     upper_mcf="Optional: max value for asymmetric MCF distribution",
@@ -944,6 +1063,12 @@ generate_template_openxlsx <- function(filepath, include_example,
       sub_category=c("cows","cows"),
       mms_type=c("pasture","solid_storage"),
       fraction_pct=c(70,30),
+      # Example asymmetric \u00b110 pp uncertainty around the central allocation.
+      # Per-iteration rows are renormalised to sum to 100 so this stays on
+      # the simplex.
+      lower_fraction=c(60,20),
+      upper_fraction=c(80,40),
+      distribution_fraction=c("pert","pert"),
       MCF_pct=c(1.5,5.0),
       lower_mcf=c(NA_real_,NA_real_),
       upper_mcf=c(NA_real_,NA_real_),
@@ -974,30 +1099,34 @@ generate_template_openxlsx <- function(filepath, include_example,
     data_rng <- 4:100
   }
 
-  # Andreas 2026-05 #22b: column indices shifted down by 1 after Bo removal.
+  # Andreas 28/5/26 #4: per-MMS fraction uncertainty columns inserted at cols
+  # 6-8, every column past fraction_pct shifts down by 3.
   apply_style("Manure_Management", s_req,  rows=data_rng, cols=1)    # cattle_type
   apply_style("Manure_Management", s_req,  rows=data_rng, cols=2)    # aggregation_level
   apply_style("Manure_Management", s_opt,  rows=data_rng, cols=3)    # sub_category
   apply_style("Manure_Management", s_drop, rows=data_rng, cols=4)    # mms_type
   apply_style("Manure_Management", s_req,  rows=data_rng, cols=5)    # fraction_pct
-  apply_style("Manure_Management", s_req,  rows=data_rng, cols=6)    # MCF_pct
-  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=7:8)  # lower/upper_mcf
-  apply_style("Manure_Management", s_drop, rows=data_rng, cols=9)    # distribution_mcf
-  apply_style("Manure_Management", s_req,  rows=data_rng, cols=10)   # EF3
-  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=11:12) # lower/upper_ef3
-  apply_style("Manure_Management", s_drop, rows=data_rng, cols=13)   # distribution_ef3
-  apply_style("Manure_Management", s_req,  rows=data_rng, cols=14)   # Frac_GasMS_pct
-  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=15:16) # lower/upper frac_gas
-  apply_style("Manure_Management", s_drop, rows=data_rng, cols=17)   # distribution_frac_gas
-  apply_style("Manure_Management", s_req,  rows=data_rng, cols=18)   # Frac_LeachMS_pct
-  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=19:20) # lower/upper frac_leach
-  apply_style("Manure_Management", s_drop, rows=data_rng, cols=21)   # distribution_frac_leach
+  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=6:7)  # lower/upper_fraction
+  apply_style("Manure_Management", s_drop, rows=data_rng, cols=8)    # distribution_fraction
+  apply_style("Manure_Management", s_req,  rows=data_rng, cols=9)    # MCF_pct
+  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=10:11) # lower/upper_mcf
+  apply_style("Manure_Management", s_drop, rows=data_rng, cols=12)   # distribution_mcf
+  apply_style("Manure_Management", s_req,  rows=data_rng, cols=13)   # EF3
+  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=14:15) # lower/upper_ef3
+  apply_style("Manure_Management", s_drop, rows=data_rng, cols=16)   # distribution_ef3
+  apply_style("Manure_Management", s_req,  rows=data_rng, cols=17)   # Frac_GasMS_pct
+  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=18:19) # lower/upper frac_gas
+  apply_style("Manure_Management", s_drop, rows=data_rng, cols=20)   # distribution_frac_gas
+  apply_style("Manure_Management", s_req,  rows=data_rng, cols=21)   # Frac_LeachMS_pct
+  apply_style("Manure_Management", s_opt,  rows=data_rng, cols=22:23) # lower/upper frac_leach
+  apply_style("Manure_Management", s_drop, rows=data_rng, cols=24)   # distribution_frac_leach
 
   add_validation("Manure_Management", col=4,  rows=data_rng, "mms")
-  add_validation("Manure_Management", col=9,  rows=data_rng, "dist")
-  add_validation("Manure_Management", col=13, rows=data_rng, "dist")
-  add_validation("Manure_Management", col=17, rows=data_rng, "dist")
-  add_validation("Manure_Management", col=21, rows=data_rng, "dist")
+  add_validation("Manure_Management", col=8,  rows=data_rng, "dist")
+  add_validation("Manure_Management", col=12, rows=data_rng, "dist")
+  add_validation("Manure_Management", col=16, rows=data_rng, "dist")
+  add_validation("Manure_Management", col=20, rows=data_rng, "dist")
+  add_validation("Manure_Management", col=24, rows=data_rng, "dist")
 
   # =========================================================================
   # SHEET: Parameter_TimeSeries  (rows = years, cols = parameters)
@@ -1010,7 +1139,7 @@ generate_template_openxlsx <- function(filepath, include_example,
   # so users can supply per-group time series instead of a single inventory-wide
   # series. Leave them blank to apply the row to all groups.
   ts_params <- c("N", "BW", "MW", "WG",
-                 "Milk", "Fat", "pct_calving", "DE",
+                 "Milk", "Fat", "pct_pregnant", "DE",
                  "CP", "MilkPR")
   ts_units <- c("head", "kg", "kg", "kg/day",
                 "kg/head/day", "%", "fraction (0-1)", "%", "%", "%")
@@ -1109,7 +1238,7 @@ generate_template_openxlsx <- function(filepath, include_example,
       WG           = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
       Milk         = c(3.9, 4.1, 4.0, 3.8, 4.2, 4.0, 3.9, 4.1, 4.0, 4.3),
       Fat          = c(3.9, 4.0, 4.1, 3.9, 4.0, 4.0, 4.1, 4.0, 3.9, 4.1),
-      pct_calving  = c(0.59, 0.61, 0.60, 0.58, 0.62, 0.60, 0.59, 0.61, 0.60, 0.62),
+      pct_pregnant  = c(0.59, 0.61, 0.60, 0.58, 0.62, 0.60, 0.59, 0.61, 0.60, 0.62),
       DE           = c(54.5, 55.0, 55.5, 54.0, 55.5, 55.0, 54.5, 56.0, 55.0, 55.5),
       CP           = c(9.8, 10.0, 10.2, 9.6, 10.3, 10.0, 9.9, 10.4, 10.1, 10.2),
       MilkPR       = c(3.2, 3.3, 3.3, 3.2, 3.4, 3.3, 3.2, 3.4, 3.3, 3.4),
@@ -1272,7 +1401,7 @@ generate_template_openxlsx <- function(filepath, include_example,
            use=c("Large populations, body weights, symmetric uncertainty",
                  "Non-negative parameters with near-symmetric uncertainty",
                  "Emission factors, ratios — strictly positive, possible right tail",
-                 "Fractions 0-1: pct_calving, Cp",
+                 "Fractions 0-1: pct_pregnant, Cp",
                  "Expert-elicited min/mode/max: Ca, C_growth, DE_pct",
                  "IPCC coefficients: Cfi, Ym, Bo, EF3_PRP — recommended for most EFs",
                  "Only bounds known, no preferred value",
@@ -1535,7 +1664,7 @@ parse_uploaded_template <- function(path) {
     if (all(c("Field","Value") %in% names(metadata)) ||
         (ncol(metadata) >= 2 && names(metadata)[2] %in%
          c("Field","B","country","country / region",
-           "Country / region"))) {
+           "Country / region", "Country", "Continental region"))) {
       # Try to detect transposed layout (rows = fields, col 2 = value)
       tryCatch({
         field_col <- grep("field|label", names(metadata), ignore.case=TRUE)[1]
@@ -1549,6 +1678,15 @@ parse_uploaded_template <- function(path) {
       }, error=function(e) NULL)
     }
   }
+
+  # Andreas 28/5/26 follow-up: legacy templates only have a single "Country
+  # / region" cell that's free text. If the new "Continental region" cell
+  # is missing or unrecognised, fall back to a country -> continent
+  # lookup so the BW benchmark deviation check still picks up the right
+  # continental default. Match is case-insensitive on the user's "country"
+  # cell; if no country listed (or no match), we leave region as-is and
+  # the QA check falls back to "global" (the existing behaviour).
+  metadata <- normalise_metadata_region(metadata)
 
   if (is.null(params) || nrow(params) == 0)
     stop("Parameters sheet is empty or missing. ",
@@ -1643,6 +1781,9 @@ parse_uploaded_template <- function(path) {
     # `mms_rows$fraction_pct / 100` after upload.
     for (nm in c("fraction_pct","MCF_pct","EF3","Bo",
                  "lower_mcf","upper_mcf","lower_ef3","upper_ef3",
+                 "lower_fraction","upper_fraction",
+                 "Frac_GasMS_pct","lower_frac_gas","upper_frac_gas",
+                 "Frac_LeachMS_pct","lower_frac_leach","upper_frac_leach",
                  "uncertainty_pct_mcf","uncertainty_pct_ef3")) {
       if (nm %in% names(manure))
         manure[[nm]] <- suppressWarnings(as.numeric(manure[[nm]]))

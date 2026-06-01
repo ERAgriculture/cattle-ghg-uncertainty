@@ -109,7 +109,7 @@ generate_timeseries_template <- function(filepath) {
   col_guide <- data.frame(
     # R1.6: IPCC-aligned names
     Parameter = c("year", "N", "BW", "MW",
-                  "WG", "Milk", "Fat", "pct_calving",
+                  "WG", "Milk", "Fat", "pct_pregnant",
                   "DE", "CP", "MilkPR",
                   "Cfi", "Ca", "C", "Cp", "hours"),
     Unit = c("(non-numeric)", "head", "kg", "kg",
@@ -180,7 +180,7 @@ generate_timeseries_template <- function(filepath) {
 
   # R1.6: IPCC-aligned names
   params <- c("N", "BW", "MW", "WG",
-              "Milk", "Fat", "pct_calving", "DE",
+              "Milk", "Fat", "pct_pregnant", "DE",
               "CP", "MilkPR")
 
   units <- c("head", "kg", "kg", "kg/day",
@@ -246,7 +246,7 @@ generate_timeseries_template <- function(filepath) {
     WG           = round(c(0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00), 2),
     Milk         = round(c(3.9, 4.1, 4.0, 3.8, 4.2, 4.0, 3.9, 4.1, 4.0, 4.3), 2),
     Fat          = round(c(3.9, 4.0, 4.1, 3.9, 4.0, 4.0, 4.1, 4.0, 3.9, 4.1), 2),
-    pct_calving  = round(c(0.59, 0.61, 0.60, 0.58, 0.62, 0.60, 0.59, 0.61, 0.60, 0.62), 3),
+    pct_pregnant  = round(c(0.59, 0.61, 0.60, 0.58, 0.62, 0.60, 0.59, 0.61, 0.60, 0.62), 3),
     DE           = round(c(54.5, 55.0, 55.5, 54.0, 55.5, 55.0, 54.5, 56.0, 55.0, 55.5), 1),
     CP           = round(c(9.8, 10.0, 10.2, 9.6, 10.3, 10.0, 9.9, 10.4, 10.1, 10.2), 1),
     MilkPR       = round(c(3.2, 3.3, 3.3, 3.2, 3.4, 3.3, 3.2, 3.4, 3.3, 3.4), 2)

@@ -5,7 +5,7 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
                                mms_fractions = NULL, mcf_values = NULL, ef3_values = NULL,
                                gwp = "AR5", seed = NULL, ef_corr_matrix = NULL,
                                # E1, E3: optional IPCC software inputs
-                               Tw = 20, pct_calving = 1,
+                               Tw = 20, pct_pregnant = 1,
                                # Round 7 R1.13: per-MMS Frac_GasMS / Frac_LeachMS
                                # named vectors. NULL = fall back to IPCC 2019
                                # defaults inside calc_indirect_n2o_mm.
@@ -20,6 +20,11 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
                                # deterministic constants (pre-fix behaviour).
                                mcf_samples = NULL, ef3_samples = NULL,
                                frac_gas_samples = NULL, frac_leach_samples = NULL,
+                               # Andreas 28/5/26 #4: per-iteration MMS allocation
+                               # matrix (n_iter × n_MMS, rows already renormalised
+                               # to sum to 1). NULL = treat mms_fractions as a
+                               # deterministic vector.
+                               mms_fraction_samples = NULL,
                                # Correlated sampling uses the rank-correlation-
                                # preserving restricted-pairing procedure per IPCC
                                # Vol.1 Ch.3 §3.2.3.2. The argument is retained as a
@@ -49,6 +54,7 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
   samples <- .bind_mms_to_samples(samples, ef3_samples, "EF3")
   samples <- .bind_mms_to_samples(samples, frac_gas_samples,   "Frac_GasMS")
   samples <- .bind_mms_to_samples(samples, frac_leach_samples, "Frac_LeachMS")
+  samples <- .bind_mms_to_samples(samples, mms_fraction_samples, "fraction")
 
   get_param <- function(name, default = 0) {
     if (name %in% names(samples)) samples[[name]] else rep(default, n_iter)
@@ -108,7 +114,12 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     # Falls back to IPCC 2019 Table 11.3 defaults when the template does not
     # provide them (most existing templates won't yet).
     Frac_GASM_PRP  = get_param("Frac_GASM_PRP",  0.21),
-    Frac_LEACH_PRP = get_param("Frac_LEACH_PRP", 0.30),
+    # IPCC 2019R Vol.4 Ch.11 Table 11.3: Frac_LEACH-(H) = 0.24 (wet climate);
+    # dry-climate default is 0. 2006 default was 0.30. Aligned with the
+    # function default in calc_indirect_n2o_prp and the IPCC_DEFAULTS comment
+    # in utils_ipcc_defaults.R; runs targeting 2006 must supply the value
+    # via the Parameters template.
+    Frac_LEACH_PRP = get_param("Frac_LEACH_PRP", 0.24),
     # Andreas 2026-05 follow-up: MilkPR (milk protein %) is now passed through
     # from samples instead of being hardcoded in calc_n_excretion. Catalogue
     # default is 3.3 (IPCC 2006 Table 10.11 African-dairy mid-point).
@@ -121,7 +132,7 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     # the adjustment inert (matches the IPCC formula's neutral baseline).
     # The old global Tw argument was retained as a fallback only.
     Tw          = get_param("Tw", 20),
-    pct_calving = get_param("pct_calving", pct_calving),
+    pct_pregnant = get_param("pct_pregnant", pct_pregnant),
     frac_gas_values   = frac_gas_values,
     frac_leach_values = frac_leach_values,
     # Andreas 2026-05 follow-up (C4 / C6): per-iteration per-MMS matrices
@@ -130,7 +141,9 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
     mcf_samples        = mcf_samples,
     ef3_samples        = ef3_samples,
     frac_gas_samples   = frac_gas_samples,
-    frac_leach_samples = frac_leach_samples
+    frac_leach_samples = frac_leach_samples,
+    # Andreas 28/5/26 #4: per-iteration MMS allocation matrix.
+    mms_fraction_samples = mms_fraction_samples
   )
 
   list(samples = samples, results = results)
@@ -138,7 +151,7 @@ run_mc_simulation <- function(param_specs, corr_matrix = NULL, n_iter = 10000,
 
 # Run simulation across multiple systems/subsystems
 run_inventory_simulation <- function(systems_data, n_iter = 10000, gwp = "AR5",
-                                      seed = NULL, Tw = 20, pct_calving = 1,
+                                      seed = NULL, Tw = 20, pct_pregnant = 1,
                                       # Correlated sampling uses the rank-
                                       # correlation-preserving procedure per IPCC
                                       # Vol.1 Ch.3 §3.2.3.2. Kept as an argument
@@ -162,7 +175,7 @@ run_inventory_simulation <- function(systems_data, n_iter = 10000, gwp = "AR5",
       seed            = if (!is.null(seed)) seed + which(names(systems_data) == sys_name) else NULL,
       ef_corr_matrix  = sys$ef_corr_matrix,
       Tw              = if (!is.null(sys$Tw)) sys$Tw else Tw,
-      pct_calving     = if (!is.null(sys$pct_calving)) sys$pct_calving else pct_calving,
+      pct_pregnant     = if (!is.null(sys$pct_pregnant)) sys$pct_pregnant else pct_pregnant,
       frac_gas_values   = sys$frac_gas_values,
       frac_leach_values = sys$frac_leach_values,
       unified_corr_matrix      = sys$unified_corr_matrix,
@@ -171,6 +184,7 @@ run_inventory_simulation <- function(systems_data, n_iter = 10000, gwp = "AR5",
       ef3_samples              = sys$ef3_samples,
       frac_gas_samples         = sys$frac_gas_samples,
       frac_leach_samples       = sys$frac_leach_samples,
+      mms_fraction_samples     = sys$mms_fraction_samples,
       sampler                  = sampler
     )
     by_system[[sys_name]] <- sim

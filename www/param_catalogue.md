@@ -1,4 +1,4 @@
-# Parameter catalogue — auto-generated 2026-05-27
+# Parameter catalogue — auto-generated 2026-06-01
 
 Single source of truth for the 27 IPCC-aligned parameters the cattle uncertainty app expects.
 When you (Claude) translate a user's raw column to a template field, use this table.
@@ -10,9 +10,9 @@ All parameter codes are case-sensitive.
 | `BW` | core | coefficient | kg | 275 | 15% | normal | Table 10A.2 | W, live_weight | Average live body weight of the animals |
 | `MW` | core | coefficient | kg | 300 | 10% | normal | Table 10A.2 | mature_weight | Mature (adult) body weight of the animals |
 | `WG` | core | coefficient | kg/day | 0 | 30% | pert | Table 10A.1 | weight_gain | Average daily weight gain — set 0 for non-growing (adult) animals |
-| `Milk` | core | coefficient | kg/head/day | 4 | 20% | normal | — | milk_yield | Daily milk yield per lactating cow (not sub-category-average — the tool multiplies by pct_calving internally). Set 0 for sub-categories that do not lactate. |
+| `Milk` | core | coefficient | kg/head/day | 4 | 20% | normal | — | milk_yield | Daily milk yield per lactating cow (not sub-category-average — the tool multiplies by pct_pregnant internally). Set 0 for sub-categories that do not lactate. |
 | `Fat` | core | coefficient | % | 4 | 10% | normal | — | milk_fat | Fat content of milk (% by weight) |
-| `pct_calving` | core | coefficient | fraction (0-1) | 0.6 | 20% | beta | — | pct_lactating, pct_pregnant | Fraction of females in this sub-category that give birth (calve) during the year, between 0 and 1. |
+| `pct_pregnant` | core | coefficient | fraction (0-1) | 0.6 | 20% | beta | — | pct_lactating, pct_calving | Fraction of females in this sub-category that are pregnant during the year, between 0 and 1 — includes pregnant heifers that have not yet calved. Weights Cpregnancy in IPCC Eq 10.13 (NEp) and the milk-N retention term in Eq 10.33; the tool also applies it as the lactation-weight in Eq 10.8 (NEl). For sub-categories where lactation and pregnancy populations differ, enter the pregnancy fraction. |
 | `DE` | core | coefficient | % | 55 | 15% | normal | Eq 10.14--16 | DE_pct | Digestible energy as a percentage of gross energy — typical range 45-75% |
 | `Cfi` | advanced | coefficient | MJ/day/kg^0.75 | 0.386 | 30% | pert | Table 10.4 | (none) | Maintenance energy coefficient — depends on sex and lactation status (IPCC Table 10.4) |
 | `Ca` | advanced | coefficient | dimensionless | 0.17 | 30% | triangular | Table 10.5 | (none) | Activity coefficient for locomotion energy — depends on feeding situation (IPCC Table 10.5) |

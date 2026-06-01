@@ -58,9 +58,12 @@ format_ipcc_table <- function(uncertainty_decomposition, country = "", year = ""
       "Total CH₄", "Total N₂O", "Total CO₂eq"
     ),
     Gas = c("CH₄", "CH₄", "N₂O", "N₂O", "N₂O", "N₂O", "CH₄", "N₂O", "CO₂eq"),
-    `AD uncertainty (%)`       = sapply(vars, function(v) get_moe(ad_only, v)),
-    `EF uncertainty (%)`       = sapply(vars, function(v) get_moe(ef_only, v)),
-    `Combined uncertainty (%)` = sapply(vars, function(v) get_moe(combined, v)),
+    # Andreas 28/5/26 #6: column labels now explicitly state "95% MoE %" so
+    # users do not mistake them for CV. Per IPCC Vol.1 Ch.3 Table 3.3, "%
+    # uncertainty" IS the 95% MoE (half-width of the 95% CI / mean).
+    `AD uncertainty (95% MoE %)`       = sapply(vars, function(v) get_moe(ad_only, v)),
+    `EF uncertainty (95% MoE %)`       = sapply(vars, function(v) get_moe(ef_only, v)),
+    `Combined uncertainty (95% MoE %)` = sapply(vars, function(v) get_moe(combined, v)),
     check.names = FALSE,
     stringsAsFactors = FALSE,
     row.names = NULL

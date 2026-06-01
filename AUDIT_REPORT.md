@@ -1,14 +1,14 @@
 # AUDIT_REPORT.md — Statistician's end-to-end audit
 
-Generated 2026-06-01 13:25 CEST by `_audit.R`.
+Generated 2026-06-01 14:22 CEST by `_audit.R`.
 
 ## Summary
 
-- Tests run: **77**
-- Pass: **75**
-- Fail: **2**
+- Tests run: **79**
+- Pass: **79**
+- Fail: **0**
 - Skip: **0**
-- Verdict: **2 FAILED** — see Bug Findings below
+- Verdict: **AUDIT CLEAN**
 
 ## Golden case
 
@@ -99,9 +99,11 @@ Synthetic single-sub-category dairy inventory with all 27 IPCC-aligned parameter
 | F15a | F | aggregate_sensitivity labels each parameter with its sub_category in (...) | ✅ PASS | dairy_cows present=TRUE; other_cows present=TRUE; sample labels: BW (dairy_cows); BW (other_cows) |
 | F15b | F | sens_group_of extracts sub_category from labelled parameter names | ✅ PASS | 'Ym (DINT_cow)' -> DINT_cow; 'MCF_solid_storage (DINT_heif)' -> DINT_heif; 'Ym' -> (ungrouped) |
 | F16 | F | AD-only CV equals CV(N) for every emission source (single-system) | ✅ PASS | CV(N)=10.212; CV per source=10.212, 10.212, 10.212, 10.212; max rel.dev.=0.000000 |
-| F17a | F | Sensitivity_SRC Excel sheet: populated, no backticks, sub-category in (...) | ❌ FAIL | nrow=1; sample params:  |
-| F17b | F | Sensitivity_PRCC Excel sheet: populated, no `..` mangling, sub-category in (...) | ❌ FAIL | nrow=1; sample params:  |
-| G1 | G | export_results_xlsx produces non-empty file | ✅ PASS | 9593 bytes |
+| F17a | F | Sensitivity_SRC Excel sheet: populated, no backticks, sub-category in (...) | ✅ PASS | nrow=2; sample params: BW (dairy_cows); BW (other_cows) |
+| F17b | F | Sensitivity_PRCC Excel sheet: populated, no `..` mangling, sub-category in (...) | ✅ PASS | nrow=2; sample params: BW (dairy_cows); BW (other_cows) |
+| F18 | F | Inventory_Metadata region: explicit slug kept; country auto-mapped; unknown -> global | ✅ PASS | explicit africa -> africa; Zimbabwe (legacy) -> africa; Atlantis -> global; India (blank region) -> asia |
+| F18b | F | Continental region cell (new-template parser key) is honoured over country fallback | ✅ PASS | Zimbabwe + global -> global; Zimbabwe + africa -> africa |
+| G1 | G | export_results_xlsx produces non-empty file | ✅ PASS | 9596 bytes |
 | G2 | G | CSV write of uncertainty frame produces non-empty file | ✅ PASS | 1874 bytes |
 | G3 | G | build_run_summary_docx produces Word file > 50 KB | ✅ PASS | 76512 bytes |
 
@@ -181,28 +183,13 @@ Synthetic single-sub-category dairy inventory with all 27 IPCC-aligned parameter
 | F15a | TRUE | TRUE | PASS |
 | F15b | TRUE | TRUE | PASS |
 | F16 | TRUE | TRUE | PASS |
-| F17a | TRUE | FALSE | FAIL |
-| F17b | TRUE | FALSE | FAIL |
+| F17a | TRUE | TRUE | PASS |
+| F17b | TRUE | TRUE | PASS |
+| F18 | TRUE | TRUE | PASS |
+| F18b | TRUE | TRUE | PASS |
 | G1 | TRUE | TRUE | PASS |
 | G2 | TRUE | TRUE | PASS |
 | G3 | TRUE | TRUE | PASS |
-
-## Bug findings
-
-The following tests failed and warrant investigation. The audit task does NOT fix them; they are to be triaged into a follow-up task.
-
-### F17a — Sensitivity_SRC Excel sheet: populated, no backticks, sub-category in (...)
-
-- Expected: `TRUE`
-- Actual:   `FALSE`
-- Notes:    nrow=1; sample params: 
-
-### F17b — Sensitivity_PRCC Excel sheet: populated, no `..` mangling, sub-category in (...)
-
-- Expected: `TRUE`
-- Actual:   `FALSE`
-- Notes:    nrow=1; sample params: 
-
 
 ## Findings & recommendations
 

@@ -35,8 +35,8 @@ calc_neg <- function(live_weight, weight_gain, C, mature_weight) {
 }
 
 # Net Energy for Lactation (Eq 10.8) - MJ/head/day
-calc_nel <- function(milk_yield, milk_fat, pct_calving = 1) {
-  milk_yield * (1.47 + 0.40 * milk_fat) * pct_calving
+calc_nel <- function(milk_yield, milk_fat, pct_pregnant = 1) {
+  milk_yield * (1.47 + 0.40 * milk_fat) * pct_pregnant
 }
 
 # Net Energy for Work (Eq 10.11) - MJ/head/day
@@ -45,10 +45,10 @@ calc_new <- function(nem, hours) {
 }
 
 # Net Energy for Pregnancy (Eq 10.13) - MJ/head/day
-# E3: pct_calving pro-rates Cp for cattle that don't all calve in the same year.
+# E3: pct_pregnant pro-rates Cp for cattle that don't all calve in the same year.
 # Default 1.0 = no pro-rating (all females pregnant); IPCC software allows 0-1.
-calc_nep <- function(nem, Cp, pct_calving = 1) {
-  Cp * pct_calving * nem
+calc_nep <- function(nem, Cp, pct_pregnant = 1) {
+  Cp * pct_pregnant * nem
 }
 
 # REM - Ratio of NE for maintenance to DE consumed (Eq 10.14)

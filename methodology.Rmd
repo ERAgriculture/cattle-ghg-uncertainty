@@ -254,7 +254,7 @@ Total manure CH$_4$ emissions are given by IPCC 2006 Vol.4 Ch.10 Eq. 10.22 (the 
 
 $$EF_{\text{mm,CH}_4} = VS \times 365 \times B_o \times 0.67 \times \sum_s \left( MS_s \times MCF_s \right)$$
 
-where $B_o$ is the maximum methane producing capacity (m$^3$ CH$_4$ kg$^{-1}$ VS), $0.67$ is the conversion factor from m$^3$ CH$_4$ to kg CH$_4$ (the density of methane at standard conditions, kg m$^{-3}$), $MS_s$ is the fraction of manure managed in system $s$, and $MCF_s$ is the methane conversion factor for system $s$ (fraction of $B_o$). The 2019 Refinement Table 10.17 (Updated) provides MCF defaults across 11 manure management systems — eight inherited from the 2006 Guidelines plus four added in 2019 (anaerobic digester / biogas, aerobic treatment, solid storage – covered/compacted, and burned for fuel). Default $B_o$ values for cattle are given in Table 10.16a. Per-MMS uncertainty in $MCF$ and in the manure fractions $MS_s$ is sampled independently.
+where $B_o$ is the maximum methane producing capacity (m$^3$ CH$_4$ kg$^{-1}$ VS), $0.67$ is the conversion factor from m$^3$ CH$_4$ to kg CH$_4$ (the density of methane at standard conditions, kg m$^{-3}$), $MS_s$ is the fraction of manure managed in system $s$, and $MCF_s$ is the methane conversion factor for system $s$ (fraction of $B_o$). The 2019 Refinement Table 10.17 (Updated) provides MCF defaults across 11 manure management systems — eight inherited from the 2006 Guidelines plus four added in 2019 (anaerobic digester / biogas, aerobic treatment, solid storage – covered/compacted, and burned for fuel). Default $B_o$ values for cattle are given in Table 10.16a. Per-MMS uncertainty in $MCF$ and in the manure fractions $MS_s$ is sampled independently — when the user supplies optional `lower_fraction` / `upper_fraction` / `distribution_fraction` columns on the Manure_Management sheet, each Monte Carlo iteration's $MS_s$ row is renormalised after sampling so the simplex constraint $\sum_s MS_s = 1$ is preserved exactly.
 
 ## Manure Management N$_2$O (Direct)
 
@@ -452,6 +452,8 @@ This approach correctly handles multi-group inventories by running all three sim
 
 The decomposition reveals whether uncertainty reduction efforts should focus on improving animal population surveys (AD) or on refining emission factor estimates (EF).
 
+\textit{Implementation note (Andreas 28/5/26 #9).} The AD-only run pins ALL coefficient-side variance, not only the Parameters-sheet rows. The per-MMS sample matrices used for MCF, EF3, Frac\_GasMS, Frac\_LeachMS, and (when supplied) the MMS-allocation $MS_s$ fractions are nulled out for the AD-only sub-run so iteration-to-iteration variation in those quantities cannot leak into the AD-only result. Earlier versions left those matrices active and produced spuriously different AD-only CVs across emission sources. With the fix, AD-only CV equals CV(N) for every emission source in a single-sub-category inventory and varies across sources only through the Herfindahl-like concentration of each source over multiple sub-categories.
+
 \newpage
 
 # Sensitivity Analysis
@@ -488,6 +490,8 @@ PRCC measures the unique rank-correlation between each input and the output afte
 **Computational note:** PRCC requires one regression fit per parameter. For large inventories (more than 40 combined parameters across all sub-categories), PRCC computation can take several minutes. In this case, the tool automatically falls back to SRC for the aggregate sensitivity result; PRCC remains available for individual sub-category analyses.
 
 ## Tornado Chart Interpretation
+
+Each parameter label on the tornado chart is formatted as `<parameter> (<sub_category>)` — for example `Ym (DINT_cow)`, `BW (DINT_heif)`, `MCF_solid_storage (DINT_cow)`. The sub-category in parentheses identifies which animal group each influential parameter belongs to so that reduction efforts can be targeted at the specific sub-category that drives uncertainty rather than at the parameter in aggregate. The same labels appear in the rank-correlation table and the downloadable Word / Excel sensitivity sheets.
 
 The tornado chart displays the top parameters ranked by $|\text{SRC}|$ or $|\text{PRCC}|$:
 

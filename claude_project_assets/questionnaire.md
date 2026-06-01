@@ -9,6 +9,8 @@ Fill this out **before** opening the Translator on claude.ai. When you start the
 ## 1. Country and inventory year
 
 - **Country:** _________________________
+- **Continental region** (tick one — drives the IPCC BW deviation benchmark):
+  [ ] africa  [ ] asia  [ ] europe  [ ] americas  [ ] oceania  [ ] global
 - **Inventory year being prepared:** _________________________
 
 ## 2. IPCC guidelines version
@@ -60,6 +62,13 @@ Tick one:
 
 > Example: dairy cows: pasture 40%, solid_storage 35%, liquid_slurry 15%, lagoon 10% → sums to 100 (OK)
 
+> **Optional — is the allocation itself uncertain?** If yes, give a range per share (e.g. "pasture 40 %, lower 30 %, upper 55 %"). The app samples each MMS within its range and renormalises every Monte Carlo iteration so the totals still sum to 100 %. Leave blank if you're confident in the central allocation.
+
+| Sub-category | system | central % | lower % | upper % |
+|--------------|--------|-----------|---------|---------|
+|              |        |           |         |         |
+|              |        |           |         |         |
+
 ## 5. Data fields you have
 
 > Tick the parameters for which you have country-specific values. Anything you leave unticked will be filled with the IPCC default (and flagged in the app's QA/QC tab as needing review).
@@ -71,7 +80,7 @@ Tick one:
 - [ ] Body weight (kg) — `BW`
 - [ ] Mature body weight (kg) — `MW`
 - [ ] Daily weight gain (kg/day) — `WG`
-- [ ] Fraction of females calving in the year — `pct_calving`
+- [ ] Fraction of females pregnant in the year (includes pregnant heifers) — `pct_pregnant`
 
 **Production (dairy only):**
 - [ ] Daily milk yield per lactating cow (kg/day) — `Milk`
@@ -103,7 +112,7 @@ Tick one (or combine if different sources for different parameters):
 
 - [ ] I have annual data for **5 or more years** that the app can use to estimate correlations between parameters.
   - Earliest year: ___________  Latest year: ___________
-  - Parameters covered (tick): [ ] N  [ ] BW  [ ] MW  [ ] WG  [ ] Milk  [ ] Fat  [ ] pct_calving  [ ] DE  [ ] CP  [ ] MilkPR
+  - Parameters covered (tick): [ ] N  [ ] BW  [ ] MW  [ ] WG  [ ] Milk  [ ] Fat  [ ] pct_pregnant  [ ] DE  [ ] CP  [ ] MilkPR
 
 ## 8. File(s) you'll upload
 

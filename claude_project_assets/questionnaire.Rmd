@@ -54,6 +54,9 @@ Fill this out **before** opening the Translator on [claude.ai](https://claude.ai
 
 - **Country:** ______________________________________________________
 
+- **Continental region** (tick one — drives the IPCC BW deviation benchmark):
+  [ ] africa &nbsp; [ ] asia &nbsp; [ ] europe &nbsp; [ ] americas &nbsp; [ ] oceania &nbsp; [ ] global
+
 - **Inventory year being prepared:** ______________________________________________________
 
 # 2. IPCC guidelines version
@@ -96,6 +99,13 @@ Tick one:
 
 *Example: dairy cows: pasture 40%, solid_storage 35%, liquid_slurry 15%, lagoon 10% (sums to 100).*
 
+**Optional — is the allocation itself uncertain?** If yes, give a range per share (e.g. "pasture 40 %, lower 30 %, upper 55 %"). The app samples each MMS within its range and renormalises every Monte Carlo iteration so the totals still sum to 100 %. Leave blank if you are confident in the central allocation.
+
+| Sub-category | System | Central % | Lower % | Upper % |
+|--------------|--------|-----------|---------|---------|
+|              |        |           |         |         |
+|              |        |           |         |         |
+
 # 5. Data fields you have
 
 *Tick the parameters for which you have country-specific values. Unticked parameters will be filled with IPCC defaults and flagged amber in the app's QA/QC tab for review.*
@@ -109,7 +119,7 @@ Tick one:
 - [ ] Body weight (kg) — `BW`
 - [ ] Mature body weight (kg) — `MW`
 - [ ] Daily weight gain (kg/day) — `WG`
-- [ ] Fraction of females calving in the year — `pct_calving`
+- [ ] Fraction of females pregnant in the year (includes pregnant heifers) — `pct_pregnant`
 
 **Production (dairy only)**
 
@@ -155,7 +165,7 @@ Tick one (or combine if different sources for different parameters):
     - [ ] WG
     - [ ] Milk
     - [ ] Fat
-    - [ ] pct_calving
+    - [ ] pct_pregnant
     - [ ] DE
     - [ ] CP
     - [ ] MilkPR

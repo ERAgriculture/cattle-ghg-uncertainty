@@ -2,19 +2,30 @@
 # Standardized Regression Coefficients (SRC) and Partial Rank Correlation (PRCC)
 
 calc_src <- function(inputs, output) {
-  inputs_std <- as.data.frame(scale(inputs))
+  # Andreas 28/5/26 #10: preserve original column names through the lm fit.
+  # When input names contain spaces/parentheses (e.g. "Ym (DINT_cow)" produced
+  # by aggregate_sensitivity), R's formula machinery wraps them in backticks
+  # and the resulting coefficient rownames LITERALLY include the backticks
+  # ("`Ym (DINT_cow)`"). Strip them so the SRC output has clean parameter
+  # names that match the in-app tornado labels.
+  orig_names <- colnames(inputs)
+  inputs_std <- as.data.frame(scale(inputs), check.names = FALSE)
+  colnames(inputs_std) <- orig_names
   output_std <- scale(output)
   df <- cbind(inputs_std, y = output_std)
   fit <- lm(y ~ ., data = df)
   coefs <- summary(fit)$coefficients
   coefs <- coefs[rownames(coefs) != "(Intercept)", , drop = FALSE]
 
+  param_names <- gsub("^`|`$", "", rownames(coefs))
+
   result <- data.frame(
-    parameter = rownames(coefs),
+    parameter = param_names,
     src = coefs[, "Estimate"],
     abs_src = abs(coefs[, "Estimate"]),
     p_value = coefs[, "Pr(>|t|)"],
-    stringsAsFactors = FALSE
+    stringsAsFactors = FALSE,
+    check.names = FALSE
   )
   result <- result[order(-result$abs_src), ]
   result$rank <- seq_len(nrow(result))
@@ -23,7 +34,12 @@ calc_src <- function(inputs, output) {
 }
 
 calc_prcc <- function(inputs, output) {
-  inputs_ranked <- as.data.frame(lapply(inputs, rank))
+  # Andreas 28/5/26 #10: preserve original column names — `as.data.frame()`
+  # default `check.names = TRUE` mangles "Ym (DINT_cow)" into "Ym..DINT_cow.".
+  orig_names <- colnames(inputs)
+  ranked_list <- lapply(inputs, rank)
+  inputs_ranked <- as.data.frame(ranked_list, check.names = FALSE)
+  colnames(inputs_ranked) <- orig_names
   output_ranked <- rank(output)
   n_params <- ncol(inputs_ranked)
   prcc_values <- numeric(n_params)
@@ -36,10 +52,11 @@ calc_prcc <- function(inputs, output) {
   }
 
   result <- data.frame(
-    parameter = names(inputs_ranked),
+    parameter = orig_names,
     prcc = prcc_values,
     abs_prcc = abs(prcc_values),
-    stringsAsFactors = FALSE
+    stringsAsFactors = FALSE,
+    check.names = FALSE
   )
   result <- result[order(-result$abs_prcc), ]
   result$rank <- seq_len(nrow(result))
@@ -92,4 +109,53 @@ sensitivity_analysis <- function(inputs, output, method = c("src", "prcc", "both
   if (method %in% c("prcc", "both")) result$prcc <- calc_prcc(inputs_var, output)
   if (!is.null(prcc_note)) attr(result, "prcc_note") <- prcc_note
   result
+}
+
+# Aggregate sensitivity across a multi-system inventory. Each system's
+# `samples` data frame is column-relabelled with the sub-category in
+# parentheses (e.g. "Ym" -> "Ym (DINT_cow)") so the tornado chart and rank-
+# correlation table identify which animal sub-category each influential
+# parameter belongs to (Andreas 28/5/26 #8). The labelled frames are
+# column-bound and regressed against the supplied `output` vector — which
+# should be the per-iteration sum of the chosen metric across systems
+# (typically `inventory$total_co2e` or `rowSums(by_system[[*]]$results[[src]])`
+# for a per-source view).
+#
+# `output` must have length = n_iter (the row count of each system's samples
+# frame).
+aggregate_sensitivity <- function(by_system, output, method = "both") {
+  if (is.null(by_system) || length(by_system) == 0) return(NULL)
+  if (is.null(output) || length(output) == 0) return(NULL)
+
+  # Extract sub_category from sys_name. sys_names are
+  # "cattle_type||aggregation_level||sub_category"; fall back to the full
+  # name when the structure is non-standard.
+  sub_category_of <- function(sn) {
+    parts <- strsplit(sn, "||", fixed = TRUE)[[1]]
+    if (length(parts) >= 3 && nzchar(trimws(parts[3L])))
+      trimws(parts[3L]) else sn
+  }
+
+  label_samples <- function(sn) {
+    samp <- by_system[[sn]]$samples
+    if (is.null(samp) || ncol(samp) == 0) return(NULL)
+    sc <- sub_category_of(sn)
+    colnames(samp) <- paste0(colnames(samp), " (", sc, ")")
+    samp
+  }
+
+  blocks <- Filter(Negate(is.null), lapply(names(by_system), label_samples))
+  if (length(blocks) == 0) return(NULL)
+  combined <- if (length(blocks) == 1) blocks[[1]] else do.call(cbind, blocks)
+  sensitivity_analysis(combined, output, method = method)
+}
+
+# Parse a sensitivity parameter name produced by aggregate_sensitivity() and
+# return its sub_category (the contents of the trailing parentheses) — or
+# "(ungrouped)" when the column name was emitted without a parenthesised
+# suffix (single-system inputs to sensitivity_analysis directly).
+sens_group_of <- function(var_name) {
+  m <- regmatches(var_name,
+                   regexec("\\(([^()]+)\\)\\s*$", var_name))[[1]]
+  if (length(m) >= 2 && nzchar(m[2])) m[2] else "(ungrouped)"
 }

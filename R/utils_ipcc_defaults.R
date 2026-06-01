@@ -10,7 +10,7 @@ IPCC_DEFAULTS <- list(
   WG = list(cows = 0.0, heifers = 0.25, adult_males = 0.0, growing_males = 0.20, calves = 0.30),
   MW = list(cows = 300, heifers = 300, adult_males = 350, growing_males = 350, calves = 300),
   C_growth = list(female = 0.8, castrate = 1.0, bull = 1.2),
-  pct_calving = 0.60, pct_pregnant_cows = 0.60, pct_pregnant_heifers = 0.20,
+  pct_pregnant = 0.60, pct_pregnant_cows = 0.60, pct_pregnant_heifers = 0.20,
   milk_yield = 4.0, milk_fat = 4.0, Ym = 6.5, DE = 55.0,
   # IPCC alignment audit (2026-05): Bo updated 0.10 -> 0.13.
   # 2019R Vol.4 Ch.10 Table 10.16(a) (Updated) gives Bo by region/productivity:
@@ -98,36 +98,34 @@ MMS_DEFAULTS <- data.frame(
   stringsAsFactors = FALSE
 )
 
-## G2: regional benchmark heuristics for the QA/QC plausibility check.
-## IPCC alignment audit (2026-05): only the BW row and the Ym row are direct
-## table lookups from the IPCC Guidelines:
-##   - BW   : Vol.4 Ch.10 Tables 10A.1 / 10A.2 (illustrative regional defaults)
-##   - Ym   : Vol.4 Ch.10 Table 10.12 (cattle/buffalo CH4 conversion factors)
-## The Milk, DE and Bo rows are NOT continental IPCC tables — the 2019
-## Refinement publishes these only by production system (high-/low-productivity)
-## within illustrative regions. The values below are heuristic mid-points
-## derived from the Annex 10A illustrative tables, used only to flag wildly
-## implausible country submissions in QA/QC. They should not be reported as
-## "IPCC defaults" in inventory documentation.
+## Regional benchmark table for the QA/QC plausibility check.
+##
+## Andreas 28/5/26 #3 follow-up: scope reduced to BW only. The previous
+## Milk / DE / Ym / Bo rows were heuristic mid-points derived from the
+## Annex 10A illustrative tables, not direct continental IPCC defaults —
+## Andreas's reviewer finding was that the QA tab claimed "IPCC default"
+## values he could not locate in the guidelines. They have been removed.
+##
+## BW is the only parameter we currently key off a defensible continental
+## IPCC table lookup:
+##   - dairy cows : Vol.4 Ch.10 Annex Table 10A.1
+##   - non-dairy  : Vol.4 Ch.10 Annex Table 10A.2
+##   - buffalo    : Vol.4 Ch.10 Annex Table 10A.3
+## (the continental values below are illustrative midpoints across those
+## tables — country-specific BW is always expected to override).
+##
+## Reinstating Milk / DE / Ym / Bo / MW benchmarks properly would require a
+## multi-dimensional table (parameter × continent × IPCC version × production
+## system × animal sub-category). 2019R further splits each region into low-
+## and high-productivity systems. That is a much larger data-entry job
+## (deferred — see plan).
 IPCC_DEFAULTS_BY_REGION <- data.frame(
-  parameter   = c(rep("BW", 6), rep("Milk", 6),
-                  rep("DE", 6), rep("Ym", 6), rep("Bo", 6)),
-  region      = rep(c("africa","asia","europe","americas","oceania","global"), 5),
+  parameter   = rep("BW", 6),
+  region      = c("africa","asia","europe","americas","oceania","global"),
   default_val = c(
-    # BW (kg) — IPCC Vol.4 Ch.10 Tables 10A.1 / 10A.2 illustrative regionals
-    275, 350, 600, 500, 500, 400,
-    # Milk yield (kg/head/day) — heuristic from Annex 10A productivity rows
-    4, 8, 22, 18, 15, 10,
-    # DE (%) — heuristic from Annex 10A productivity rows
-    55, 60, 70, 65, 65, 62,
-    # Ym (%) — IPCC Vol.4 Ch.10 Table 10.12 (cattle ~5.7–7.0 %, default 6.5)
-    6.5, 6.5, 6.0, 5.5, 6.0, 6.5,
-    # Bo (m3 CH4/kg VS) — Vol.4 Ch.10 Table 10.16(a) 2019R: dairy NA/W.Europe
-    # ~0.24; "other regions" low-productivity ~0.10–0.13. Continental mapping
-    # below is heuristic — for inventory reporting, look up the production
-    # system row, not the continent row.
-    0.10, 0.13, 0.24, 0.18, 0.15, 0.13
-  ),
+    # BW (kg) — IPCC Vol.4 Ch.10 Annex Tables 10A.1 / 10A.2 / 10A.3
+    # illustrative regional midpoints across sub-categories.
+    275, 350, 600, 500, 500, 400),
   stringsAsFactors = FALSE
 )
 
@@ -331,7 +329,7 @@ PARAM_TYPES <- c("activity_data", "coefficient", "emission_factor")  # emission_
 # Tw is deliberately excluded — calc_nem() handles NA Tw gracefully (no
 # cold-climate adjustment when Tw is NA), so a blank Tw never breaks a run.
 # ==========================================================================
-.GE_BLOCK <- c("N", "BW", "MW", "WG", "Milk", "Fat", "pct_calving", "DE",
+.GE_BLOCK <- c("N", "BW", "MW", "WG", "Milk", "Fat", "pct_pregnant", "DE",
                "Cfi", "Ca", "C", "Cp", "hours")
 
 SOURCE_PARAM_DEPS <- list(

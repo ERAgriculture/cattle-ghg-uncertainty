@@ -631,11 +631,9 @@ If AD uncertainty dominates, improving livestock population surveys would most e
 
 The tornado chart ranks parameters by their contribution to total uncertainty. The longest bars indicate the parameters that, if better constrained, would most reduce the 95\% CI.
 
-Each bar is labelled with:
-\begin{itemize}
-  \item \textbf{Cattle type and sub-category}: e.g. \texttt{dairy | cows}
-  \item \textbf{Parameter name}: e.g. \texttt{Ym} (methane conversion factor), \texttt{N} (population), \texttt{BW} (body weight)
-\end{itemize}
+Each bar is labelled as \texttt{<parameter> (<sub\_category>)} — for example \texttt{Ym (DINT\_cow)} vs \texttt{Ym (DINT\_heif)}. The sub-category in parentheses identifies which animal group the influential parameter belongs to, so you can target research at the specific sub-category driving uncertainty rather than at the parameter in general. The same labels appear in the rank-correlation table, the Excel SRC / PRCC sheets, and the Word report's sensitivity section. Per-MMS sampled parameters carry their MMS in the parameter name and the sub-category in parentheses, e.g. \texttt{MCF\_solid\_storage (DINT\_cow)} or \texttt{fraction\_pasture (DINT\_heif)}.
+
+\textit{Per-source sensitivity.} The "Output" dropdown above the tornado lets you re-rank parameters for a single emission source (Enteric CH\textsubscript{4}, Manure CH\textsubscript{4}, etc.). The per-source view aggregates across ALL sub-categories — earlier versions of the tool silently restricted the per-source view to the first sub-category only, dropping every other sub-category's contribution; that has been fixed.
 
 Bars are coloured by reducibility:
 \begin{itemize}

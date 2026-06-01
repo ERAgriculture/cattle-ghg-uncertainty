@@ -6,10 +6,25 @@
 # Parameters sheet (now specified per-MMS in Manure_Management), so they are
 # no longer Parameters-tab QA/QC targets. Kept as legacy aliases tolerated on
 # upload but not benchmarked here.
-ASYMMETRIC_PARAMS <- c("EF3_PRP", "EF4", "EF5",
+## Andreas 28/5/26 #3 (asymmetric-bounds rule fix): EF4 and EF5 dropped.
+## The IPCC 2019 R Vol.4 Ch.11 Table 11.3 published ranges for these two
+## parameters are roughly symmetric (EF4 ratio = 1.0, EF5 ratio = 0.82),
+## so the `ratio < 1.5 → warn` rule was firing against IPCC's own values.
+## EF3_PRP / Frac_GASM_PRP / Frac_LEACH_PRP DO have right-skewed ranges in
+## Table 11.3 and stay in the list.
+ASYMMETRIC_PARAMS <- c("EF3_PRP",
                         "Frac_GASM_PRP", "Frac_LEACH_PRP")
-FRACTION_PARAMS   <- c("pct_calving", "ASH", "UE",
+FRACTION_PARAMS   <- c("pct_pregnant", "ASH", "UE",
                         "Frac_GASM_PRP", "Frac_LEACH_PRP")
+
+## Andreas 28/5/26 #3: only parameters with a defensible direct IPCC table
+## lookup get the benchmark_deviation check. BW is the only one we currently
+## key off the continental Annex Tables 10A.1 (dairy cows) / 10A.2 (other
+## cattle) / 10A.3 (buffalo). Milk / DE / Ym / Bo / MW previously fired
+## warnings citing values that came from heuristic mid-points, not the
+## published IPCC tables — see the block comment over IPCC_DEFAULTS_BY_REGION
+## in utils_ipcc_defaults.R.
+BENCHMARK_ELIGIBLE_PARAMS <- c("BW")
 
 # IPCC alignment audit (2026-05): for parameters whose IPCC default depends
 # on a contextual choice the inventory compiler should make (climate zone,
@@ -26,7 +41,131 @@ CONTEXT_DEPENDENT_HINTS <- list(
   Ca             = "DEFAULT IS THE PASTURE-FLAT VALUE (0.17, Vol.4 Ch.10 Table 10.5). For stall-fed = 0; for hilly grazing = 0.36. Pick the row that matches the feeding situation."
 )
 
-run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global") {
+# Cross-sheet sub-category-key reconciliation. The Parameters sheet and
+# Manure_Management sheet must share the same compound key (cattle_type ||
+# aggregation_level || sub_category) for the simulation to find the per-MMS
+# allocation for each animal sub-category. If they disagree by a typo (e.g.
+# "DINT_heif" vs "DINT_heifer"), the prior behaviour was a silent fallback to
+# a default 70/30 pasture/solid_storage split, producing materially wrong
+# direct/indirect manure-N2O numbers (Andreas test-run 28/5/26).
+#
+# This helper attempts a single round of unambiguous fuzzy matching: within
+# the same cattle_type + aggregation_level, look for a Manure_Management
+# sub_category that is either case-insensitively equal or within
+# Levenshtein distance 2 of the Parameters sub_category. If exactly ONE
+# candidate matches, surface it as a `warn` (so the user can verify on the
+# QAQC tab) and the simulation observer rewrites the lookup. If 0 or >1
+# candidates match, surface it as `fail` so the run is blocked.
+resolve_sub_category_matches <- function(param_specs, manure_data) {
+  empty_issues <- data.frame(
+    group = character(), parameter = character(), check = character(),
+    status = character(), message = character(), stringsAsFactors = FALSE)
+
+  need_cols <- c("cattle_type", "aggregation_level", "sub_category")
+  if (is.null(param_specs) || nrow(param_specs) == 0 ||
+      !all(need_cols %in% names(param_specs))) {
+    return(list(matched = character(), issues = empty_issues))
+  }
+
+  mk_key <- function(df) {
+    sub <- if ("sub_category" %in% names(df)) df$sub_category else rep("", nrow(df))
+    paste(df$cattle_type, df$aggregation_level, sub, sep = "||")
+  }
+  p_keys <- unique(mk_key(param_specs))
+
+  have_manure <- !is.null(manure_data) && nrow(manure_data) > 0 &&
+                  all(need_cols %in% names(manure_data))
+  m_keys <- if (have_manure) unique(mk_key(manure_data)) else character()
+
+  matched <- setNames(p_keys, p_keys)
+  issues  <- list()
+
+  add_issue <- function(grp, chk, sta, msg) {
+    issues[[length(issues) + 1L]] <<- data.frame(
+      group = grp, parameter = "", check = chk, status = sta,
+      message = msg, stringsAsFactors = FALSE)
+  }
+
+  exact      <- intersect(p_keys, m_keys)
+  to_resolve <- setdiff(p_keys, exact)
+
+  if (length(to_resolve) > 0 && !have_manure) {
+    add_issue("(template)", "sub_category_no_mms_sheet", "info",
+              paste("No Manure_Management sheet present — manure CH4 and N2O",
+                    "fall back to default 70% pasture / 30% solid_storage",
+                    "allocation. Add a Manure_Management sheet to use per-MMS",
+                    "values."))
+    return(list(matched = matched,
+                issues  = do.call(rbind, issues) %||% empty_issues))
+  }
+
+  for (p_key in to_resolve) {
+    parts <- strsplit(p_key, "||", fixed = TRUE)[[1]]
+    if (length(parts) < 3) next
+    p_cattle <- parts[1]; p_agg <- parts[2]; p_sub <- parts[3]
+    grp_label <- sprintf("%s / %s / %s", p_cattle, p_agg, p_sub)
+
+    same_group <- m_keys[vapply(strsplit(m_keys, "||", fixed = TRUE),
+                                function(x) length(x) >= 3 &&
+                                            x[1] == p_cattle &&
+                                            x[2] == p_agg,
+                                logical(1))]
+    if (length(same_group) == 0) {
+      add_issue(grp_label, "sub_category_no_match", "warn", sprintf(
+        paste("Parameters sub_category '%s' has no matching Manure_Management",
+              "rows (no rows for cattle_type='%s', aggregation_level='%s').",
+              "Falls back to default 70%% pasture / 30%% solid_storage",
+              "allocation, which under-counts MM N2O. Either add MM rows for",
+              "this group or remove it from Parameters."),
+        p_sub, p_cattle, p_agg))
+      next
+    }
+
+    m_subs   <- vapply(strsplit(same_group, "||", fixed = TRUE),
+                       function(x) x[3], character(1))
+    ci_equal <- tolower(m_subs) == tolower(p_sub)
+    dists    <- as.integer(adist(p_sub, m_subs))
+    near     <- !is.na(dists) & dists <= 2L
+    is_cand  <- ci_equal | near
+    candidates <- same_group[is_cand]
+
+    if (length(candidates) == 1L) {
+      matched[p_key] <- candidates[1]
+      cand_sub <- strsplit(candidates[1], "||", fixed = TRUE)[[1]][3]
+      min_d <- min(dists[is_cand], na.rm = TRUE)
+      add_issue(grp_label, "sub_category_auto_match", "warn", sprintf(
+        paste("Parameters sub_category '%s' was auto-matched to",
+              "Manure_Management sub_category '%s' (same cattle_type +",
+              "aggregation_level, edit distance %d). Verify this is the same",
+              "animal sub-category. Fix the spelling in either sheet to",
+              "silence this warning."),
+        p_sub, cand_sub, min_d))
+    } else if (length(candidates) > 1L) {
+      cand_subs <- vapply(strsplit(candidates, "||", fixed = TRUE),
+                          function(x) x[3], character(1))
+      add_issue(grp_label, "sub_category_ambiguous", "fail", sprintf(
+        paste("Parameters sub_category '%s' is ambiguously close to multiple",
+              "Manure_Management sub-categories: %s. Cannot auto-match. Fix",
+              "the spelling in either sheet so exactly one MM sub-category",
+              "matches."),
+        p_sub, paste(sprintf("'%s'", cand_subs), collapse = ", ")))
+    } else {
+      add_issue(grp_label, "sub_category_no_match", "warn", sprintf(
+        paste("Parameters sub_category '%s' has no matching Manure_Management",
+              "row in cattle_type='%s' / aggregation_level='%s'. MM",
+              "sub-categories available in this group: %s. Falls back to",
+              "default 70%% pasture / 30%% solid_storage allocation."),
+        p_sub, p_cattle, p_agg,
+        paste(sprintf("'%s'", m_subs), collapse = ", ")))
+    }
+  }
+
+  list(matched = matched,
+       issues  = if (length(issues) > 0) do.call(rbind, issues) else empty_issues)
+}
+
+run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global",
+                     manure_data = NULL) {
   ps <- param_specs
 
   # Build reference lookup from catalogue
@@ -172,24 +311,44 @@ run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global"
 
     # ------------------------------------------------------------------
     # Check 5: benchmark deviation from IPCC default
-    # Benchmarks for all parameters are now sourced from IPCC 2006/2019
-    # guideline tables (see PARAM_CATALOGUE$ipcc_ref). Country-specific
-    # overrides are always expected — flag large deviations as warn/fail
-    # so the user documents the source, not as errors requiring correction.
+    # Andreas 28/5/26 #3: gated on BENCHMARK_ELIGIBLE_PARAMS so the check
+    # only runs for parameters with a defensible direct IPCC table lookup.
+    # BW uses continental IPCC Annex Tables 10A.1 (dairy cows) / 10A.2
+    # (other cattle) / 10A.3 (buffalo). Milk / DE / Ym / Bo / MW no longer
+    # produce benchmark warnings because the previous heuristic mid-points
+    # were not citable to a published IPCC table — Andreas's reviewer
+    # finding was that the QA tab claimed "IPCC default" values he could
+    # not locate in the guidelines. The catalogue's `ipcc_default` values
+    # are still used for template auto-fill, just not for deviation
+    # flagging here.
     # ------------------------------------------------------------------
-    if (!is.na(ipcc_def) && ipcc_def != 0 && !is.na(mu)) {
+    if (p %in% BENCHMARK_ELIGIBLE_PARAMS &&
+        !is.na(ipcc_def) && ipcc_def != 0 && !is.na(mu)) {
       pct_dev <- abs(mu - ipcc_def) / abs(ipcc_def) * 100
+      # IPCC reference depends on cattle_type for BW. Default reference is
+      # 10A.2 (non-dairy cattle); dairy cows use 10A.1; buffalo use 10A.3.
+      ct <- if ("cattle_type" %in% names(ps)) tolower(trimws(as.character(ps$cattle_type[i])))
+            else ""
+      ipcc_ref_msg <- if (p == "BW") {
+        if (grepl("dairy", ct)) "IPCC Vol.4 Ch.10 Annex Table 10A.1 (dairy cows, continental)"
+        else if (grepl("buffalo", ct)) "IPCC Vol.4 Ch.10 Annex Table 10A.3 (buffalo, continental)"
+        else "IPCC Vol.4 Ch.10 Annex Table 10A.2 (non-dairy cattle, continental)"
+      } else "IPCC guideline default"
+      region_str <- if (!is.na(region) && nzchar(region) && region != "global")
+                      sprintf(" for region '%s'", region) else ""
+      ref_str <- sprintf("%s%s", ipcc_ref_msg, region_str)
       if (pct_dev > 200) {
         add(grp, p, "benchmark_deviation", "fail",
-            sprintf("Mean (%.4g) deviates %.0f%% from IPCC guideline default (%.4g). Verify the value or document the country-specific source.",
-                    mu, pct_dev, ipcc_def))
+            sprintf("Mean (%.4g) deviates %.0f%% from %s default (%.4g). Verify the value or document the country-specific source.",
+                    mu, pct_dev, ref_str, ipcc_def))
       } else if (pct_dev > 50) {
         add(grp, p, "benchmark_deviation", "warn",
-            sprintf("Mean (%.4g) deviates %.0f%% from IPCC guideline default (%.4g). Large deviation — please document the source.",
-                    mu, pct_dev, ipcc_def))
+            sprintf("Mean (%.4g) deviates %.0f%% from %s default (%.4g). Large deviation — please document the source.",
+                    mu, pct_dev, ref_str, ipcc_def))
       } else {
         add(grp, p, "benchmark_deviation", "pass",
-            sprintf("Mean (%.4g) within 50%% of IPCC guideline default (%.4g)", mu, ipcc_def))
+            sprintf("Mean (%.4g) within 50%% of %s default (%.4g)",
+                    mu, ref_str, ipcc_def))
       }
     }
 
@@ -270,13 +429,24 @@ run_qaqc <- function(param_specs, catalogue = PARAM_CATALOGUE, region = "global"
   }
 
   rows <- rows[seq_len(k)]
-  if (k == 0L) {
-    return(data.frame(group = character(), parameter = character(),
-                      check = character(), status = character(),
-                      message = character(), stringsAsFactors = FALSE))
+  result <- if (k == 0L) {
+    data.frame(group = character(), parameter = character(),
+               check = character(), status = character(),
+               message = character(), stringsAsFactors = FALSE)
+  } else {
+    do.call(rbind, lapply(rows, as.data.frame, stringsAsFactors = FALSE))
   }
 
-  result <- do.call(rbind, lapply(rows, as.data.frame, stringsAsFactors = FALSE))
+  # Cross-sheet sub-category-key reconciliation rows (see
+  # resolve_sub_category_matches above). Surfaces silent fallback / auto-match
+  # / ambiguity as visible QAQC entries — the simulation observer separately
+  # consumes the `matched` mapping to substitute the auto-matched MM key.
+  if (!is.null(manure_data)) {
+    sg <- resolve_sub_category_matches(param_specs, manure_data)
+    if (nrow(sg$issues) > 0) result <- rbind(result, sg$issues)
+  }
+
+  if (nrow(result) == 0L) return(result)
   param_order <- unique(ps$parameter)
   # Sort: missing → fail → warn → info → pass, then by parameter and check name
   status_rank <- c(missing = 1L, fail = 2L, warn = 3L, info = 4L, pass = 5L)

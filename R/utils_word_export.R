@@ -246,7 +246,7 @@ build_run_summary_docx <- function(path,
   if (!is.null(ipcc_table) && is.data.frame(ipcc_table) && nrow(ipcc_table) > 0) {
     doc <- .add_h2(doc, "3. IPCC Table 3.3 — uncertainty decomposition")
     doc <- .add_p(doc,
-      "Combined % uncertainty (CV%) per emission source decomposed into the activity-data and emission-factor contributions, formatted for Annex 7 of a national inventory submission.")
+      "Combined % uncertainty (95% MoE — IPCC Vol.1 Ch.3 Table 3.3 convention) per emission source decomposed into the activity-data and emission-factor contributions, formatted for Annex 7 of a national inventory submission.")
     doc <- .add_flextable_safe(doc, .styled_flextable(.ipcc_flextable(ipcc_table)))
     doc <- .add_landscape_break(doc)
   }
@@ -254,7 +254,7 @@ build_run_summary_docx <- function(path,
   # ---- Headline by-source results ----------------------------------------
   doc <- .add_h2(doc, "4. Headline results — by source")
   doc <- .add_p(doc,
-    "Mean total emissions per source with the 95% confidence interval, coefficient of variation (CV%) and 95% margin of error (MoE%) from the Monte Carlo run.")
+    "Mean total emissions per source with the 95% confidence interval and 95% margin of error (MoE %, the IPCC Vol.1 Ch.3 Table 3.3 convention) from the Monte Carlo run.")
   doc <- .add_flextable_safe(doc, .styled_flextable(.results_flextable(uncertainty)))
   doc <- .add_portrait_break(doc)
 
@@ -282,13 +282,23 @@ build_run_summary_docx <- function(path,
     if (any_rendered) doc <- .add_portrait_break(doc)
   }
 
+  # ---- Per-(cattle_type × source) breakdown with raw CH4 / N2O (Andreas 28/5/26 #7.2 + #7.3)
+  ps_ft <- .per_source_breakdown_flextable(mc_results, settings$gwp_version)
+  if (!is.null(ps_ft)) {
+    doc <- .add_h2(doc, "5b. Per-(cattle type × emission source) breakdown")
+    doc <- .add_p(doc,
+      "One row per cattle_type × IPCC emission source. The 'Mean (t CH4)' and 'Mean (t N2O)' columns give the raw gas-specific quantities inventory teams report; the 'Mean (t CO2eq)' column applies the GWP for cross-source comparison. Andreas 28/5/26 #7 follow-up.")
+    doc <- .add_flextable_safe(doc, .styled_flextable(ps_ft))
+    doc <- .add_portrait_break(doc)
+  }
+
   # ---- AD vs EF vs Combined decomposition chart --------------------------
   # Round 9b §6: visual companion to the IPCC Table 3.3 decomposition above.
   decomp_plot <- .gg_decomposition(decomposition)
   if (!is.null(decomp_plot)) {
     doc <- .add_h2(doc, "6. AD vs EF vs Combined uncertainty")
     doc <- .add_p(doc,
-      "Coefficient of variation for total CO2eq, CH4 and N2O under three configurations: AD-only (activity data drives the uncertainty, all coefficients fixed), EF-only (coefficients drive the uncertainty, AD fixed) and Combined (both vary). The Combined value is what is reported in the IPCC Table 3.3 row.")
+      "95% margin of error (MoE) for total CO2eq, CH4 and N2O under three configurations: AD-only (activity data drives the uncertainty, all coefficients fixed), EF-only (coefficients drive the uncertainty, AD fixed) and Combined (both vary). The Combined value is what is reported in the IPCC Table 3.3 row. MoE is the IPCC reporting convention (Vol.1 Ch.3 Table 3.3); CV is still available in the per-source results table in section 4 for users who want it.")
     doc <- officer::body_add_gg(doc, value = decomp_plot, width = 5.5, height = 3.2)
   }
 
@@ -298,7 +308,7 @@ build_run_summary_docx <- function(path,
   if (!is.null(comp_plot)) {
     doc <- .add_h2(doc, "7. Effect of correlations on uncertainty")
     doc <- .add_p(doc,
-      "Comparison of the main run (with the parameter correlations set on the Uncertainty tab) against an otherwise-identical run that ignores correlations. A larger 'with-correlations' CV% indicates that the correlation structure compounds parameter uncertainty; a similar CV% in both cases indicates the correlations have little effect for this inventory.")
+      "Comparison of the main run (with the parameter correlations set on the Uncertainty tab) against an otherwise-identical run that ignores correlations. A larger 'with-correlations' 95% MoE indicates that the correlation structure compounds parameter uncertainty; similar MoE in both cases indicates the correlations have little effect for this inventory.")
     doc <- officer::body_add_gg(doc, value = comp_plot, width = 5.5, height = 3.0)
   }
 
@@ -387,7 +397,7 @@ build_run_summary_docx <- function(path,
   # against the live IPCC 2006 Vol 1 Ch 3 / Annex 7 template. Reworded to
   # describe the metric instead of pinning a column letter.
   doc <- .add_p(doc,
-    "This run follows IPCC 2006 Vol 1 Ch 3 Approach 2 (Monte Carlo) for combined uncertainty estimation. The headline CV % values in section 4 are the per-source combined-uncertainty figures used to populate the IPCC Annex 7 / Table 3.3 national inventory uncertainty table (CV % column). Cross-check the exact column letter against your national submission template. The activity-data vs emission-factor split follows the convention adopted in this tool — AD = animal population (N) only; coefficient (EF) = the IPCC equation parameters that combine into the per-head emission factor.")
+    "This run follows IPCC 2006 Vol 1 Ch 3 Approach 2 (Monte Carlo) for combined uncertainty estimation. The headline 95% MoE values in section 4 are the per-source combined-uncertainty figures used to populate the IPCC Annex 7 / Table 3.3 national inventory uncertainty table (% uncertainty column — the half-width of the 95% confidence interval / mean, per IPCC's own definition). Cross-check the exact column position against your national submission template. The activity-data vs emission-factor split follows the convention adopted in this tool — AD = animal population (N) only; coefficient (EF) = the IPCC equation parameters that combine into the per-head emission factor.")
   doc <- .add_p(doc,
     "Where parameters were auto-filled (section 2), the IPCC default carries the uncertainty bounds suggested by Penman et al. (2000) and Monni et al. (2007). For parameters with country-specific values, the uncertainty bounds entered on the Uncertainty tab of the app drive the Monte Carlo distribution.")
 
@@ -488,7 +498,7 @@ build_trend_summary_docx <- function(path,
   # ---- Trend table (LANDSCAPE) -------------------------------------------
   doc <- .add_h2(doc, "2. Year-by-year trend")
   doc <- .add_p(doc,
-    "Per-year mean total emissions, 95% confidence interval, CV%, margin of error, and the percent change relative to the base year and to the previous year.")
+    "Per-year mean total emissions, 95% confidence interval, 95% margin of error (the IPCC reporting convention per Vol.1 Ch.3 Table 3.3), and the percent change relative to the base year and to the previous year.")
   doc <- .add_flextable_safe(doc, .styled_flextable(.trend_table_flextable(trend_results)))
   doc <- .add_landscape_break(doc)
 
@@ -745,13 +755,16 @@ build_trend_summary_docx <- function(path,
   keep <- keep[!is.na(keep$variable), , drop = FALSE]
   if (nrow(keep) == 0) keep <- uncertainty
 
+  # Andreas 28/5/26 #6: drop the CV column from the user-facing per-source
+  # table so the Word report leads with 95% MoE — the IPCC Vol.1 Ch.3 Table
+  # 3.3 convention. `cv_pct` is still in the underlying uncertainty frame for
+  # any downstream consumer that wants it.
   df <- data.frame(
     `Emission category` = .pretty_var(keep$variable),
     Unit                = .unit_for_var(keep$variable),
     Mean                = formatC(keep$mean,     digits = 4, format = "g"),
     `CI lower`          = formatC(keep$ci_lower, digits = 4, format = "g"),
     `CI upper`          = formatC(keep$ci_upper, digits = 4, format = "g"),
-    `CV (%)`            = formatC(keep$cv_pct,   digits = 3, format = "g"),
     `MoE 95% (%)`       = formatC(keep$moe_pct,  digits = 3, format = "g"),
     check.names = FALSE,
     stringsAsFactors = FALSE
@@ -763,28 +776,37 @@ build_trend_summary_docx <- function(path,
   flextable::flextable(ipcc_table)
 }
 
-# Andreas 2026-05 C11: per-reporting-category AD or EF uncertainty table for
-# the Word exec summary. `kind` is "AD" or "EF" — picks the matching column
-# from the IPCC summary table and trims to the per-source rows.
+# Andreas 2026-05 C11 / 28/5/26 #6: per-reporting-category AD or EF
+# uncertainty table for the Word exec summary. `kind` is "AD" or "EF" —
+# picks the matching column from the IPCC summary table and trims to the
+# per-source rows. The IPCC table columns were renamed to
+# "AD uncertainty (95% MoE %)" / "EF uncertainty (95% MoE %)" so this
+# helper matches them by suffix.
 .ad_ef_flextable <- function(ipcc_table, kind = c("AD", "EF")) {
   kind <- match.arg(kind)
   if (is.null(ipcc_table) || !is.data.frame(ipcc_table) || nrow(ipcc_table) == 0)
     return(NULL)
-  cv_col <- if (kind == "AD") "AD uncertainty (%)" else "EF uncertainty (%)"
+  prefix <- if (kind == "AD") "AD uncertainty" else "EF uncertainty"
   cat_col <- "Emission category"
-  if (!(cv_col %in% names(ipcc_table)) || !(cat_col %in% names(ipcc_table)))
+  col_idx <- which(startsWith(names(ipcc_table), prefix))
+  if (length(col_idx) == 0 || !(cat_col %in% names(ipcc_table)))
     return(NULL)
+  src_col <- names(ipcc_table)[col_idx[1]]
   source_rows <- !grepl("^Total ", ipcc_table[[cat_col]])
-  df <- ipcc_table[source_rows, c(cat_col, "Gas", cv_col), drop = FALSE]
-  names(df)[3] <- if (kind == "AD") "AD uncertainty (CV %)" else "EF uncertainty (CV %)"
+  df <- ipcc_table[source_rows, c(cat_col, "Gas", src_col), drop = FALSE]
+  names(df)[3] <- if (kind == "AD") "AD uncertainty (95% MoE %)" else
+                                    "EF uncertainty (95% MoE %)"
   if (nrow(df) == 0) return(NULL)
   flextable::flextable(df)
 }
 
 .trend_table_flextable <- function(trend_results) {
+  # Andreas 28/5/26 #6: drop the CV column from the user-facing trend table
+  # so MoE (the IPCC convention) is the only uncertainty metric shown. CV_pct
+  # is still in `trend_results` for any consumer that wants it.
   cols <- intersect(
     c("Year", "Mean_t_CO2eq", "CI_Lower_t", "CI_Upper_t",
-      "CV_pct", "MoE_95_pct", "Delta_vs_base_pct", "YoY_pct"),
+      "MoE_95_pct", "Delta_vs_base_pct", "YoY_pct"),
     names(trend_results)
   )
   df <- trend_results[, cols, drop = FALSE]
@@ -792,8 +814,7 @@ build_trend_summary_docx <- function(path,
               Mean_t_CO2eq = "Mean (t CO2eq)",
               CI_Lower_t   = "CI lower",
               CI_Upper_t   = "CI upper",
-              CV_pct       = "CV %",
-              MoE_95_pct   = "MoE %",
+              MoE_95_pct   = "95% MoE (%)",
               Delta_vs_base_pct = "Δ vs base (%)",
               YoY_pct      = "YoY (%)")
   names(df) <- pretty[names(df)]
@@ -882,7 +903,9 @@ build_trend_summary_docx <- function(path,
       lo <- stats::quantile(co2e, 0.025, names = FALSE)
       hi <- stats::quantile(co2e, 0.975, names = FALSE)
       moe <- if (m > 0) ((hi - lo) / 2) / m * 100 else NA_real_
-      cv  <- if (m > 0) stats::sd(co2e) / m * 100 else NA_real_
+      # Andreas 28/5/26 #6: drop the CV column from this flextable so the
+      # Word per-cattle-type / per-aggregation-level / per-sub-category
+      # tables consistently lead with 95% MoE (IPCC convention).
       rows[[length(rows) + 1L]] <- data.frame(
         Group              = g,
         `Mean CH4 (t)`     = formatC(mean(combined$total_ch4), digits = 2, format = "f"),
@@ -890,7 +913,6 @@ build_trend_summary_docx <- function(path,
         `Mean CO2eq (t)`   = formatC(m, digits = 2, format = "f"),
         `CI lower (t CO2eq)` = formatC(lo, digits = 2, format = "f"),
         `CI upper (t CO2eq)` = formatC(hi, digits = 2, format = "f"),
-        `CV (%)`           = formatC(cv, digits = 1, format = "f"),
         `MoE 95% (%)`      = formatC(moe, digits = 1, format = "f"),
         check.names = FALSE,
         stringsAsFactors = FALSE
@@ -905,6 +927,77 @@ build_trend_summary_docx <- function(path,
     aggregation_level = build_one("aggregation_level"),
     sub_category      = build_one("sub_category")
   )
+}
+
+# Andreas 28/5/26 #7.2 + #7.3 — per-(cattle_type × emission source) breakdown
+# with raw t CH4 / t N2O and t CO2eq side-by-side. Mirrors the in-app
+# results_by_category table when the aggregation level is cattle_type.
+.per_source_breakdown_flextable <- function(mc_results, gwp_version = "AR5") {
+  if (is.null(mc_results) || is.null(mc_results$by_system) ||
+      length(mc_results$by_system) == 0) return(NULL)
+  by_sys <- mc_results$by_system
+  sys_names <- names(by_sys)
+  if (length(sys_names) == 0) return(NULL)
+
+  parts <- strsplit(sys_names, "\\|\\|", fixed = FALSE)
+  ct_keys <- sapply(parts, function(p) if (length(p) >= 1 && nzchar(p[1])) p[1] else "—")
+
+  # Combine per-iteration frames within each cattle_type.
+  cattle_types <- unique(ct_keys)
+  agg <- list()
+  for (ct in cattle_types) {
+    members <- sys_names[ct_keys == ct]
+    frames <- lapply(members, function(sn) by_sys[[sn]]$results)
+    combined <- frames[[1]]
+    if (length(frames) > 1) {
+      for (k in 2:length(frames)) {
+        for (col in names(combined)) {
+          combined[[col]] <- combined[[col]] + frames[[k]][[col]]
+        }
+      }
+    }
+    agg[[ct]] <- combined
+  }
+
+  gwp_vals <- if (!is.null(GWP_VALUES[[gwp_version]])) GWP_VALUES[[gwp_version]] else GWP_VALUES[["AR5"]]
+  g_ch4 <- gwp_vals$CH4
+  g_n2o <- gwp_vals$N2O
+
+  sources <- list(
+    list(label = "Enteric fermentation CH4",        gas = "CH4", col = "enteric_ch4_total"),
+    list(label = "Manure management CH4",           gas = "CH4", col = "manure_ch4_total"),
+    list(label = "Manure management N2O direct",    gas = "N2O", col = "direct_n2o_mm_total"),
+    list(label = "Manure management N2O indirect",  gas = "N2O", col = "indirect_n2o_mm_total"),
+    list(label = "Pasture deposition N2O direct",   gas = "N2O", col = "direct_n2o_prp_total"),
+    list(label = "Pasture deposition N2O indirect", gas = "N2O", col = "indirect_n2o_prp_total")
+  )
+
+  rows <- list()
+  for (ct in names(agg)) {
+    res <- agg[[ct]]
+    for (s in sources) {
+      raw <- res[[s$col]]
+      if (is.null(raw) || all(raw == 0)) next
+      co2e <- raw * (if (s$gas == "CH4") g_ch4 else g_n2o)
+      m_raw  <- mean(raw)
+      m_co2e <- mean(co2e)
+      lo <- stats::quantile(co2e, 0.025, names = FALSE)
+      hi <- stats::quantile(co2e, 0.975, names = FALSE)
+      moe <- if (m_co2e > 0) ((hi - lo) / 2) / m_co2e * 100 else NA_real_
+      rows[[length(rows) + 1L]] <- data.frame(
+        `Cattle type`     = ct,
+        Source            = s$label,
+        `Mean (t CH4)`    = if (s$gas == "CH4") formatC(m_raw, digits = 3, format = "f") else "",
+        `Mean (t N2O)`    = if (s$gas == "N2O") formatC(m_raw, digits = 4, format = "f") else "",
+        `Mean (t CO2eq)`  = formatC(m_co2e, digits = 2, format = "f"),
+        `MoE 95% (%)`     = formatC(moe, digits = 1, format = "f"),
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+    }
+  }
+  if (length(rows) == 0) return(NULL)
+  flextable::flextable(do.call(rbind, rows))
 }
 
 # Round 9b §13 — Input parameter documentation. Mirrors inputs_doc_table.
@@ -1059,8 +1152,10 @@ build_trend_summary_docx <- function(path,
     ggplot2::theme_minimal(base_size = 10)
 }
 
-# Round 9b §6 — AD / EF / Combined CV% for total CO2eq, total CH4, total N2O.
-# Mirrors output$decomposition_plot in app_server.R.
+# Round 9b §6 — AD / EF / Combined 95 % MoE for total CO2eq, total CH4,
+# total N2O. Mirrors output$decomposition_plot in app_server.R.
+# Andreas 28/5/26 #6: switched from cv_pct to moe_pct so the Word report
+# tracks the IPCC reporting convention (Vol.1 Ch.3 Table 3.3).
 .gg_decomposition <- function(decomp) {
   if (is.null(decomp)) return(NULL)
   need <- c("ad_only", "ef_only", "combined")
@@ -1076,9 +1171,9 @@ build_trend_summary_docx <- function(path,
     if (is.null(df) || !is.data.frame(df) || !"variable" %in% names(df)) next
     for (i in seq_along(vars)) {
       r <- df[df$variable == vars[i], , drop = FALSE]
-      if (nrow(r) > 0 && !is.na(r$cv_pct[1])) {
+      if (nrow(r) > 0 && !is.na(r$moe_pct[1])) {
         rows[[length(rows) + 1L]] <- data.frame(
-          category = cat, variable = labels[i], cv_pct = r$cv_pct[1],
+          category = cat, variable = labels[i], moe_pct = r$moe_pct[1],
           stringsAsFactors = FALSE)
       }
     }
@@ -1088,21 +1183,21 @@ build_trend_summary_docx <- function(path,
   df$category <- factor(df$category, levels = c("AD only", "EF only", "Combined"))
   df$variable <- factor(df$variable, levels = labels)
 
-  ggplot2::ggplot(df, ggplot2::aes(x = variable, y = cv_pct, fill = category)) +
+  ggplot2::ggplot(df, ggplot2::aes(x = variable, y = moe_pct, fill = category)) +
     ggplot2::geom_col(position = ggplot2::position_dodge(width = 0.75), width = 0.7) +
     ggplot2::scale_fill_manual(values = c("AD only"  = "#40916C",
                                             "EF only"  = "#4361EE",
                                             "Combined" = .GREEN_DARK),
                                  name = NULL) +
-    ggplot2::labs(x = NULL, y = "CV (%)",
+    ggplot2::labs(x = NULL, y = "95% MoE (%)",
                    title = "Uncertainty decomposition: AD vs EF vs Combined") +
     ggplot2::theme_minimal(base_size = 10) +
     ggplot2::theme(legend.position = "bottom")
 }
 
-# Round 9b §7 — Effect of correlations on CV% (with vs without).
+# Round 9b §7 — Effect of correlations on 95 % MoE (with vs without).
 # Mirrors output$comparison_plot. Reads the live uncertainty frame and the
-# comparison-run uncertainty frame.
+# comparison-run uncertainty frame. Andreas 28/5/26 #6: cv_pct → moe_pct.
 .gg_comparison <- function(uncertainty_with, uncertainty_without) {
   if (is.null(uncertainty_with)  || !is.data.frame(uncertainty_with)  || nrow(uncertainty_with)  == 0)
     return(NULL)
@@ -1112,27 +1207,27 @@ build_trend_summary_docx <- function(path,
   labels <- c("Total CO2eq", "Total CH4", "Total N2O")
   pull <- function(df, v) {
     r <- df[df$variable == v, , drop = FALSE]
-    if (nrow(r) > 0) r$cv_pct[1] else NA_real_
+    if (nrow(r) > 0) r$moe_pct[1] else NA_real_
   }
-  with_cv    <- vapply(vars, pull, numeric(1), df = uncertainty_with)
-  without_cv <- vapply(vars, pull, numeric(1), df = uncertainty_without)
+  with_moe    <- vapply(vars, pull, numeric(1), df = uncertainty_with)
+  without_moe <- vapply(vars, pull, numeric(1), df = uncertainty_without)
   df <- data.frame(
     variable = factor(rep(labels, 2), levels = labels),
     scenario = factor(rep(c("With correlations", "Without correlations"), each = length(vars)),
                        levels = c("With correlations", "Without correlations")),
-    cv_pct   = c(with_cv, without_cv),
+    moe_pct  = c(with_moe, without_moe),
     stringsAsFactors = FALSE
   )
-  df <- df[!is.na(df$cv_pct), , drop = FALSE]
+  df <- df[!is.na(df$moe_pct), , drop = FALSE]
   if (nrow(df) == 0) return(NULL)
 
-  ggplot2::ggplot(df, ggplot2::aes(x = variable, y = cv_pct, fill = scenario)) +
+  ggplot2::ggplot(df, ggplot2::aes(x = variable, y = moe_pct, fill = scenario)) +
     ggplot2::geom_col(position = ggplot2::position_dodge(width = 0.75), width = 0.7) +
     ggplot2::scale_fill_manual(values = c("With correlations"    = .GREEN_DARK,
                                             "Without correlations" = "#9CA3AF"),
                                  name = NULL) +
-    ggplot2::labs(x = NULL, y = "CV (%)",
-                   title = "Effect of correlations on uncertainty (CV %)") +
+    ggplot2::labs(x = NULL, y = "95% MoE (%)",
+                   title = "Effect of correlations on uncertainty (95% MoE)") +
     ggplot2::theme_minimal(base_size = 10) +
     ggplot2::theme(legend.position = "bottom")
 }

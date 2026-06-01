@@ -31,7 +31,7 @@ Country X    2022   dairy_cows     500000       275              300            
 | `ym_pct` | → `Ym` | `Ym_pct` is in PARAM_ALIASES |
 | `bo_m3` | → `Bo` | unit m³/kg VS implied |
 
-**Missing core parameters** (per catalogue, tier = core): `Fat` (yes, present), `pct_calving`, `CP`, `MilkPR` — fill with IPCC defaults: 0.60, 10.0, 3.3.
+**Missing core parameters** (per catalogue, tier = core): `Fat` (yes, present), `pct_pregnant`, `CP`, `MilkPR` — fill with IPCC defaults: 0.60, 10.0, 3.3.
 
 **Advanced parameters not in user file:** `Cfi`, `Ca`, `C`, `Cp`, `hours`, `ASH`, `UE`, `EF3_PRP`, `EF4`, `EF5`, `Frac_GASM_PRP`, `Frac_LEACH_PRP`, `Tw` — fill from catalogue defaults; mark `data_source = "IPCC default — to be reviewed"`. (The managed-storage manure-N₂O quantities — direct EF3, Frac_GasMS, Frac_LeachMS — are NOT Parameters rows; they go per-MMS in Manure_Management.)
 
@@ -87,6 +87,8 @@ other_cows      70            20                  5                   5
 
 Per row, also fill `MCF_pct` (look up the climate zone from Inventory_Metadata or ask user), `EF3` (from MMS_DEFAULTS in template_schema.md), `Frac_GasMS_pct`, `Frac_LeachMS_pct` from the per-MMS defaults table.
 
+**Optional — MMS allocation uncertainty (Andreas 28/5/26 #4):** if the user expresses uncertainty about the allocation itself ("about 40 % on pasture, could be 30–55 %"), fill `lower_fraction` / `upper_fraction` / `distribution_fraction` on each row. Leave blank to keep `fraction_pct` deterministic. The app renormalises each Monte Carlo iteration so per-group rows sum to 100 % even with the sampler active. Filled values surface `fraction_<mms>` in the sensitivity tornado so MMS allocation can be identified as an influential driver.
+
 **Sanity check:** dairy_cows: 40+35+15+10 = 100 ✓; other_cows: 70+20+5+5 = 100 ✓. Both groups pass.
 
 ---
@@ -123,7 +125,7 @@ year    population    body_wt_kg    milk_kg_per_d    de_pct
 | 2018 | 480000 | 265 | 3.6 | 54.0 |
 | ... | ... | ... | ... | ... |
 
-Columns omitted (e.g. `Fat`, `pct_calving`, `CP`, `MilkPR`, `WG`) are simply left blank — the app's correlation routine drops columns with < 5 non-missing observations or zero variance.
+Columns omitted (e.g. `Fat`, `pct_pregnant`, `CP`, `MilkPR`, `WG`) are simply left blank — the app's correlation routine drops columns with < 5 non-missing observations or zero variance.
 
 **The user still needs the Parameters sheet for the 2022 (or whichever is the inventory year) point estimates.** The time series is optional, supplements correlations only.
 
@@ -189,7 +191,7 @@ These pairs are auto-recognised; don't ask the user, just convert and note:
 | `milk_yield`, `Milk (kg/d)` | `Milk` |
 | `milk_fat`, `Fat (%)` | `Fat` |
 | `protein_milk`, `Milk_PR`, `MilkPR%` | `MilkPR` |
-| `pct_lactating`, `pct_pregnant` | `pct_calving` (now consolidated) |
+| `pct_lactating`, `pct_pregnant` | `pct_pregnant` (canonical name since 28/5/26) |
 | `DE_pct`, `digestibility` | `DE` |
 | `CP_pct`, `crude_protein` | `CP` |
 | `Ym_pct`, `methane_conv_factor` | `Ym` |

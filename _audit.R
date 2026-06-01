@@ -1463,6 +1463,52 @@ section_F <- function() {
              notes = sprintf("nrow=%d; sample params: %s",
                              nrow(prcc_xls),
                              paste(head(prcc_xls$parameter, 3), collapse = "; ")))
+
+  # F18 — Inventory_Metadata Continental region (Andreas free-text P27).
+  # `normalise_metadata_region()` should:
+  #   (a) keep an explicit valid region slug as-is,
+  #   (b) auto-map a known country name to its continent,
+  #   (c) fall back to "global" otherwise.
+  case_a <- normalise_metadata_region(
+    data.frame(country = "Zimbabwe", region = "africa",
+               stringsAsFactors = FALSE))
+  case_b <- normalise_metadata_region(
+    data.frame(country = "Zimbabwe", stringsAsFactors = FALSE))
+  case_c <- normalise_metadata_region(
+    data.frame(country = "Atlantis", stringsAsFactors = FALSE))
+  case_d <- normalise_metadata_region(
+    data.frame(country = "India", region = "",
+               stringsAsFactors = FALSE))
+  ok <- case_a$region == "africa" &&
+         case_b$region == "africa" &&
+         case_c$region == "global" &&
+         case_d$region == "asia"
+  check_bool("F18", "F",
+             "Inventory_Metadata region: explicit slug kept; country auto-mapped; unknown -> global",
+             ok,
+             notes = sprintf("explicit africa -> %s; Zimbabwe (legacy) -> %s; Atlantis -> %s; India (blank region) -> %s",
+                             case_a$region, case_b$region,
+                             case_c$region, case_d$region))
+
+  # F18b — actual parser-built metadata path. The new template emits the
+  # label "Continental region", which the transposed-layout parser turns
+  # into `metadata$continental_region` (not `metadata$region`). Confirm
+  # the helper still finds the explicit pick — i.e. the user's explicit
+  # "global" choice is respected even when their country would otherwise
+  # auto-map to africa.
+  case_e <- normalise_metadata_region(
+    data.frame(country = "Zimbabwe", continental_region = "global",
+               stringsAsFactors = FALSE))
+  case_f <- normalise_metadata_region(
+    data.frame(country = "Zimbabwe", continental_region = "africa",
+               stringsAsFactors = FALSE))
+  ok_e <- case_e$region == "global"   # explicit user override beats country lookup
+  ok_f <- case_f$region == "africa"   # explicit user choice matches country
+  check_bool("F18b", "F",
+             "Continental region cell (new-template parser key) is honoured over country fallback",
+             ok_e && ok_f,
+             notes = sprintf("Zimbabwe + global -> %s; Zimbabwe + africa -> %s",
+                             case_e$region, case_f$region))
 }
 
 # =============================================================================

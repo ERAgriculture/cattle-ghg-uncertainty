@@ -5,13 +5,13 @@
 # Master function for a single animal sub-category - returns named list
 ghg_emissions <- function(
   cattle_pop, live_weight, weight_gain, mature_weight,
-  milk_yield, milk_fat, pct_calving,
+  milk_yield, milk_fat, pct_pregnant,
   hours, DE, Cfi, Ca, C_growth, Cp,
   Ym, Bo, ASH, UE, CP,
   mms_fractions, mcf_values, ef3_values,
   EF3_PRP, Frac_GASMS, EF4, EF5, Frac_LEACH_H,
   gwp = "AR5",
-  # E1: cold-climate Cfi adjustment; E3: pct_calving weights NEL, NEp, and N excretion
+  # E1: cold-climate Cfi adjustment; E3: pct_pregnant weights NEL, NEp, and N excretion
   Tw = 20,
   # Round 7 R1.13: per-MMS Frac_GasMS / Frac_LeachMS named vectors. NULL =
   # use IPCC 2019 defaults from mms_frac_defaults_2019(). For back-compat with
@@ -34,10 +34,10 @@ ghg_emissions <- function(
   nem <- calc_nem(live_weight, Cfi, Tw = Tw)
   nea <- calc_nea(nem, Ca)
   neg <- calc_neg(live_weight, weight_gain, C_growth, mature_weight)
-  nel <- calc_nel(milk_yield, milk_fat, pct_calving)
+  nel <- calc_nel(milk_yield, milk_fat, pct_pregnant)
   new_energy <- calc_new(nem, hours)
-  # E3: Cp pro-rated by pct_calving (% of females that give birth in a year)
-  nep <- calc_nep(nem, Cp, pct_calving = pct_calving)
+  # E3: Cp pro-rated by pct_pregnant (% of females that give birth in a year)
+  nep <- calc_nep(nem, Cp, pct_pregnant = pct_pregnant)
   rem <- calc_rem(DE)
   reg <- calc_reg(DE)
   ge <- calc_ge(nem, nea, nel, nep, new_energy, neg, rem, reg, DE)
@@ -52,7 +52,7 @@ ghg_emissions <- function(
   manure_ch4_total <- (manure_ch4_head * cattle_pop) / 1000
 
   # N excretion and N2O. DE no longer passed — see calc_n_excretion comments.
-  Nex <- calc_n_excretion(ge, CP, milk_yield, pct_calving, weight_gain,
+  Nex <- calc_n_excretion(ge, CP, milk_yield, pct_pregnant, weight_gain,
                            MilkPR = MilkPR)
   pct_pasture <- ifelse("pasture" %in% names(mms_fractions),
                         mms_fractions["pasture"], 0)
@@ -70,7 +70,11 @@ ghg_emissions <- function(
   # supplied; fall back to the function defaults (0.21 / 0.30) if the caller
   # passed NULL.
   prp_fg <- if (!is.null(Frac_GASM_PRP))  Frac_GASM_PRP  else 0.21
-  prp_fl <- if (!is.null(Frac_LEACH_PRP)) Frac_LEACH_PRP else 0.30
+  # IPCC 2019R Vol.4 Ch.11 Table 11.3: Frac_LEACH-(H) = 0.24 (wet climate);
+  # dry-climate default is 0. 2006 default was 0.30. Align all three default
+  # sites in the codebase on 0.24 — runs targeting 2006 must supply the
+  # value via the Parameters template explicitly.
+  prp_fl <- if (!is.null(Frac_LEACH_PRP)) Frac_LEACH_PRP else 0.24
   indirect_n2o_prp_head <- calc_indirect_n2o_prp(
     Nex, pct_pasture,
     Frac_GASM_PRP  = prp_fg, EF4 = EF4,
@@ -109,7 +113,7 @@ ghg_emissions <- function(
 # Vectorized version for Monte Carlo - returns data.frame
 ghg_emissions_vec <- function(
   cattle_pop, live_weight, weight_gain, mature_weight,
-  milk_yield, milk_fat, pct_calving,
+  milk_yield, milk_fat, pct_pregnant,
   hours, DE, Cfi, Ca, C_growth, Cp,
   Ym, Bo, ASH, UE, CP,
   mms_fractions, mcf_values, ef3_values,
@@ -132,7 +136,11 @@ ghg_emissions_vec <- function(
   mcf_samples        = NULL,
   ef3_samples        = NULL,
   frac_gas_samples   = NULL,
-  frac_leach_samples = NULL
+  frac_leach_samples = NULL,
+  # Andreas 28/5/26 #4: per-iteration MMS allocation matrix (n_iter × n_MMS,
+  # rows pre-renormalised to sum to 1). NULL = treat mms_fractions as a
+  # deterministic vector across iterations (pre-fix behaviour).
+  mms_fraction_samples = NULL
 ) {
   n <- length(cattle_pop)
   results <- data.frame(
@@ -184,12 +192,15 @@ ghg_emissions_vec <- function(
     ef3_i <- .row_or_scalar(ef3_samples, ef3_values, i)
     fg_i  <- .row_or_scalar(frac_gas_samples,   frac_gas_values,   i)
     fl_i  <- .row_or_scalar(frac_leach_samples, frac_leach_values, i)
+    # Andreas 28/5/26 #4: row i of the renormalised allocation matrix
+    # replaces the deterministic mms_fractions vector when supplied.
+    mms_i <- .row_or_scalar(mms_fraction_samples, mms_fractions, i)
     r <- ghg_emissions(
       cattle_pop[i], live_weight[i], weight_gain[i], mature_weight[i],
-      milk_yield[i], milk_fat[i], pct_calving[i],
+      milk_yield[i], milk_fat[i], pct_pregnant[i],
       hours[i], DE[i], Cfi[i], Ca[i], C_growth[i], Cp[i],
       Ym[i], Bo[i], ASH[i], UE[i], CP[i],
-      mms_fractions, mcf_i, ef3_i,
+      mms_i, mcf_i, ef3_i,
       EF3_PRP[i], Frac_GASMS[i], EF4[i], EF5[i], Frac_LEACH_H[i],
       gwp,
       Tw = tw_vec[i],
