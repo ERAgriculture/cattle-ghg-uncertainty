@@ -750,36 +750,13 @@ app_ui <- function() {
             uiOutput("corr_mode_ui"),
             conditionalPanel(
               condition = "input.corr_mode == 'timeseries'",
-              # 2026-05 audit follow-up: detrending option. Most national livestock
-              # series share a long-run growth trend; raw Pearson/Spearman of two
-              # upward-trending series is mechanically high. First differences
-              # isolate the year-to-year shocks, which is what Approach 2 should
-              # propagate. IPCC V1 Ch3 p.26 lists "time series techniques can be
-              # used to analyse or simulate temporal autocorrelation".
-              selectInput("corr_ts_detrend",
-                          label = tagList(
-                            "Treatment of trends ",
-                            bslib::tooltip(
-                              span(icon("circle-question"),
-                                   style = "color:#2D6A4F; cursor:help; vertical-align:middle;"),
-                              "Multi-year series usually grow over time (animal numbers up, milk yields up). That parallel growth shows up as a high correlation even when the year-to-year uncertainty is actually independent. First differences (the default) strip the trend so you only correlate the genuine year-to-year shocks.",
-                              placement = "right"
-                            )
-                          ),
-                          choices = c("First differences (recommended)" = "first_diff",
-                                      "Linear detrend"                  = "linear",
-                                      "Raw series (legacy)"             = "none"),
-                          selected = "first_diff"),
-              div(class = "small text-muted",
-                  style = "margin-top:-4px; margin-bottom:8px; font-size:0.82rem; line-height:1.45;",
-                  tags$ul(style = "padding-left:18px; margin:0;",
-                    tags$li(tags$strong("First differences (recommended)"),
-                            " — most defensible default. Use unless you know your data is already stationary."),
-                    tags$li(tags$strong("Linear detrend"),
-                            " — pick this if the trend is approximately linear and you want to keep more series structure."),
-                    tags$li(tags$strong("Raw series (legacy)"),
-                            " — pick this only if your input is already de-trended.")
-                  )),
+              # 2026-06: the "Treatment of trends" select was removed. It
+              # exposed three Spearman-detrending alternatives (first
+              # differences / linear / raw) to the user, but the recommended
+              # default ("first differences") is the right call almost every
+              # time, and the choice is not something an Excel-fluent inventory
+              # compiler should be asked to make. First differences is now
+              # hardcoded in .compute_corr_now() — see R/app_server.R.
               uiOutput("corr_ts_status")
             ),
             conditionalPanel(

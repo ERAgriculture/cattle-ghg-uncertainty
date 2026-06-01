@@ -78,13 +78,14 @@ app_server <- function(input, output, session) {
     }
   }
 
-  # 2026-05 audit follow-up: small helper so every time-series → matrix path
-  # honours the current detrend selection. The first load uses the default
-  # ("first_diff") because input$corr_ts_detrend is NULL pre-render.
+  # 2026-06: hardcode first-difference detrending. The user-facing "Treatment
+  # of trends" selectInput was retired — the alternative options ("linear",
+  # "none") were rarely the right call and not a choice an Excel-fluent
+  # inventory compiler should be asked to make. compute_corr_from_population()
+  # still accepts the parameter; we just don't surface it as a UI choice.
   .compute_corr_now <- function(pop) {
     if (is.null(pop)) return(NULL)
-    dt <- input$corr_ts_detrend %||% "first_diff"
-    compute_corr_from_population(pop, detrend = dt)
+    compute_corr_from_population(pop, detrend = "first_diff")
   }
 
   .load_example <- function(name) {
@@ -721,14 +722,9 @@ app_server <- function(input, output, session) {
     }
   }, ignoreInit = TRUE)
 
-  # 2026-05 audit follow-up: recompute the time-series correlation matrix when
-  # the user toggles the detrend mode (otherwise the heatmap and the next
-  # simulation would still reflect the previous setting).
-  observeEvent(input$corr_ts_detrend, {
-    if (isTRUE(input$corr_mode == "timeseries") && !is.null(rv$population)) {
-      rv$corr_matrix <- .compute_corr_now(rv$population)
-    }
-  }, ignoreInit = TRUE)
+  # 2026-06: the observeEvent(input$corr_ts_detrend, ...) observer was removed
+  # along with the UI selectInput it watched. First-difference detrending is
+  # now hardcoded in .compute_corr_now().
 
   # T4.1: manual matrix upload (CSV)
   observeEvent(input$corr_matrix_upload, {

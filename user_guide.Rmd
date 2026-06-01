@@ -462,17 +462,9 @@ If you included a Parameter\_TimeSeries sheet in your upload, the tool can compu
 
 \begin{enumerate}
   \item On Tab 4, select \textbf{From template (auto, time-series)} under Activity Data Correlations.
-  \item The tool computes the \textbf{Spearman} rank correlation matrix of the historical parameter data, applies the chosen detrending treatment, and samples using \textbf{Iman--Conover restricted pairing} — the method explicitly cited by IPCC V1 Ch3 §3.2.3.2 (p.~26). Iman--Conover is distribution-free and reproduces the target rank correlation exactly, regardless of the marginal shapes.
+  \item The tool computes the \textbf{Spearman} rank correlation matrix of the historical parameter data after first-difference detrending (year-on-year changes, which strips out shared long-run growth) and samples using \textbf{Iman--Conover restricted pairing} --- the method explicitly cited by IPCC V1 Ch3 §3.2.3.2 (p.~26). Iman--Conover is distribution-free and reproduces the target rank correlation exactly, regardless of the marginal shapes.
   \item Inspect the heatmap that appears below the controls to confirm correlations are plausible.
 \end{enumerate}
-
-\textbf{Treatment of trends.} Most national livestock series share long-run growth (population up, milk yield up). The Pearson/Spearman correlation of two upward-trending series is mechanically high, but that trend co-movement is \emph{not} the year-to-year joint uncertainty Approach 2 is meant to propagate. The tool offers three options:
-
-\begin{itemize}
-  \item \textbf{First differences (recommended, default)} --- year-on-year changes. Isolates the genuine year-to-year co-movement.
-  \item \textbf{Linear detrend} --- subtracts a fitted linear trend. Use when the trend is approximately linear and you want to keep more of the series structure.
-  \item \textbf{Raw series} --- legacy behaviour. Use only if the input is already stationary (e.g. you uploaded already-differenced data).
-\end{itemize}
 
 ## Manual correlation matrix
 
@@ -718,7 +710,7 @@ To illustrate the workflow, the following example uses the Country X built-in da
 
 **Step 3 — Uncertainty**: Go to Tab 3. Note that activity data (N, BW, Milk, WG, Fat) use Normal distributions and coefficients (Ym, DE, Bo, etc.) use PERT or lognormal distributions.
 
-**Step 4 — Correlations**: Go to Tab 4. Select "From template (auto, time-series)" — the example dataset includes a 5-year time series from which a Spearman rank correlation matrix is computed automatically. Leave "Treatment of trends" at "First differences" (the recommended default) and "Apply correlations within" at "All parameters". The matrix is sampled using Iman--Conover restricted pairing. Leave the right-hand card at "No EF correlations" for the default run.
+**Step 4 — Correlations**: Go to Tab 4. Select "From template (auto, time-series)" — the example dataset includes a 5-year time series from which a Spearman rank correlation matrix is computed automatically (first-difference detrending is applied internally to strip shared long-run growth). The matrix is sampled using Iman--Conover restricted pairing. Leave the right-hand card at "No EF correlations" for the default run.
 
 **Step 5 — Simulate**: Go to Tab 5. Set iterations to 10,000, GWP to AR6, seed to 42. Click "Run Monte Carlo Simulation".
 
