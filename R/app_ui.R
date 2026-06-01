@@ -63,18 +63,18 @@ app_ui <- function() {
         # Each img has an onerror fallback that swaps in the institution name
         # as text if the PNG is missing from www/.
         div(
-          style = "display:flex; align-items:center; justify-content:center; gap:48px;
+          style = "display:flex; align-items:center; justify-content:center; gap:72px;
                    background:#FFFFFF; border: 1px solid #E0DDD5; border-top: none;
-                   border-radius: 0 0 16px 16px; padding: 18px 24px; margin-bottom: 32px;",
+                   border-radius: 0 0 16px 16px; padding: 28px 24px; margin-bottom: 32px;",
           tags$img(src = "alliance_logo.png",
                    alt = "Alliance of Bioversity International and CIAT",
-                   style = "height:56px; max-width:200px; object-fit:contain;",
+                   style = "height:96px; max-width:320px; object-fit:contain;",
                    onerror = "this.style.display='none'; this.nextSibling.style.display='inline-block';"),
           tags$span("Alliance Bioversity & CIAT",
                     style = "display:none; font-size:0.9rem; color:#444; font-weight:600;"),
           tags$img(src = "gmh_logo.png",
                    alt = "Global Methane Hub",
-                   style = "height:56px; max-width:200px; object-fit:contain;",
+                   style = "height:96px; max-width:320px; object-fit:contain;",
                    onerror = "this.style.display='none'; this.nextSibling.style.display='inline-block';"),
           tags$span("Global Methane Hub",
                     style = "display:none; font-size:0.9rem; color:#444; font-weight:600;")
