@@ -287,7 +287,7 @@ build_run_summary_docx <- function(path,
   if (!is.null(ps_ft)) {
     doc <- .add_h2(doc, "5b. Per-(cattle type × emission source) breakdown")
     doc <- .add_p(doc,
-      "One row per cattle_type × IPCC emission source. The 'Mean (t CH4)' and 'Mean (t N2O)' columns give the raw gas-specific quantities inventory teams report; the 'Mean (t CO2eq)' column applies the GWP for cross-source comparison. Andreas 28/5/26 #7 follow-up.")
+      "One row per cattle_type × IPCC emission source. The 'Mean (t CH4)' and 'Mean (t N2O)' columns give the raw gas-specific quantities inventory teams report; the 'Mean (t CO2eq)' column applies the GWP for cross-source comparison.")
     doc <- .add_flextable_safe(doc, .styled_flextable(ps_ft))
     doc <- .add_portrait_break(doc)
   }

@@ -87,7 +87,7 @@ other_cows      70            20                  5                   5
 
 Per row, also fill `MCF_pct` (look up the climate zone from Inventory_Metadata or ask user), `EF3` (from MMS_DEFAULTS in template_schema.md), `Frac_GasMS_pct`, `Frac_LeachMS_pct` from the per-MMS defaults table.
 
-**Optional — MMS allocation uncertainty (Andreas 28/5/26 #4):** if the user expresses uncertainty about the allocation itself ("about 40 % on pasture, could be 30–55 %"), fill `lower_fraction` / `upper_fraction` / `distribution_fraction` on each row. Leave blank to keep `fraction_pct` deterministic. The app renormalises each Monte Carlo iteration so per-group rows sum to 100 % even with the sampler active. Filled values surface `fraction_<mms>` in the sensitivity tornado so MMS allocation can be identified as an influential driver.
+**Optional — MMS allocation uncertainty:** if the user expresses uncertainty about the allocation itself ("about 40 % on pasture, could be 30–55 %"), fill `lower_fraction` / `upper_fraction` / `distribution_fraction` on each row. Leave blank to keep `fraction_pct` deterministic. The app renormalises each Monte Carlo iteration so per-group rows sum to 100 % even with the sampler active. Filled values surface `fraction_<mms>` in the sensitivity tornado so MMS allocation can be identified as an influential driver.
 
 **Sanity check:** dairy_cows: 40+35+15+10 = 100 ✓; other_cows: 70+20+5+5 = 100 ✓. Both groups pass.
 
@@ -191,7 +191,7 @@ These pairs are auto-recognised; don't ask the user, just convert and note:
 | `milk_yield`, `Milk (kg/d)` | `Milk` |
 | `milk_fat`, `Fat (%)` | `Fat` |
 | `protein_milk`, `Milk_PR`, `MilkPR%` | `MilkPR` |
-| `pct_lactating`, `pct_pregnant` | `pct_pregnant` (canonical name since 28/5/26) |
+| `pct_lactating`, `pct_pregnant`, `pct_calving` | `pct_pregnant` (canonical name; legacy `pct_calving` accepted as alias) |
 | `DE_pct`, `digestibility` | `DE` |
 | `CP_pct`, `crude_protein` | `CP` |
 | `Ym_pct`, `methane_conv_factor` | `Ym` |

@@ -17,7 +17,7 @@ writeData(wb, "Instructions", data.frame(
     "   General      — a general comment or question, or feedback from user experience such as a challenge that you were later able to overcome",
     "3. Use Severity to indicate urgency (Critical = must fix before release).",
     "4. In 'Suggested fix', note the expected behaviour or your proposed solution.",
-    "5. Save your completed file and email it to lolita.muller26@gmail.com.",
+    "5. Save your completed file and email it to m.lolita@cgiar.org.",
     "6. Multiple reviewers: combine sheets by appending rows — the Reviewer name column keeps them distinct.",
     "",
     "COLUMN DEFINITIONS",

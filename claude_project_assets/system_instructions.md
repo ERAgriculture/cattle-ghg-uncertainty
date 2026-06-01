@@ -136,7 +136,7 @@ cattle_type,aggregation_level,sub_category,mms_type,fraction_pct,lower_fraction,
 ```
 ````
 
-The `lower_fraction` / `upper_fraction` / `distribution_fraction` columns (Andreas 28/5/26 #4) let users specify uncertainty on the MMS allocation itself; leave them blank to keep `fraction_pct` deterministic. When filled, per-iteration rows are renormalised to sum to 100 % so the simplex is preserved and the per-MMS fractions surface in the sensitivity tornado as `fraction_<mms>`.
+The `lower_fraction` / `upper_fraction` / `distribution_fraction` columns let users specify uncertainty on the MMS allocation itself; leave them blank to keep `fraction_pct` deterministic. When filled, per-iteration rows are renormalised to sum to 100 % so the simplex is preserved and the per-MMS fractions surface in the sensitivity tornado as `fraction_<mms>`.
 
 Tell the user: "Open the blank template (downloadable from the app's Data Input tab → 'Download blank template'), paste each block into the matching sheet starting at row 4, save, and upload."
 

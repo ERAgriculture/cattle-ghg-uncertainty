@@ -39,7 +39,7 @@ alias_to <- function(canonical) {
 pc <- PARAM_CATALOGUE
 
 lines <- c(
-  sprintf("# Parameter catalogue — auto-generated %s", stamp),
+  "# Parameter catalogue",
   "",
   "Single source of truth for the 27 IPCC-aligned parameters the cattle uncertainty app expects.",
   "When you (Claude) translate a user's raw column to a template field, use this table.",
@@ -112,7 +112,7 @@ message("✓ wrote param_catalogue.md (", nrow(pc), " parameters)")
 # 2. template_schema.md -- exact sheet/column layout + validation rules
 # ---------------------------------------------------------------------------
 lines <- c(
-  sprintf("# Template schema — auto-generated %s", stamp),
+  "# Template schema",
   "",
   "The app expects an `.xlsx` workbook with the sheets and columns below.",
   "Sheet names and column headers are **case-sensitive and must match exactly**.",
@@ -186,8 +186,8 @@ lines <- c(lines, "",
   "| C | sub_category | yes | matches Parameters sheet (auto-matched on upload if a near-spelling exists in Parameters, e.g. `DINT_heif` ↔ `DINT_heifer`) |",
   "| D | mms_type | yes | controlled vocabulary (below) |",
   "| E | fraction_pct | yes | % of manure to this MMS; rows per group must sum to 100 |",
-  "| F | lower_fraction | no | min % for fraction_pct uncertainty (Andreas 28/5/26 #4) |",
-  "| G | upper_fraction | no | max % for fraction_pct uncertainty (Andreas 28/5/26 #4) |",
+  "| F | lower_fraction | no | min % for fraction_pct uncertainty (optional, enables per-MMS allocation sampling) |",
+  "| G | upper_fraction | no | max % for fraction_pct uncertainty (optional, enables per-MMS allocation sampling) |",
   "| H | distribution_fraction | no | distribution code for fraction_pct (default `pert`). Rows are renormalised per iteration so the simplex (sum = 100) is preserved. |",
   "| I | MCF_pct | yes | methane conversion factor (%) — see climate-zone lookup |",
   "| J | lower_mcf | no | for asymmetric ranges |",
@@ -394,8 +394,6 @@ readme_lines <- c(
   "GMH UNCERTAINTY TRANSLATOR — DIY KIT",
   "=====================================",
   "",
-  paste("Built:", stamp),
-  "",
   "WHAT THIS IS",
   "------------",
   "A free AI helper that turns your raw cattle inventory data (Excel/CSV)",
@@ -430,9 +428,6 @@ readme_lines <- c(
   "For the full walkthrough with screenshots, open getting_started.pdf",
   "in this kit.",
   "",
-  "NEED HELP?",
-  "----------",
-  "Contact: M.Lolita@cgiar.org",
   ""
 )
 writeLines(readme_lines, file.path(out_dir, "README.txt"), useBytes = TRUE)

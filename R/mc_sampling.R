@@ -328,7 +328,7 @@ PRESET_PAIRS <- list(
   # typical mixed-source case; users with same-source data can override via
   # the manual matrix mode.
   list(a = "BW",   b = "MW",          rho =  0.50,
-       source = "Growth-curve relation (Brody 1945) reused in IPCC Eq 10.3. Lowered from 0.85 in June 2026 review: 0.85 assumes BW and MW come from the same survey; in practice MW is usually a breed-reference constant while BW is from the national livestock census, so the cross-source correlation is closer to 0.5."),
+       source = "Growth-curve relation (Brody 1945) reused in IPCC Eq 10.3. Set to 0.5 rather than 0.85: 0.85 assumes BW and MW come from the same survey; in practice MW is usually a breed-reference constant while BW is from the national livestock census, so the cross-source correlation is closer to 0.5."),
   # 2026-06: kept at 0.40 but the source comment now flags the sign ambiguity
   # so reviewers don't read it as settled.
   list(a = "BW",   b = "WG",          rho =  0.40,
@@ -340,12 +340,12 @@ PRESET_PAIRS <- list(
   # kg milk/day). This is one of the "real biological linkages cutting across
   # the old population/intake groups" Andreas highlighted.
   list(a = "Milk", b = "BW",          rho =  0.30,
-       source = "High-producing dairy breeds are physically larger (Holstein ~650 kg ~30 kg milk/d vs Jersey ~450 kg ~20 kg milk/d). NRC Dairy 2001; Stallings & Knowlton 2013. Added in June 2026 review at Andreas' suggestion as a real cross-group biological linkage."),
+       source = "High-producing dairy breeds are physically larger (Holstein ~650 kg ~30 kg milk/d vs Jersey ~450 kg ~20 kg milk/d). NRC Dairy 2001; Stallings & Knowlton 2013. Included as a real cross-group biological linkage."),
   # 2026-06 ADDED (Andreas review): Milk-DE. Higher feed digestibility lifts
   # nutrient availability and so milk yield, especially in concentrate-fed
   # dairy systems. Andreas' second flagged linkage.
   list(a = "Milk", b = "DE",          rho =  0.30,
-       source = "Higher digestibility → more nutrient availability → higher milk yield, especially in concentrate-fed dairy. NRC Dairy 2001 Ch.2. Added in June 2026 review at Andreas' suggestion as a real cross-group biological linkage."),
+       source = "Higher digestibility → more nutrient availability → higher milk yield, especially in concentrate-fed dairy. NRC Dairy 2001 Ch.2. Included as a real cross-group biological linkage."),
   list(a = "DE",   b = "CP",          rho =  0.50,
        source = "Forage-quality co-variation across feed types (NRC 2001; INRA; Feedipedia). High-quality forages have both high DE and high CP; cross-feedstuff correlations 0.4-0.7."),
   # 2026-05 audit re-review: strengthened from -0.40 to -0.50. IPCC 2019
@@ -354,7 +354,7 @@ PRESET_PAIRS <- list(
   # Change Biology; Hristov et al. 2013) show a stronger negative cross-
   # diet correlation than -0.40, closer to the equation slope.
   list(a = "DE",   b = "Ym",          rho = -0.50,
-       source = "IPCC 2019 Refinement Eq 10.21 (Ym decreases with DE) + meta-analysis (Niu et al. 2018 GCB; Hristov et al. 2013). Strengthened from -0.40 in May 2026 audit re-review.")
+       source = "IPCC 2019 Refinement Eq 10.21 (Ym decreases with DE) + meta-analysis (Niu et al. 2018 GCB; Hristov et al. 2013). Set to -0.50 rather than -0.40 to align with the observed cross-diet slope.")
   # 2026-06: Milk-pct_pregnant was dropped. Sign is ambiguous: per-cow genetic
   # studies show high milk yield <-> reduced fertility (negative); per-herd
   # management gives the opposite (positive: well-run dairies have both high

@@ -107,4 +107,4 @@ The Translator is a helper, not an oracle. Always:
 
 ---
 
-*Made by the CGIAR Alliance, Climate Action–Net Zero Initiative, Project D614 — GMH Emissions Uncertainty. Questions: M.Lolita@cgiar.org.*
+*Made by the CGIAR Alliance, Climate Action–Net Zero Initiative, Project D614 — GMH Emissions Uncertainty.*

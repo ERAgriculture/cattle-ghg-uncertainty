@@ -1,8 +1,6 @@
 GMH UNCERTAINTY TRANSLATOR — DIY KIT
 =====================================
 
-Built: 2026-06-01
-
 WHAT THIS IS
 ------------
 A free AI helper that turns your raw cattle inventory data (Excel/CSV)
@@ -37,7 +35,4 @@ QUICK-START (5 STEPS)
 For the full walkthrough with screenshots, open getting_started.pdf
 in this kit.
 
-NEED HELP?
-----------
-Contact: M.Lolita@cgiar.org
 

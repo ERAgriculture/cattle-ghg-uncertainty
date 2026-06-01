@@ -2,7 +2,6 @@
 title: "IPCC Tier 2 Livestock GHG Uncertainty Calculator"
 subtitle: "Getting Started with the AI-Assisted Data Translator"
 author: "CIAT / CGIAR Alliance — ClimateActionNetZero"
-date: "May 2026"
 output:
   pdf_document:
     toc: false
@@ -163,4 +162,4 @@ If we update the parameter catalogue, schema, or mapping examples (e.g. after an
 
 ---
 
-*Produced by the CGIAR Alliance, Climate Action–Net Zero Initiative, Project D614 — GMH Emissions Uncertainty. Questions: [M.Lolita@cgiar.org](mailto:M.Lolita@cgiar.org).*
+*Produced by the CGIAR Alliance, Climate Action–Net Zero Initiative, Project D614 — GMH Emissions Uncertainty.*

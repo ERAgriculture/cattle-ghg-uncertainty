@@ -2,7 +2,6 @@
 title: "IPCC Tier 2 Livestock GHG Uncertainty Calculator"
 subtitle: "User Guide"
 author: "CIAT / CGIAR Alliance — ClimateActionNetZero"
-date: "May 2026"
 output:
   pdf_document:
     toc: true
@@ -53,7 +52,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 \begin{center}
 \textcolor{cgiargreen}{\rule{14cm}{1.5pt}}\\[6pt]
-\textcolor{cgiargreen}{\large\textbf{Version 1.0 — May 2026}}\\[4pt]
+\textcolor{cgiargreen}{\large\textbf{Version 1.0}}\\[4pt]
 \textcolor{darkgrey}{Developed under the Global Methane Hub initiative}\\[4pt]
 \textcolor{cgiargreen}{\rule{14cm}{1.5pt}}
 \end{center}
@@ -485,11 +484,11 @@ A built-in preset of structural defaults is available. It applies the following 
 \toprule
 \textbf{Parameter A} & \textbf{Parameter B} & \textbf{$\rho$} & \textbf{Source} \\
 \midrule
-BW   & MW   & $+0.50$ & Growth-curve relation (Brody 1945); IPCC Eq 10.3. Lowered from $0.85$ in June 2026 to reflect that BW comes from the national census while MW is usually a breed reference --- different sources, so the cross-source correlation is closer to $0.5$ than $0.85$. \\
+BW   & MW   & $+0.50$ & Growth-curve relation (Brody 1945); IPCC Eq 10.3. Set to $0.5$ rather than $0.85$ to reflect that BW comes from the national census while MW is usually a breed reference --- different sources, so the cross-source correlation is closer to $0.5$ than $0.85$. \\
 BW   & WG   & $+0.40$ & IPCC Eq 10.6 joint estimation (NRC 2001 energy-balance studies, published range $0.30$--$0.50$). Sign is system-dependent; $+0.40$ reflects well-fed adult dairy/beef systems. \\
 Milk & Fat  & $-0.30$ & Milk dilution effect, dairy genetics literature (Wilmink 1987; VandeHaar 1998); within-herd literature $-0.20$ to $-0.40$. \\
-Milk & BW   & $+0.30$ & High-producing dairy breeds are physically larger (Holstein $\sim$650 kg \& $\sim$30 kg milk/day vs Jersey $\sim$450 kg \& $\sim$20 kg). NRC Dairy 2001; Stallings \& Knowlton 2013. Added in June 2026. \\
-Milk & DE   & $+0.30$ & Higher feed digestibility $\Rightarrow$ more nutrient availability $\Rightarrow$ higher milk yield, especially in concentrate-fed dairy. NRC Dairy 2001 Ch.2. Added in June 2026. \\
+Milk & BW   & $+0.30$ & High-producing dairy breeds are physically larger (Holstein $\sim$650 kg \& $\sim$30 kg milk/day vs Jersey $\sim$450 kg \& $\sim$20 kg). NRC Dairy 2001; Stallings \& Knowlton 2013. \\
+Milk & DE   & $+0.30$ & Higher feed digestibility $\Rightarrow$ more nutrient availability $\Rightarrow$ higher milk yield, especially in concentrate-fed dairy. NRC Dairy 2001 Ch.2. \\
 DE   & CP   & $+0.50$ & Forage-quality co-variation across feed types (NRC 2001; INRA; Feedipedia). \\
 DE   & Ym   & $-0.50$ & IPCC 2019 Refinement Eq 10.21 (Ym decreases with DE) + meta-analysis (Niu et al. 2018 GCB; Hristov et al. 2013). The only cross-block (activity-data $\leftrightarrow$ coefficient) pair, and the dominant mover on the headline. \\
 \bottomrule
@@ -498,7 +497,7 @@ DE   & Ym   & $-0.50$ & IPCC 2019 Refinement Eq 10.21 (Ym decreases with DE) + m
 
 All other pairs are set to zero.
 
-\textit{Revision history.} The May 2026 statistical audit removed the previous N $\leftrightarrow$ BW $= 0.30$ pair (no defensible cross-country source), strengthened DE $\leftrightarrow$ Ym from $-0.40$ to $-0.50$, and lowered Cfi $\leftrightarrow$ Ca from $0.60$ to $0.30$. The June 2026 review (responding to A. Wilkes' livestock-science feedback) further refined the set: it lowered BW $\leftrightarrow$ MW from $0.85$ to $0.50$, added the two cross-group dairy pairs (Milk $\leftrightarrow$ BW and Milk $\leftrightarrow$ DE), and dropped Milk $\leftrightarrow$ pct\_pregnant (sign ambiguous) and Cfi $\leftrightarrow$ Ca (independent inputs in IPCC Eq 10.3 / 10.4, not jointly estimated).
+\textit{Derivation notes.} A previously included N $\leftrightarrow$ BW $= 0.30$ pair was removed (no defensible cross-country source); DE $\leftrightarrow$ Ym is set to $-0.50$ rather than $-0.40$ (cross-diet meta-analyses); Cfi $\leftrightarrow$ Ca is set to $0.30$ rather than $0.60$ (Cfi and Ca are independent inputs in IPCC Eq 10.3 / 10.4); BW $\leftrightarrow$ MW is set to $0.50$ rather than $0.85$ (typical mixed-source data provenance); two cross-group dairy pairs (Milk $\leftrightarrow$ BW and Milk $\leftrightarrow$ DE) were added; Milk $\leftrightarrow$ pct\_pregnant is not included (sign ambiguous).
 
 ## Coefficient (emission factor) correlations
 
@@ -723,5 +722,4 @@ To illustrate the workflow, the following example uses the Country X built-in da
 \vspace{1cm}
 \hrule
 \vspace{0.3cm}
-\textit{\small For questions, contact Lolita Muller (Alliance Bioversity-CIAT) or Andreas Wilkes.}\\
-\textit{\small This document is a draft for internal review.}
+\textit{\small Funded by the Global Methane Hub.}

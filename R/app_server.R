@@ -697,7 +697,7 @@ app_server <- function(input, output, session) {
       }
       rv$corr_matrix <- preset
       showNotification(
-        sprintf("Loaded structural-defaults preset (%d parameters). June 2026 review: added Milk↔BW and Milk↔DE (+0.30 each), lowered BW↔MW to 0.50, dropped Milk↔pct_pregnant and Cfi↔Ca.",
+        sprintf("Loaded structural-defaults preset (%d parameters). Includes Milk↔BW and Milk↔DE (+0.30 each), BW↔MW at 0.50, and DE↔Ym at -0.50; Milk↔pct_pregnant and Cfi↔Ca are intentionally excluded.",
                 nrow(preset)),
         type = "message", duration = 6)
     } else if (input$corr_mode == "timeseries") {

@@ -1,4 +1,4 @@
-# Template schema — auto-generated 2026-06-01
+# Template schema
 
 The app expects an `.xlsx` workbook with the sheets and columns below.
 Sheet names and column headers are **case-sensitive and must match exactly**.
@@ -75,8 +75,8 @@ One row per (cattle_type × aggregation_level × sub_category × mms_type). Per-
 | C | sub_category | yes | matches Parameters sheet (auto-matched on upload if a near-spelling exists in Parameters, e.g. `DINT_heif` ↔ `DINT_heifer`) |
 | D | mms_type | yes | controlled vocabulary (below) |
 | E | fraction_pct | yes | % of manure to this MMS; rows per group must sum to 100 |
-| F | lower_fraction | no | min % for fraction_pct uncertainty (Andreas 28/5/26 #4) |
-| G | upper_fraction | no | max % for fraction_pct uncertainty (Andreas 28/5/26 #4) |
+| F | lower_fraction | no | min % for fraction_pct uncertainty (optional, enables per-MMS allocation sampling) |
+| G | upper_fraction | no | max % for fraction_pct uncertainty (optional, enables per-MMS allocation sampling) |
 | H | distribution_fraction | no | distribution code for fraction_pct (default `pert`). Rows are renormalised per iteration so the simplex (sum = 100) is preserved. |
 | I | MCF_pct | yes | methane conversion factor (%) — see climate-zone lookup |
 | J | lower_mcf | no | for asymmetric ranges |
