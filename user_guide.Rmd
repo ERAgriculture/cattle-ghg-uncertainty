@@ -218,7 +218,16 @@ Frac\_LeachPRP & Fraction of N lost through leaching from pasture deposition (us
 
 The tool uses an Excel template with a specific structure. Download the template from the **Data Input** tab (Tab 1) by clicking "Download Excel template".
 
-The template has the following key columns in the **Parameters** sheet:
+## The Inventory_Metadata sheet
+
+The first sheet captures who and where the inventory is for. Two cells deserve a note:
+
+- \textbf{Country}: free text (e.g.\ \texttt{Zimbabwe}). Used in the report header — not used for any lookup.
+- \textbf{Continental region}: a \textbf{dropdown} (\texttt{africa / asia / europe / americas / oceania / global}). This drives the QA tab's BW deviation check, which compares your body-weight value against the IPCC Vol.4 Ch.10 Annex Tables 10A.1 / 10A.2 / 10A.3 default for your continent. Pick the continent your inventory's animal sub-categories are in. If you genuinely do not know or are running a hypothetical example, select \texttt{global}.
+
+\textit{Legacy templates}: if you uploaded a template downloaded before this region field was split out (i.e.\ only the old single ``Country / region'' cell), the parser maps common country names (Zimbabwe, India, Brazil, …) to the right continent automatically. Anything unrecognised falls back to \texttt{global} (no false BW warnings; the QA message will just say ``global''). Re-downloading the current template is recommended but not required.
+
+The Parameters sheet has the following key columns:
 
 \begin{center}
 \begin{tabular}{lll}
@@ -366,7 +375,7 @@ The QA/QC tab runs automated checks on your parameter values and flags any that 
 
 \textit{Scope of the benchmark-deviation check.} The deviation check is applied \textbf{only to BW (body weight)} — the one parameter for which the tool keeps a defensible continental IPCC table lookup (Annex Tables 10A.1 dairy / 10A.2 non-dairy / 10A.3 buffalo). Milk, MW, DE, Ym, Bo no longer fire benchmark warnings — the 2019 Refinement publishes these by production system rather than continent, so any single mid-point comparison was misleading. They are still pre-filled with IPCC defaults when missing (flagged \textit{Missing}), they just no longer raise \textit{Warn} purely for differing from a heuristic mid-point.
 
-\textit{Cross-sheet sub-category-key check.} If a Parameters-sheet \texttt{sub\_category} (e.g.\ \texttt{DINT\_heif}) has no exact match in the Manure_Management sheet but \textit{is} close to exactly one Manure_Management sub-category (e.g.\ \texttt{DINT\_heifer}, edit distance ≤ 2), the tool auto-matches them and emits a \textit{Warn} row labelled \texttt{sub\_category\_auto\_match} so you can verify the substitution. If multiple candidates match, the run is blocked with a clear error.
+\textit{Cross-sheet sub-category-key check.} If a Parameters-sheet \texttt{sub\_category} (e.g.\ \texttt{DINT\_heif}) has no exact match in the Manure\_Management sheet but \textit{is} close to exactly one Manure\_Management sub-category (e.g.\ \texttt{DINT\_heifer}, edit distance $\le 2$), the tool auto-matches them and emits a \textit{Warn} row labelled \texttt{sub\_category\_auto\_match} so you can verify the substitution. If multiple candidates match, the run is blocked with a clear error.
 
 ## What to do for each status
 
@@ -426,10 +435,26 @@ If multiple parameters tend to move together (e.g. larger animals also tend to p
 
 \begin{itemize}
   \item Do you have $\ge$ 5 years of national time-series data in your upload? $\rightarrow$ \textbf{From template (auto, time-series)}.
-  \item No time series, but you want to capture well-known biological linkages (BW $\leftrightarrow$ MW, Milk $\leftrightarrow$ Fat, DE $\leftrightarrow$ Ym, …)? $\rightarrow$ \textbf{Structural defaults (expert-elicited)}.
+  \item No time series, but you want to capture well-known biological linkages (BW $\leftrightarrow$ MW, Milk $\leftrightarrow$ Fat, DE $\leftrightarrow$ Ym, …)? $\rightarrow$ \textbf{Structural defaults (expert-elicited)}. This is the recommended pick for single-year inventories without historical data.
   \item You have your own correlation matrix from a study or expert elicitation? $\rightarrow$ \textbf{Advanced --- manual entry}.
   \item None of the above? $\rightarrow$ leave \textbf{No correlations} (the default; conservative and defensible).
 \end{itemize}
+
+\textbf{Options you can't pick are greyed out.} If a mode would have nothing to work with --- e.g.\ ``From template'' when your \texttt{Parameter\_TimeSeries} sheet is empty, or ``Advanced --- manual entry'' before you've uploaded a CSV --- the radio choice appears greyed out with a short note explaining why. The tool also blocks the Run button with an explicit error if a no-data mode is somehow selected.
+
+## What change in the result should I expect?
+
+The central emission estimate is essentially unchanged regardless of which mode you pick --- correlations preserve marginal means by construction. What changes is the \textbf{width of the 95\% uncertainty interval}. As a rule of thumb, on a typical single-year cattle inventory:
+
+\begin{itemize}
+  \item \textbf{No correlations} $\rightarrow$ the baseline. All parameters drawn independently.
+  \item \textbf{Structural defaults} $\rightarrow$ widens the 95\% uncertainty interval by roughly \textbf{3 to 10\%}. Most of this comes from the DE $\leftrightarrow$ Ym pair (the only cross-block link in the preset, also the strongest at $\rho = -0.5$). The effect is intentionally modest because the preset only links 7 pairs out of $\sim$78 possible across the IPCC equation chain.
+  \item \textbf{From template (auto, time-series)} $\rightarrow$ varies with the data. A rich, varied historical series (multiple parameters genuinely co-moving year-on-year) can produce effects similar to or larger than the structural defaults. A sparse or mostly static series will produce a much smaller effect because the matrix collapses to near-identity once constant columns are dropped.
+  \item \textbf{Advanced --- manual entry} $\rightarrow$ entirely depends on what you upload. Strong correlations on parameters with wide uncertainty bounds can move the interval by 20\% or more (in either direction).
+  \item \textbf{Block-structured EF correlation} (right-hand card) at $\rho = 0.3$ on one block $\rightarrow$ a further few-percent widening on top of any activity-data correlation. At $\rho = 0.5$ (the slider maximum), roughly double that.
+\end{itemize}
+
+If you select correlations and the result barely changes, that is usually expected, not a bug --- the IPCC equation chain multiplies around 13 parameters together, which dilutes the effect of any single correlated pair. See the Methodology document for the underlying mathematics.
 
 ## Automatic correlations from time-series data
 
@@ -463,22 +488,25 @@ If you prefer to specify correlations manually:
 A built-in preset of structural defaults is available. It applies the following well-documented pairs, drawn from the IPCC equations and the livestock literature. \textit{These values are expert-elicited; the IPCC publishes no numerical correlation coefficients for these pairs.} Hover any non-zero cell in the heatmap for the per-pair source citation.
 
 \begin{center}
+\renewcommand{\arraystretch}{1.2}
 \begin{tabular}{llrp{7cm}}
 \toprule
 \textbf{Parameter A} & \textbf{Parameter B} & \textbf{$\rho$} & \textbf{Source} \\
 \midrule
-BW & MW & 0.85 & Growth-curve asymptote (Brody 1945); structural link via IPCC Eq 10.3 / 10.6. Assumes BW and MW come from the same census; $\sim$0.5 is more typical if from independent surveys. \\
-BW & WG & 0.40 & Structural link via IPCC Eq 10.6 joint estimation (NRC 2001 energy-balance studies, published range 0.30--0.50). \\
-Milk & Fat & $-$0.30 & Milk dilution effect (Wilmink 1987; VandeHaar 1998); within-herd literature $-$0.20 to $-$0.40. \\
-Milk & pct\_calving & 0.20 & Herd-management intensity linkage (expert judgement; conservative). \\
-DE & CP & 0.50 & Forage-quality co-variation across feed types (NRC 2001; INRA; Feedipedia). \\
-DE & Ym & $-$0.50 & \textit{Strengthened from $-$0.40 in May 2026 audit re-review.} IPCC 2019 Refinement Eq 10.21 (Ym decreases with DE) + meta-analysis (Niu et al. 2018 GCB; Hristov et al. 2013). \\
-Cfi & Ca & 0.30 & \textit{Lowered from 0.60 in May 2026 audit re-review.} Weak linkage as both are energy-equation constants. The previous 0.60 invoked an estimation-covariance argument that does not apply: Cfi and Ca are independent inputs in IPCC Eq 10.3 / 10.4, not jointly estimated. \\
+BW   & MW   & $+0.50$ & Growth-curve relation (Brody 1945); IPCC Eq 10.3. Lowered from $0.85$ in June 2026 to reflect that BW comes from the national census while MW is usually a breed reference --- different sources, so the cross-source correlation is closer to $0.5$ than $0.85$. \\
+BW   & WG   & $+0.40$ & IPCC Eq 10.6 joint estimation (NRC 2001 energy-balance studies, published range $0.30$--$0.50$). Sign is system-dependent; $+0.40$ reflects well-fed adult dairy/beef systems. \\
+Milk & Fat  & $-0.30$ & Milk dilution effect, dairy genetics literature (Wilmink 1987; VandeHaar 1998); within-herd literature $-0.20$ to $-0.40$. \\
+Milk & BW   & $+0.30$ & High-producing dairy breeds are physically larger (Holstein $\sim$650 kg \& $\sim$30 kg milk/day vs Jersey $\sim$450 kg \& $\sim$20 kg). NRC Dairy 2001; Stallings \& Knowlton 2013. Added in June 2026. \\
+Milk & DE   & $+0.30$ & Higher feed digestibility $\Rightarrow$ more nutrient availability $\Rightarrow$ higher milk yield, especially in concentrate-fed dairy. NRC Dairy 2001 Ch.2. Added in June 2026. \\
+DE   & CP   & $+0.50$ & Forage-quality co-variation across feed types (NRC 2001; INRA; Feedipedia). \\
+DE   & Ym   & $-0.50$ & IPCC 2019 Refinement Eq 10.21 (Ym decreases with DE) + meta-analysis (Niu et al. 2018 GCB; Hristov et al. 2013). The only cross-block (activity-data $\leftrightarrow$ coefficient) pair, and the dominant mover on the headline. \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-All other pairs are set to zero. The previous N $\leftrightarrow$ BW = 0.30 cross-block pair was removed in the May 2026 statistical audit (no defensible cross-country source).
+All other pairs are set to zero.
+
+\textit{Revision history.} The May 2026 statistical audit removed the previous N $\leftrightarrow$ BW $= 0.30$ pair (no defensible cross-country source), strengthened DE $\leftrightarrow$ Ym from $-0.40$ to $-0.50$, and lowered Cfi $\leftrightarrow$ Ca from $0.60$ to $0.30$. The June 2026 review (responding to A. Wilkes' livestock-science feedback) further refined the set: it lowered BW $\leftrightarrow$ MW from $0.85$ to $0.50$, added the two cross-group dairy pairs (Milk $\leftrightarrow$ BW and Milk $\leftrightarrow$ DE), and dropped Milk $\leftrightarrow$ pct\_pregnant (sign ambiguous) and Cfi $\leftrightarrow$ Ca (independent inputs in IPCC Eq 10.3 / 10.4, not jointly estimated).
 
 ## Coefficient (emission factor) correlations
 
@@ -639,7 +667,7 @@ The IPCC Report tab shows your results formatted as IPCC 2006 Vol. 1 Ch. 3 Table
   \item \textbf{Combined uncertainty (95\% MoE \%)}: Overall \% uncertainty
 \end{itemize}
 
-\textbf{Definition of \% uncertainty}: Following IPCC Table 3.3 conventions, all values are expressed as the half-width of the 95\% confidence interval divided by the mean, multiplied by 100 — i.e.\ \texttt{MoE\% = ((CI\_upper − CI\_lower) / 2) / mean × 100}. CV (\texttt{SD/mean}) is a different metric and is \textbf{not} what IPCC Annex 7 expects in this column.
+\textbf{Definition of \% uncertainty}: Following IPCC Table 3.3 conventions, all values are expressed as the half-width of the 95\% confidence interval divided by the mean, multiplied by 100 --- i.e.\ \texttt{MoE\% = ((CI\_upper - CI\_lower) / 2) / mean * 100}. CV (\texttt{SD/mean}) is a different metric and is \textbf{not} what IPCC Annex 7 expects in this column.
 
 \textit{Example: a Combined uncertainty of 35\% means the 95\% CI is approximately ±35\% of the mean emission estimate.}
 

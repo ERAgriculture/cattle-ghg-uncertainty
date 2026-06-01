@@ -502,18 +502,29 @@ The tornado chart displays the top parameters ranked by $|\text{SRC}|$ or $|\tex
 
 ## Activity Data Correlations
 
-Correlations between activity data parameters (e.g.\ body weight and mature weight, milk yield and milk fat content) are entered in the Tab~4 \emph{Activity-Data Correlations} card. Four modes are available:
+Correlations between activity data parameters (e.g.\ body weight and mature weight, milk yield and milk fat content) are entered in the Tab~4 \emph{Activity-Data Correlations} card. Four modes are available; each is described in detail below.
 
 \begin{itemize}
-  \item \textbf{No correlations} (independence) — the default.
-  \item \textbf{Structural-defaults preset} — a small set of expert-elicited pairs drawn from the IPCC equation structure (see Section~``Structural-Defaults Preset'' below).
-  \item \textbf{From template (auto, time-series)} — the matrix is computed automatically from the \texttt{Parameter\_TimeSeries} sheet of the upload using \textbf{Spearman rank correlation} after detrending (first differences by default; linear and raw alternatives available). Spearman is preferred over Pearson because (i) it is robust to skewed marginals (Ym, Bo, milk yield), (ii) it matches the rank-correlation target the sampler reproduces (per IPCC Vol.1 Ch.3 §3.2.3.2), and (iii) it is the natural choice when the user wants the \emph{rank} dependence preserved rather than a linear product-moment relationship that can be distorted by outliers.
-  \item \textbf{Manual entry} — the user uploads a square symmetric CSV.
+  \item \textbf{No correlations} (independence) — the default. All parameters are drawn independently. This is the conservative IPCC Approach 2 starting point and is appropriate when the inventory compiler has no defensible information about parameter co-movement.
+  \item \textbf{From template (auto, time-series)} — the matrix is computed automatically from the \texttt{Parameter\_TimeSeries} sheet of the upload using a \textbf{Spearman rank correlation} after detrending (first differences by default; linear and raw alternatives available). Spearman is preferred over Pearson because (i) it is robust to skewed marginals (Ym, Bo, milk yield), (ii) it matches the rank-correlation target the sampler reproduces (per IPCC Vol.1 Ch.3 §3.2.3.2), and (iii) it is the natural choice when the user wants the \emph{rank} dependence preserved rather than a linear product-moment relationship that can be distorted by outliers. Requires $\ge$ 5 annual rows and $\ge$ 2 non-constant numeric columns to produce a usable matrix; otherwise the option is greyed out (see ``UI gating'' below).
+  \item \textbf{Structural-defaults preset} — a small set of expert-elicited pairs drawn from the IPCC equation structure and the published livestock literature (see Section~``Structural-Defaults Preset'' below). Independent of the upload's time-series, so this is the option that works for single-year inventories without historical data.
+  \item \textbf{Manual entry} — the user uploads a square symmetric CSV. The diagonal must be 1; entries are interpreted as Spearman rank correlations on $[-1, +1]$; the matrix is projected onto the nearest positive-definite correlation matrix if needed, with a warning if any entry shifts by more than $0.01$.
 \end{itemize}
+
+\textit{UI gating.} Modes whose prerequisites are missing are greyed out automatically and cannot be selected: ``From template'' is disabled when the upload has no usable \texttt{Parameter\_TimeSeries} sheet, ``Manual entry'' is disabled until the user uploads a CSV matrix, and ``Structural defaults'' is disabled until a template (built-in example or custom upload) is loaded. The Run button additionally blocks the simulation with an explicit error if a no-op mode somehow slips through. These gates were added in the June 2026 review to prevent the silent fall-back to ``no correlations'' that occurred when a mode was selected without the data it needs.
+
+\textit{Expected magnitude of effect on the headline.} Picking the structural-defaults preset on a typical single-year inventory widens the 95\% uncertainty interval by approximately $3$--$10$\%, depending mainly on how wide the user's Ym range is (the cross-block DE $\leftrightarrow$ Ym $= -0.50$ pair is the dominant mover). The central estimate is essentially unchanged because correlations preserve marginal means. The ``From template (auto)'' mode produces effects in the same general range when the time-series is rich enough to deliver multiple correlated pairs; a sparse or near-static time-series will produce a much smaller effect (the matrix collapses to near-identity after detrending).
 
 ## Emission Factor Correlations
 
-Emission factors that are structurally linked (e.g.\ EF4 is applied to volatilised N, whose magnitude is itself driven by Frac\_GasMS) can be assigned correlations in the Tab~4 \emph{Coefficient Correlations} card. The same four modes are offered; ``no correlations'' is the default. The same correlated-sampling procedure used for activity data (Section ``Correlated Sampling'' above) is applied to the coefficient block --- no special-case sampler.
+Emission factors that share systematic bias because they come from the same measurement literature (e.g.\ all rumen-fermentation coefficients from one regional database, or all NH$_3$ volatilisation parameters from one experimental programme) can be assigned correlations in the Tab~4 \emph{Coefficient Correlations} card. Two modes are available:
+
+\begin{itemize}
+  \item \textbf{No EF correlations} (default) — coefficients are sampled independently. The standard IPCC Approach 2 assumption and the right default when each emission factor comes from its own study.
+  \item \textbf{Block-structured EF correlation} — coefficients are grouped into three blocks (energy-equation, manure-CH$_4$, manure-N), each with its own within-block $\rho$ slider in $[0, 0.5]$. Cross-block correlation is always zero because the three measurement literatures are independent. All three sliders default to $0$, so this mode does nothing until the user actively moves at least one slider; an inline warning surfaces if the user selects ``block-structured'' but leaves all sliders at zero.
+\end{itemize}
+
+The same correlated-sampling procedure used for activity data (Section ``Correlated Sampling'' above) is applied to the coefficient block --- no special-case sampler. Setting a within-block slider to $\rho = 0.3$ typically widens the 95\% uncertainty interval by a further few percent on top of any activity-data correlation effect; setting it to $\rho = 0.5$ (the slider maximum) approximately doubles that.
 
 ## Structural-Defaults Preset (Expert-Elicited)
 
