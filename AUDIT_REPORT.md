@@ -1,11 +1,11 @@
 # AUDIT_REPORT.md — Statistician's end-to-end audit
 
-Generated 2026-06-01 15:02 CEST by `_audit.R`.
+Generated 2026-06-01 15:24 CEST by `_audit.R`.
 
 ## Summary
 
-- Tests run: **81**
-- Pass: **81**
+- Tests run: **82**
+- Pass: **82**
 - Fail: **0**
 - Skip: **0**
 - Verdict: **AUDIT CLEAN**
@@ -68,6 +68,7 @@ Synthetic single-sub-category dairy inventory with all 27 IPCC-aligned parameter
 | C16 | C | Iman-Conover: 2-param product, rho=-0.50 dampens output SD (ratio <= 0.85) | ✅ PASS | sd_ratio = 0.716 (expected <= 0.85) |
 | C17 | C | Iman-Conover: 10-param product, ONE pair at -0.50 has small headline effect (|ratio - 1| <= 0.10) | ✅ PASS | sd_ratio = 0.959 (expected within 0.90-1.10) |
 | C18 | C | Empty Parameter_TimeSeries → compute_corr_from_population returns NULL (Andreas June 2026: catches the silent no-op the UI gate now prevents) | ✅ PASS |  |
+| C19 | C | Comparison-run invariant: nulling only legacy corr_matrix leaves MC result unchanged; nulling unified_corr_matrix changes it | ✅ PASS | legacy_unchanged=TRUE, unified_changed=TRUE |
 | D1 | D | Trend year_corr='full' completes and produces table with 5 rows | ✅ PASS |  |
 | D2 | D | Trend year_corr='partial' lag-1 Spearman for Ym ≈ 0.7 | ✅ PASS | realised lag-1=0.679 |
 | D3 | D | Trend year_corr='none' completes and produces table with 5 rows | ✅ PASS |  |
@@ -107,7 +108,7 @@ Synthetic single-sub-category dairy inventory with all 27 IPCC-aligned parameter
 | F19b | F | Tornado user_reducible lookup correctly classifies labelled params | ✅ PASS | results: FALSE, TRUE, FALSE, FALSE, TRUE; expected: FALSE, TRUE, FALSE, FALSE, TRUE |
 | G1 | G | export_results_xlsx produces non-empty file | ✅ PASS | 9481 bytes |
 | G2 | G | CSV write of uncertainty frame produces non-empty file | ✅ PASS | 1874 bytes |
-| G3 | G | build_run_summary_docx produces Word file > 50 KB | ✅ PASS | 76486 bytes |
+| G3 | G | build_run_summary_docx produces Word file > 50 KB | ✅ PASS | 76485 bytes |
 
 ## Detailed numerics
 
@@ -154,6 +155,7 @@ Synthetic single-sub-category dairy inventory with all 27 IPCC-aligned parameter
 | C16 | TRUE | TRUE | PASS |
 | C17 | TRUE | TRUE | PASS |
 | C18 | TRUE | TRUE | PASS |
+| C19 | TRUE | TRUE | PASS |
 | D1 | TRUE | TRUE | PASS |
 | D2 | 0.7 | 0.6791913 | PASS |
 | D3 | TRUE | TRUE | PASS |

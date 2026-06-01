@@ -716,6 +716,59 @@ section_C <- function() {
   check_bool("C18", "C",
              "Empty Parameter_TimeSeries → compute_corr_from_population returns NULL (Andreas June 2026: catches the silent no-op the UI gate now prevents)",
              is.null(empty_result))
+
+  # C19 — comparison-run-must-null-unified-matrix regression guard.
+  # The June 2026 review found that the "Compare with/without correlations"
+  # checkbox produced identical bars on Andreas' ZIM run because the
+  # comparison-run code in app_server.R was nulling only the legacy
+  # corr_matrix / ef_corr_matrix slots, not the unified_corr_matrix slot
+  # that actually carries the preset / time-series / manual matrices since
+  # the Round 7 unified-matrix refactor. The fix nulls unified_corr_matrix
+  # too. This test codifies the underlying invariant: in a systems_data
+  # entry, the *only* correlation slot read by run_inventory_simulation
+  # for the default (Iman-Conover) sampler is unified_corr_matrix; nulling
+  # corr_matrix alone must NOT change the MC result if unified_corr_matrix
+  # is set.
+  sd_uni <- build_golden_system()
+  sd_uni[[1]]$param_specs <- make_golden_specs(constant_dist = FALSE)
+  sd_uni[[1]]$param_specs$lower <- sd_uni[[1]]$param_specs$mean * 0.9
+  sd_uni[[1]]$param_specs$upper <- sd_uni[[1]]$param_specs$mean * 1.1
+  sd_uni[[1]]$param_specs$lower[sd_uni[[1]]$param_specs$parameter %in% c("WG","hours")] <- 0
+  sd_uni[[1]]$param_specs$upper[sd_uni[[1]]$param_specs$parameter %in% c("WG","hours")] <- 0
+  preset_all <- build_ipcc_preset_corr(sd_uni[[1]]$param_specs$parameter)
+  sd_uni[[1]]$unified_corr_matrix <- preset_all
+  sd_uni[[1]]$corr_matrix <- NULL
+  sd_uni[[1]]$ef_corr_matrix <- NULL
+  sim_with <- run_inventory_simulation(sd_uni, n_iter = 1000, gwp = "AR5",
+                                       seed = 99, pct_pregnant = 1)
+
+  # Now null only the legacy corr_matrix (mirrors the OLD buggy comparison
+  # code). MC result must be unchanged because unified_corr_matrix still drives
+  # the sampler.
+  sd_legacy_null <- sd_uni
+  sd_legacy_null[[1]]$corr_matrix    <- NULL
+  sd_legacy_null[[1]]$ef_corr_matrix <- NULL
+  sim_legacy <- run_inventory_simulation(sd_legacy_null, n_iter = 1000, gwp = "AR5",
+                                          seed = 99, pct_pregnant = 1)
+  legacy_unchanged <- isTRUE(all.equal(sim_with$inventory$total_co2e,
+                                        sim_legacy$inventory$total_co2e))
+
+  # Now null unified_corr_matrix (the FIXED comparison code). MC result must
+  # differ — at least one parameter value must change at least one iteration.
+  sd_unified_null <- sd_uni
+  sd_unified_null[[1]]$corr_matrix         <- NULL
+  sd_unified_null[[1]]$ef_corr_matrix      <- NULL
+  sd_unified_null[[1]]$unified_corr_matrix <- NULL
+  sim_nocorr <- run_inventory_simulation(sd_unified_null, n_iter = 1000, gwp = "AR5",
+                                          seed = 99, pct_pregnant = 1)
+  unified_changed <- !isTRUE(all.equal(sim_with$inventory$total_co2e,
+                                        sim_nocorr$inventory$total_co2e))
+
+  check_bool("C19", "C",
+             "Comparison-run invariant: nulling only legacy corr_matrix leaves MC result unchanged; nulling unified_corr_matrix changes it",
+             legacy_unchanged && unified_changed,
+             notes = sprintf("legacy_unchanged=%s, unified_changed=%s",
+                              legacy_unchanged, unified_changed))
 }
 
 # =============================================================================

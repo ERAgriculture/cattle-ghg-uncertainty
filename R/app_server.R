@@ -1649,9 +1649,17 @@ app_server <- function(input, output, session) {
           rv$comparison_sensitivity <- NULL
           if (isTRUE(input$run_comparison)) {
             setProgress(0.94, detail = "Running comparison (no correlations)...")
+            # 2026-06: must also null unified_corr_matrix here. Since the
+            # Round 7 unified-matrix refactor, the preset / time-series /
+            # manual matrices all flow through unified_corr_matrix (not the
+            # legacy corr_matrix / ef_corr_matrix slots, which the new code
+            # path leaves NULL on the main run). Nulling only the legacy two
+            # meant the comparison run quietly kept applying the unified
+            # matrix and produced bars identical to the main run.
             systems_nocorr <- lapply(systems_data, function(s) {
-              s$corr_matrix    <- NULL
-              s$ef_corr_matrix <- NULL
+              s$corr_matrix         <- NULL
+              s$ef_corr_matrix      <- NULL
+              s$unified_corr_matrix <- NULL
               s
             })
             nocorr_result <- run_inventory_simulation(
