@@ -1509,6 +1509,52 @@ section_F <- function() {
              ok_e && ok_f,
              notes = sprintf("Zimbabwe + global -> %s; Zimbabwe + africa -> %s",
                              case_e$region, case_f$region))
+
+  # F19 — End-to-end metadata parsing for a legacy "Country / region" label.
+  # Andreas's Zim file uses the old single-cell convention. Probe via
+  # parse_uploaded_template to confirm the parser now produces
+  # metadata$country (no trailing underscore) AND region resolves to africa.
+  if (file.exists("uncertainty_template_ipcc2019_ZIM_v2.xlsx")) {
+    parsed <- tryCatch(parse_uploaded_template(
+      "uncertainty_template_ipcc2019_ZIM_v2.xlsx"),
+      error = function(e) NULL)
+    md <- parsed$metadata
+    country_ok <- !is.null(md) && "country" %in% names(md) &&
+                  tolower(trimws(md$country[1])) == "zimbabwe"
+    region_ok  <- !is.null(md) && "region" %in% names(md) &&
+                  md$region[1] == "africa"
+    no_underscore_key <- !is.null(md) && !("country_" %in% names(md))
+    check_bool("F19a", "F",
+               "Legacy 'Country / region' label parses to metadata$country (no trailing underscore) + region resolves to africa for Zimbabwe",
+               country_ok && region_ok && no_underscore_key,
+               notes = sprintf("country='%s' region='%s' country_ key present=%s",
+                               if (!is.null(md)) md$country[1] else "NA",
+                               if (!is.null(md)) md$region[1] else "NA",
+                               !no_underscore_key))
+  } else {
+    record("F19a", "F", "Legacy Zim metadata parse",
+           "skip", "missing-file", "SKIP",
+           "uncertainty_template_ipcc2019_ZIM_v2.xlsx not in repo root")
+  }
+
+  # F19b — Tornado user_reducible lookup handles labelled sub-category
+  # parameters. Strip " (sub_category)" suffix before catalogue lookup.
+  labelled <- c("Ym (DINT_cow)", "BW (DINT_heif)", "Bo (DINT_GrM)",
+                "Cfi (DINT_cow)", "N (DINT_cow)")
+  bare <- sub(" \\([^()]+\\)\\s*$", "", labelled)
+  reducible_lut <- setNames(PARAM_CATALOGUE$user_reducible,
+                              PARAM_CATALOGUE$parameter)
+  reducible <- reducible_lut[bare]
+  # Expected per PARAM_CATALOGUE: Ym=FALSE, BW=TRUE, Bo=FALSE, Cfi=FALSE, N=TRUE
+  expected <- c(FALSE, TRUE, FALSE, FALSE, TRUE)
+  match_ok <- all(reducible == expected, na.rm = TRUE) &&
+               !any(is.na(reducible))
+  check_bool("F19b", "F",
+             "Tornado user_reducible lookup correctly classifies labelled params",
+             match_ok,
+             notes = sprintf("results: %s; expected: %s",
+                             paste(reducible, collapse = ", "),
+                             paste(expected, collapse = ", ")))
 }
 
 # =============================================================================

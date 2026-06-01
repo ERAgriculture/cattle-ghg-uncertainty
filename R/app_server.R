@@ -2409,8 +2409,13 @@ app_server <- function(input, output, session) {
     top10 <- top10[order(top10[[val_col]]), ]
 
     # Colour by user_reducible: green = user can improve with better data; grey = IPCC coefficient
+    # Andreas 28/5/26 follow-up: tornado labels now include the
+    # sub-category in parentheses (e.g. "Ym (DINT_cow)"). Strip that
+    # suffix before the catalogue lookup, otherwise every row falls back
+    # to NA → TRUE and every bar shows as user-reducible.
     reducible_lut <- setNames(PARAM_CATALOGUE$user_reducible, PARAM_CATALOGUE$parameter)
-    top10$reducible <- reducible_lut[top10$parameter]
+    bare_name <- sub(" \\([^()]+\\)\\s*$", "", top10$parameter)
+    top10$reducible <- reducible_lut[bare_name]
     top10$reducible[is.na(top10$reducible)] <- TRUE
     bar_colours <- ifelse(top10[[val_col]] > 0,
       ifelse(top10$reducible, "#2D6A4F", "#78909C"),
@@ -3145,8 +3150,12 @@ app_server <- function(input, output, session) {
     top10 <- top10[order(top10[[val_col]]), , drop = FALSE]
 
     # Map parameter -> user_reducible. For trend-driver names like "W_y1" or
-    # "Cfi_yN" strip the year suffix before the catalogue lookup.
-    bare_name <- gsub("_(y1|yN)$", "", top10$parameter)
+    # "Cfi_yN" strip the year suffix; for multi-system labels with the
+    # sub-category in parentheses (e.g. "Ym (DINT_cow)") strip the
+    # parenthesised suffix too — both must be stripped before the
+    # catalogue lookup.
+    bare_name <- sub(" \\([^()]+\\)\\s*$", "", top10$parameter)
+    bare_name <- gsub("_(y1|yN)$", "", bare_name)
     reducible_lut <- setNames(PARAM_CATALOGUE$user_reducible,
                                 PARAM_CATALOGUE$parameter)
     top10$reducible <- reducible_lut[bare_name]
@@ -3202,7 +3211,8 @@ app_server <- function(input, output, session) {
     base <- base[order(-abs(base[[val_col]])), , drop = FALSE]
     base <- utils::head(base, 15)
 
-    bare_name <- gsub("_(y1|yN)$", "", base$parameter)
+    bare_name <- sub(" \\([^()]+\\)\\s*$", "", base$parameter)
+    bare_name <- gsub("_(y1|yN)$", "", bare_name)
     reducible_lut <- setNames(PARAM_CATALOGUE$user_reducible,
                                 PARAM_CATALOGUE$parameter)
     reducible <- reducible_lut[bare_name]

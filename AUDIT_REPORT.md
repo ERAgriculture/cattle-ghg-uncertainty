@@ -1,11 +1,11 @@
 # AUDIT_REPORT.md — Statistician's end-to-end audit
 
-Generated 2026-06-01 14:22 CEST by `_audit.R`.
+Generated 2026-06-01 14:38 CEST by `_audit.R`.
 
 ## Summary
 
-- Tests run: **79**
-- Pass: **79**
+- Tests run: **81**
+- Pass: **81**
 - Fail: **0**
 - Skip: **0**
 - Verdict: **AUDIT CLEAN**
@@ -103,9 +103,11 @@ Synthetic single-sub-category dairy inventory with all 27 IPCC-aligned parameter
 | F17b | F | Sensitivity_PRCC Excel sheet: populated, no `..` mangling, sub-category in (...) | ✅ PASS | nrow=2; sample params: BW (dairy_cows); BW (other_cows) |
 | F18 | F | Inventory_Metadata region: explicit slug kept; country auto-mapped; unknown -> global | ✅ PASS | explicit africa -> africa; Zimbabwe (legacy) -> africa; Atlantis -> global; India (blank region) -> asia |
 | F18b | F | Continental region cell (new-template parser key) is honoured over country fallback | ✅ PASS | Zimbabwe + global -> global; Zimbabwe + africa -> africa |
+| F19a | F | Legacy 'Country / region' label parses to metadata$country (no trailing underscore) + region resolves to africa for Zimbabwe | ✅ PASS | country='Zimbabwe' region='africa' country_ key present=FALSE |
+| F19b | F | Tornado user_reducible lookup correctly classifies labelled params | ✅ PASS | results: FALSE, TRUE, FALSE, FALSE, TRUE; expected: FALSE, TRUE, FALSE, FALSE, TRUE |
 | G1 | G | export_results_xlsx produces non-empty file | ✅ PASS | 9596 bytes |
 | G2 | G | CSV write of uncertainty frame produces non-empty file | ✅ PASS | 1874 bytes |
-| G3 | G | build_run_summary_docx produces Word file > 50 KB | ✅ PASS | 76512 bytes |
+| G3 | G | build_run_summary_docx produces Word file > 50 KB | ✅ PASS | 76513 bytes |
 
 ## Detailed numerics
 
@@ -187,6 +189,8 @@ Synthetic single-sub-category dairy inventory with all 27 IPCC-aligned parameter
 | F17b | TRUE | TRUE | PASS |
 | F18 | TRUE | TRUE | PASS |
 | F18b | TRUE | TRUE | PASS |
+| F19a | TRUE | TRUE | PASS |
+| F19b | TRUE | TRUE | PASS |
 | G1 | TRUE | TRUE | PASS |
 | G2 | TRUE | TRUE | PASS |
 | G3 | TRUE | TRUE | PASS |

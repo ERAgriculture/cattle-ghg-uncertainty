@@ -145,6 +145,10 @@ normalise_metadata_region <- function(metadata) {
   if (is.na(region_raw) || !nzchar(region_raw))
     region_raw <- pull("continental_region")
   country_raw <- pull("country")
+  # Belt-and-braces fallback for any parser-key quirk (e.g. trailing-underscore
+  # legacy variants like `country_` that older slash-strip code produced).
+  if (is.na(country_raw) || !nzchar(country_raw))
+    country_raw <- pull("country_")
 
   valid <- c("africa","asia","europe","americas","oceania","global")
   resolved <- if (!is.na(region_raw) && nzchar(region_raw) &&
@@ -1670,9 +1674,17 @@ parse_uploaded_template <- function(path) {
         field_col <- grep("field|label", names(metadata), ignore.case=TRUE)[1]
         val_col   <- grep("value|val", names(metadata), ignore.case=TRUE)[1]
         if (!is.na(field_col) && !is.na(val_col)) {
+          # Andreas 28/5/26 follow-up: do the slash-strip BEFORE the
+          # space→underscore conversion. Previously the slash strip ran on
+          # the underscore-converted string, so "Country / region" became
+          # "Country_/_region" → "Country_" (with trailing underscore)
+          # → broke the country-name lookup in normalise_metadata_region.
+          # New order: "Country / region" → strip "/rest" → "Country" →
+          # space→underscore → "Country" → tolower → "country".
           m2 <- setNames(as.list(metadata[[val_col]]),
-                         tolower(gsub("\\s*/.*","", gsub(" ","_",
-                           metadata[[field_col]]))))
+                         tolower(gsub(" ","_",
+                           gsub("\\s*/.*","",
+                             metadata[[field_col]]))))
           metadata <- as.data.frame(m2, stringsAsFactors=FALSE)
         }
       }, error=function(e) NULL)

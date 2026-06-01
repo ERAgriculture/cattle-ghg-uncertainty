@@ -377,15 +377,26 @@ PRESET_PAIRS <- list(
 
 build_ipcc_preset_corr <- function(all_param_names) {
   if (length(all_param_names) < 2) return(NULL)
+  # 2026-06: deduplicate input names first. Multi-sub-category uploads (e.g.
+  # ZIM with 5 sub-categories x 22 params = 110 rows) used to produce a
+  # 110 x 110 matrix where only the first sub-category had its 7 pairs
+  # populated. The downstream per-system slicing in expand_corr_matrix()
+  # worked correctly because intersect() deduplicates, but the heatmap (which
+  # rendered the raw matrix) appeared almost entirely empty -- 7 coloured
+  # cells lost among 12 100. Building on unique names produces a tight 22 x 22
+  # matrix with all 7 pairs visible and lifts cleanly to any sub-category.
+  unique_names <- unique(all_param_names)
+  if (length(unique_names) < 2) return(NULL)
+
   # Map any legacy aliases to the canonical IPCC name for matching
   resolve <- function(nm) {
     a <- .PRESET_ALIASES[[nm]]
     if (!is.null(a)) a else nm
   }
-  canonical <- vapply(all_param_names, resolve, character(1))
+  canonical <- vapply(unique_names, resolve, character(1))
 
-  m <- diag(length(all_param_names))
-  rownames(m) <- colnames(m) <- all_param_names
+  m <- diag(length(unique_names))
+  rownames(m) <- colnames(m) <- unique_names
 
   applied <- 0L
   for (p in PRESET_PAIRS) {

@@ -786,21 +786,10 @@ app_ui <- function() {
               condition = "input.corr_mode == 'preset'",
               div(class = "info-panel",
                   tags$strong("Structural defaults (expert-elicited): "),
-                  "applies a sparse correlation matrix with only well-documented structural pairs ",
-                  "(e.g. BW ↔ MW, Milk ↔ Fat). ",
+                  "applies a sparse correlation matrix with seven well-documented structural pairs ",
+                  "(BW ↔ MW, BW ↔ WG, Milk ↔ Fat, Milk ↔ BW, Milk ↔ DE, DE ↔ CP, DE ↔ Ym). ",
                   tags$em("Note: these values reflect documented biological/statistical relationships from the IPCC equations and the livestock literature — they are not IPCC-published correlation coefficients."),
-                  " All other pairs are zero. Use this when you have no time series but want some realism beyond independence. Hover any cell in the heatmap for the per-pair source citation."),
-              # 2026-05 audit re-review: change-log box surfaced when the preset
-              # is active so reviewers can trace value provenance.
-              div(style = "font-size:0.78rem; color:#1B4332; background:#D8F3DC; padding:8px 10px; border-radius:6px; margin-top:8px;",
-                  icon("clock-rotate-left"),
-                  tags$strong(" Audit updates (May 2026): "),
-                  "DE ↔ Ym strengthened from −0.40 to ", tags$strong("−0.50"),
-                  " to match IPCC 2019 Eq 10.21 and Niu et al. 2018. ",
-                  "Cfi ↔ Ca lowered from 0.60 to ", tags$strong("0.30"),
-                  " — the original 0.60 was based on an estimation-covariance argument that does not apply ",
-                  "(Cfi and Ca are independent inputs in the IPCC formula, not jointly estimated). ",
-                  "N ↔ BW removed (no cross-country source).")
+                  " All other pairs are zero. Hover any non-zero cell in the heatmap for the per-pair source citation; full provenance and revision history are in the Methodology document.")
             ),
             conditionalPanel(
               condition = "input.corr_mode == 'manual'",
