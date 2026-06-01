@@ -1,11 +1,11 @@
 # AUDIT_REPORT.md — Statistician's end-to-end audit
 
-Generated 2026-06-01 15:24 CEST by `_audit.R`.
+Generated 2026-06-01 15:27 CEST by `_audit.R`.
 
 ## Summary
 
-- Tests run: **82**
-- Pass: **82**
+- Tests run: **84**
+- Pass: **84**
 - Fail: **0**
 - Skip: **0**
 - Verdict: **AUDIT CLEAN**
@@ -106,9 +106,11 @@ Synthetic single-sub-category dairy inventory with all 27 IPCC-aligned parameter
 | F18b | F | Continental region cell (new-template parser key) is honoured over country fallback | ✅ PASS | Zimbabwe + global -> global; Zimbabwe + africa -> africa |
 | F19a | F | Legacy 'Country / region' label parses to metadata$country (no trailing underscore) + region resolves to africa for Zimbabwe | ✅ PASS | country='Zimbabwe' region='africa' country_ key present=FALSE |
 | F19b | F | Tornado user_reducible lookup correctly classifies labelled params | ✅ PASS | results: FALSE, TRUE, FALSE, FALSE, TRUE; expected: FALSE, TRUE, FALSE, FALSE, TRUE |
-| G1 | G | export_results_xlsx produces non-empty file | ✅ PASS | 9481 bytes |
+| G1 | G | export_results_xlsx produces non-empty file | ✅ PASS | 9480 bytes |
 | G2 | G | CSV write of uncertainty frame produces non-empty file | ✅ PASS | 1874 bytes |
-| G3 | G | build_run_summary_docx produces Word file > 50 KB | ✅ PASS | 76485 bytes |
+| G3 | G | build_run_summary_docx produces Word file > 50 KB | ✅ PASS | 77876 bytes |
+| G4 | G | Word run-summary §14 contains CRT category map (3.A / 3.B / 3.D) | ✅ PASS | 3.A=TRUE 3.B=TRUE 3.D=TRUE |
+| G5 | G | Word run-summary §14 contains Level 1/2/3 disaggregation guide | ✅ PASS | L1=TRUE L2=TRUE L3=TRUE |
 
 ## Detailed numerics
 
@@ -196,6 +198,8 @@ Synthetic single-sub-category dairy inventory with all 27 IPCC-aligned parameter
 | G1 | TRUE | TRUE | PASS |
 | G2 | TRUE | TRUE | PASS |
 | G3 | TRUE | TRUE | PASS |
+| G4 | TRUE | TRUE | PASS |
+| G5 | TRUE | TRUE | PASS |
 
 ## Findings & recommendations
 

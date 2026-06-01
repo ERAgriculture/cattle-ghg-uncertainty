@@ -277,8 +277,11 @@ PARAM_CATALOGUE <- data.frame(
   #   EF5         : 0.011 (2019R); 2006 = 0.0075
   #   FracLEACH_PRP: 0.24 (2019R wet); 2006 = 0.30; dry = 0
   # Bo: 0.13 = 2019R Vol.4 Ch.10 Table 10.16(a) "Other regions, low productivity" cattle (2006 Africa = 0.10).
+  # Andreas review round 2 (2026-06): Africa dairy Milk and MilkFat defaults
+  # corrected to IPCC 2019R Vol.4 Ch.10 Annex Table 10A.1 — Milk 3.5 kg/d
+  # (was 4.0), MilkFat 4.3% (was 4.0).
   ipcc_default = c(
-    NA, 275, 300, 0.0, 4.0, 4.0, 0.60, 55.0,
+    NA, 275, 300, 0.0, 3.5, 4.3, 0.60, 55.0,
     0.386, 0.17, 0.8, 0.10, 0.0, 10.0,
     6.5, 0.13, 0.08, 0.04,
     0.004, 0.010, 0.011,
@@ -801,7 +804,7 @@ generate_template_openxlsx <- function(filepath, include_example,
   # Example values: hypothetical Country X activity data + IPCC defaults
   # Blank template: activity data blank, EFs pre-filled with IPCC defaults
   # Example values mirror the PARAM_CATALOGUE order; keep lengths == nrow(PARAM_CATALOGUE).
-  ex_values <- c(500000, 275, 300, 0.10, 4, 4, 0.60, 55,
+  ex_values <- c(500000, 275, 300, 0.10, 3.5, 4.3, 0.60, 55,
                  0.386, 0.17, 0.8, 0.10, 0, 10,
                  6.5, 0.13, 0.08, 0.04,   # Ym, Bo (2019R "Other regions" cattle), ASH, UE
                  # IPCC alignment audit (2026-05): verified against
@@ -1528,7 +1531,7 @@ generate_template_openxlsx <- function(filepath, include_example,
 # FALLBACK — basic writexl version (no dropdowns)
 # ===========================================================================
 generate_template_basic <- function(filepath, include_example) {
-  ex_values <- c(500000, 275, 300, 0.10, 4, 4, 0.60, 55,
+  ex_values <- c(500000, 275, 300, 0.10, 3.5, 4.3, 0.60, 55,
                  0.386, 0.17, 0.8, 0.10, 0, 10,
                  6.5, 0.13, 0.08, 0.04,   # Ym, Bo (2019R "Other regions" cattle), ASH, UE
                  0.02, 0.005, 0.20, 0.010, 0.0075, 0.02,

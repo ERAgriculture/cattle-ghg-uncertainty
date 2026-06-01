@@ -65,13 +65,13 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 
 ## Purpose
 
-The **IPCC Tier 2 Livestock GHG Uncertainty Calculator** is a web-based tool that enables national inventory compilers to quantify the uncertainty in cattle greenhouse gas (GHG) emission estimates produced using the IPCC Tier 2 methodology. The tool implements the Monte Carlo (Approach 2) uncertainty framework described in IPCC (2006) Volume 1, Chapter 3, applied to the full emission equation chain of IPCC (2006) Volume 4, Chapter 10.
+The **IPCC Tier 2 Livestock GHG Uncertainty Calculator** is a web-based tool that enables national inventory compilers to quantify the uncertainty in cattle greenhouse gas (GHG) emission estimates produced using the IPCC Tier 2 methodology. The tool implements the Monte Carlo (Approach 2) uncertainty framework described in IPCC (2006) Volume 1, Chapter 3, applied to the full emission equation chain of IPCC (2006) Volume 4, Chapter 10 and Chapter 11 for pasture N$_2$O.
 
-Under the Paris Agreement Enhanced Transparency Framework (ETF), national inventory reports are expected to include quantitative uncertainty estimates alongside emission totals. This tool automates that process, from parameter sampling to the formatted IPCC Table 3.3 output, for cattle inventories comprising one or more sub-categories (cattle types).
+Under the Paris Agreement Enhanced Transparency Framework (ETF), national inventory reports are expected to include quantitative uncertainty estimates alongside emission totals. This tool automates that process, from parameter sampling to the formatted IPCC Table 3.3 output, for inventories of GHG emissions from one or more sub-categories of cattle.
 
 ## Scope
 
-The tool covers six emission pathways for cattle:
+The tool covers six emission sources for cattle (or buffalo):
 
 1. **Enteric fermentation CH$_4$** — methane produced during enteric fermentation in the rumen
 2. **Manure management CH$_4$** — methane from anaerobic decomposition of manure in storage systems
@@ -80,19 +80,19 @@ The tool covers six emission pathways for cattle:
 5. **Pasture/range/paddock N$_2$O (direct)** — direct N$_2$O from dung and urine deposited on pasture
 6. **Pasture/range/paddock N$_2$O (indirect)** — indirect N$_2$O from dung and urine on pasture
 
-The tool supports multiple cattle sub-categories (e.g. dairy cows, beef bulls, heifers, growing males, calves) within a single inventory run, with results aggregated to national totals.
+The tool supports multiple cattle sub-categories (e.g. dairy cows, beef bulls, heifers, growing males, calves) within a single inventory run, with results aggregated to national totals and to per-cattle-type subtotals (dairy, non-dairy), and with a per-sub-category breakdown that users can use to represent production systems, regions, or animal classes.
 
 ## IPCC Tier Classification
 
-The tool implements **Tier 2** methods for enteric fermentation (country-specific feed digestibility and body weight data) and **Tier 1 or Tier 2** methods for manure management, depending on the parameters provided. The uncertainty analysis itself follows the **Approach 2** (Monte Carlo) framework, which is the more accurate of the two IPCC uncertainty methods and is recommended when non-linear equation chains are involved.
+The tool implements **Tier 2** methods throughout the emission chain. Tier 2 enteric fermentation outputs (GE, DE, CP) feed the manure CH$_4$ and N$_2$O calculations, so the whole chain is classified as Tier 2. The uncertainty analysis itself follows the **Approach 2** (Monte Carlo) framework, which is the more accurate of the two IPCC uncertainty methods and is recommended when non-linear equation chains are involved.
 
 \newpage
 
 # Input Parameters
 
-All parameters are entered via an Excel template (one row per parameter per cattle sub-category) and loaded into the tool. Each parameter requires a central value, an uncertainty specification (distribution type and bounds or percentage), and optional metadata (data source quality, IPCC reference).
+All parameters are entered via an Excel template (one row per parameter per cattle sub-category) and loaded into the tool. Each parameter requires a central value, an uncertainty specification (distribution type and bounds or percentage), and an optional IPCC reference.
 
-Table \ref{tab:params} lists all parameters used in the calculation chain, their units, the IPCC equation in which they appear, the default value pre-loaded in the tool (sourced from the IPCC Guidelines), and the probability distribution typically applied in uncertainty analysis. Where the 2006 Guidelines and the 2019 Refinement give different defaults, both are shown.
+Table \ref{tab:params} lists all parameters used in the calculation chain, their units, the IPCC equation in which they appear, the default value pre-loaded in the tool (sourced from the IPCC Guidelines), and an indication of potentially suitable probability distributions that can be applied in uncertainty analysis. Where the 2006 Guidelines and the 2019 Refinement give different defaults, both are shown.
 
 \begin{landscape}
 \small
@@ -117,13 +117,13 @@ Table \ref{tab:params} lists all parameters used in the calculation chain, their
 \texttt{BW} & Mean live body weight & kg/head & 275 & Eq.~10.3; Annex 10A.2 (Africa cattle) & Normal \\
 \texttt{Cfi} & Coefficient for $NE_m$ & MJ/kg$^{0.75}$/d & 0.386 (lact.) / 0.322 (non-lact.) / 0.370 (bulls) & Eq.~10.3; Table 10.4 (Updated) & Constant \\
 \texttt{Tw} & Mean winter temperature & °C & 20 (inert) & Eq.~10.2 (cold-climate Cfi adjustment) & Constant \\
-\texttt{Ca} & Activity coefficient & — & 0.00 (stall) / 0.17 (pasture flat) / 0.36 (hilly) & Eq.~10.4; Table 10.5 (Updated) & Constant \\
+\texttt{Ca} & Activity coefficient & — & 0.00 (stall) / 0.17 (pasture flat) / 0.36 (large/hilly) & Eq.~10.4; Table 10.5 (Updated) & Constant \\
 \texttt{WG} & Mean daily weight gain & kg/head/d & 0 (non-growing default) & Eq.~10.6 & Normal \\
 \texttt{MW} & Mature body weight & kg/head & 300 & Eq.~10.6; Annex 10A.2 & Normal \\
 \texttt{C} & Sex/condition coefficient for $NE_g$ & — & 0.8 (female) / 1.0 (castrate) / 1.2 (bull) & Eq.~10.6 & Constant \\
-\texttt{Milk} & Daily milk yield & kg/head/d & 4.0 (Africa) & Eq.~10.8; Annex 10A.1 / 10A.2 & Normal/Lognormal \\
-\texttt{MilkFat} & Milk fat content & \% & 4.0 & Eq.~10.8; Annex 10A.1 & Normal \\
-\texttt{pct\_calving} & Fraction of females calving / yr & — & 0.60 & 2019 Refinement Vol.4 Ch.10 §10.5 & Beta \\
+\texttt{Milk} & Daily milk yield & kg/head/d & 3.5 (Africa, IPCC 2019R) & Eq.~10.8; Annex 10A.1 / 10A.2 & Normal/Lognormal \\
+\texttt{MilkFat} & Milk fat content & \% & 4.3 (Africa, IPCC 2019R) & Eq.~10.8; Annex 10A.1 & Normal \\
+\texttt{pct\_pregnant} & Fraction of females pregnant / yr & — & 0.60 & 2019 Refinement Vol.4 Ch.10 §10.5 & Beta \\
 \texttt{MilkPR} & Milk protein content & \% & 3.3 ($\approx 1.9 + 0.4 \times$ \%Fat) & Eq.~10.33 (uses 6.38 milk-protein-to-N); Annex 10A.1--10A.3 & Normal \\
 \texttt{WorkHours} & Daily working hours & h/head/d & 0 (no work) & Eq.~10.11 & Constant \\
 \texttt{Cp} & Pregnancy coefficient & — & 0.10 (cattle) & Eq.~10.13; Table 10.7 (Updated) & Constant \\
@@ -133,13 +133,13 @@ Table \ref{tab:params} lists all parameters used in the calculation chain, their
 \texttt{Bo} & Maximum CH$_4$ producing capacity & m$^3$ CH$_4$/kg VS & 0.13 (2019R ``Other regions, low productivity'' cattle); 2006 Africa = 0.10 & Eq.~10.23; Table 10.16(a) (Updated) & Normal \\
 \texttt{MCF} & Methane conversion factor (MMS) & — & per-MMS \& climate (e.g.\ 80\% lagoon tropical) & Eq.~10.23; Table 10.17 (Updated) & Normal/PERT \\
 \texttt{EF3} & Direct-N$_2$O EF (per MMS) & kg N$_2$O-N/kg N & per-MMS (e.g.\ 0.005 solid storage) & Eq.~10.25; Table 10.21 & Lognormal/PERT \\
-\texttt{Frac\_GasMS} & Fraction N volatilised (MMS) & — & per-MMS, e.g.\ 0.45 solid storage (2019R) & Eq.~10.26; Table 10.22 (Updated) & Normal \\
+\texttt{Frac\_GasMS} & Fraction N volatilised (MMS) & — & per-MMS, e.g.\ 0.45 solid storage (2019R) & Eq.~10.26; Table 10.22 (Updated) & PERT (preferred — IPCC ranges are asymmetric) / Normal \\
 \texttt{EF4} & EF for atmospheric deposition & kg N$_2$O-N/(kg NH$_3$-N+NO$_x$-N) & 0.010 aggregated 2019R (wet 0.014 / dry 0.005); 2006 = 0.010 & Eq.~10.27; Vol.4 Ch.11 Table 11.3 (Updated) & PERT \\
 \texttt{Frac\_LeachMS} & Fraction N leached (MMS) & — & per-MMS, e.g.\ 0.02 solid storage & Eq.~10.28; Table 10.23 (2019R) & PERT \\
 \texttt{EF5} & EF for leaching/runoff & kg N$_2$O-N/kg N & 0.011 (2019R); 2006 = 0.0075 & Eq.~10.29; Vol.4 Ch.11 Table 11.3 (Updated) & PERT \\
-\texttt{Frac\_PRP} & Fraction of time / N on pasture & — & country-specific & Vol.4 Ch.11 Eq.~11.5 ($MS_{(T,PRP)}$) & Uniform \\
+\texttt{Frac\_PRP} & Fraction of dung and urine deposited on pasture & — & country-specific & Vol.4 Ch.11 Eq.~11.5 ($MS_{(T,PRP)}$) & Beta / PERT (assignable via the \texttt{distribution} column) \\
 \texttt{EF3\_PRP} & Direct N$_2$O EF, pasture (cattle/poultry/pigs) & kg N$_2$O-N/kg N & 0.004 aggregated 2019R (wet 0.006 / dry 0.002); 2006 = 0.02 & Vol.4 Ch.11 Eq.~11.1; Table 11.1 (Updated) & PERT \\
-\texttt{Frac\_GasPRP} & Fraction N volatilised (PRP) & — & 0.21 (2019R FracGASM); 2006 = 0.20 & Vol.4 Ch.11 Eq.~11.9; Table 11.3 (Updated) & Normal \\
+\texttt{Frac\_GasPRP} & Fraction N volatilised (PRP) & — & 0.21 (2019R FracGASM); 2006 = 0.20 & Vol.4 Ch.11 Eq.~11.9; Table 11.3 (Updated) & PERT (preferred — IPCC ranges are asymmetric) / Normal \\
 \texttt{Frac\_LeachPRP} & Fraction N leached (PRP) & — & 0.24 (2019R wet); 2006 = 0.30; dry = 0 & Vol.4 Ch.11 Eq.~11.10; Table 11.3 (Updated) & PERT \\
 \end{longtable}
 \end{landscape}
@@ -156,7 +156,7 @@ The daily net energy requirement for maintenance ($NE_m$, MJ head$^{-1}$ day$^{-
 
 $$NE_m = C_{fi,\text{adj}} \times BW^{0.75}$$
 
-where $BW$ is the mean live body weight (kg head$^{-1}$) and $C_{fi}$ is a species/condition coefficient (MJ kg$^{-0.75}$ day$^{-1}$). For open-lot cattle in colder climates the 2006 Guidelines (Vol.4 Ch.10, retained unchanged in the 2019 Refinement) prescribe a linear adjustment of $C_{fi}$ — IPCC Eq.~10.2, ``Coefficient for calculating net energy for maintenance'' — based on the mean daily winter temperature:
+where $BW$ is the mean live body weight (kg head$^{-1}$) and $C_{fi}$ is a sex/condition coefficient (MJ kg$^{-0.75}$ day$^{-1}$). For open-lot cattle in colder climates the 2006 Guidelines (Vol.4 Ch.10, retained unchanged in the 2019 Refinement) prescribe a linear adjustment of $C_{fi}$ — IPCC Eq.~10.2, ``Coefficient for calculating net energy for maintenance'' — based on the mean daily winter temperature:
 
 $$C_{fi,\text{adj}} = C_{fi} + 0.0048 \times (20 - T_w) \quad \text{when } T_w < 20\text{°C}$$
 
@@ -168,7 +168,7 @@ The net energy for physical activity ($NE_a$, MJ head$^{-1}$ day$^{-1}$) is give
 
 $$NE_a = C_a \times NE_m$$
 
-where $C_a$ is a dimensionless activity coefficient that accounts for the terrain and movement patterns of the animal (e.g. 0.00 for housed animals, 0.17 for animals on flat pasture, 0.36 for hilly terrain).
+where $C_a$ is a dimensionless activity coefficient that accounts for the terrain and movement patterns of the animal (e.g. 0.00 for housed animals, 0.17 for animals on flat pasture, 0.36 for large areas or hilly terrain).
 
 ## Net Energy for Growth
 
@@ -176,7 +176,7 @@ The net energy required for growth ($NE_g$, MJ head$^{-1}$ day$^{-1}$) is given 
 
 $$NE_g = 22.02 \times \left(\frac{BW}{C \times MW}\right)^{0.75} \times WG^{1.097}$$
 
-where $WG$ is the mean daily weight gain (kg head$^{-1}$ day$^{-1}$), $MW$ is the mature body weight (kg), and $C$ is a sex/body condition coefficient (0.8 for females, 1.0 for castrates, 1.2 for bulls). $NE_g = 0$ when $WG \leq 0$ or $MW \leq 0$.
+where $WG$ is the mean daily weight gain (kg head$^{-1}$ day$^{-1}$), $MW$ is the mature body weight (kg), and $C$ is a sex/physiological condition coefficient (0.8 for females, 1.0 for castrates, 1.2 for bulls). $NE_g = 0$ when $WG \leq 0$.
 
 ## Net Energy for Lactation
 
@@ -192,7 +192,7 @@ The net energy for work ($NE_w$, MJ head$^{-1}$ day$^{-1}$) is given by IPCC Eq.
 
 $$NE_w = 0.10 \times NE_m \times \text{WorkHours}$$
 
-where WorkHours is the mean number of hours of work per day. Set to 0 when animals do not perform work — typical for dairy and beef cattle inventories.
+where WorkHours is the mean number of hours of work per day. Set to 0 when animals do not perform work.
 
 ## Net Energy for Pregnancy
 
@@ -206,27 +206,27 @@ where $C_p$ is a coefficient for the energy cost of pregnancy (0.10 for cattle).
 
 The ratio of net energy for maintenance to digestible energy consumed ($REM$) is given by IPCC Eq. 10.14:
 
-$$REM = 1.123 - \frac{4.092 \times 10^{-3} \times DE_\%}{1} + \frac{1.126 \times 10^{-5} \times DE_\%^2}{1} - \frac{25.4}{DE_\%}$$
+$$REM = 1.123 - \frac{4.092 \times 10^{-3} \times DE}{1} + \frac{1.126 \times 10^{-5} \times DE^2}{1} - \frac{25.4}{DE}$$
 
 The ratio of net energy for growth to digestible energy consumed ($REG$) is given by IPCC Eq. 10.15:
 
-$$REG = 1.164 - \frac{5.160 \times 10^{-3} \times DE_\%}{1} + \frac{1.308 \times 10^{-5} \times DE_\%^2}{1} - \frac{37.4}{DE_\%}$$
+$$REG = 1.164 - \frac{5.160 \times 10^{-3} \times DE}{1} + \frac{1.308 \times 10^{-5} \times DE^2}{1} - \frac{37.4}{DE}$$
 
-where $DE_\%$ is the digestible energy expressed as a percentage of gross energy. Both equations are undefined at $DE_\% = 0$ (division by zero) — the tool validates $DE_\% > 0$ before running any simulation.
+where $DE$ is the digestible energy expressed as a percentage of gross energy. Both equations are undefined at $DE = 0$ (division by zero) — the tool validates $DE > 0$ before running any simulation.
 
 ## Gross Energy Intake
 
 The mean daily gross energy intake ($GE$, MJ head$^{-1}$ day$^{-1}$) is given by IPCC Eq. 10.16:
 
-$$GE = \frac{(NE_m + NE_a + NE_l + NE_w + NE_p) / REM + NE_g / REG}{DE_\% / 100}$$
+$$GE = \frac{(NE_m + NE_a + NE_l + NE_w + NE_p) / REM + NE_g / REG}{DE / 100}$$
 
 ## Enteric Fermentation Emission Factor
 
 The per-head per-day methane emission factor for enteric fermentation ($EF_1$, kg CH$_4$ head$^{-1}$ day$^{-1}$) is given by IPCC Eq. 10.21:
 
-$$EF_1 = \frac{GE \times Y_m}{55.65}$$
+$$EF_1 = \frac{GE \times (Y_m / 100)}{55.65}$$
 
-where $Y_m$ is the methane conversion factor (fraction of gross energy in feed converted to methane, expressed as %) and 55.65 MJ kg$^{-1}$ is the energy content of methane. The annual per-sub-category enteric emission is:
+where $Y_m$ is the methane conversion factor expressed as a percentage of gross energy converted to methane (the $/100$ converts $Y_m$ to a fraction) and 55.65 MJ kg$^{-1}$ is the energy content of methane. The annual per-sub-category enteric emission is:
 
 $$E_{\text{enteric}} = EF_1 \times N \times 365 / 1000 \quad \text{(tonnes CH}_4\text{ yr}^{-1}\text{)}$$
 
@@ -240,9 +240,17 @@ Nitrogen intake from feed is:
 
 $$N_{\text{intake}} = \frac{GE}{18.45} \times \frac{\text{CP\%}}{6.25 \times 100}$$
 
-Nitrogen retained in body tissue and milk is calculated separately. For milk, the nitrogen content uses the **Jones factor for casein (6.38)** — distinct from the generic protein factor (6.25) used for feed and body tissue. The 6.38 factor and the 6.25 factor both appear inside IPCC 2006 Vol.4 Ch.10 Eq. 10.33 (N retention rates for cattle); the same equation is retained, with updated form, in the 2019 Refinement (also numbered 10.33):
+where CP\% is the crude-protein content of the diet (the template column is labelled \texttt{CP}; the value supplied is the same percentage value used here).
+
+Nitrogen retained in body tissue and milk are calculated separately. For milk, the nitrogen content uses the **Jones factor for casein (6.38)** — distinct from the generic protein factor (6.25) used for feed and body tissue. The 6.38 factor and the 6.25 factor both appear inside IPCC 2006 Vol.4 Ch.10 Eq. 10.33 (N retention rates for cattle); the same equation is retained, with updated form, in the 2019 Refinement (also numbered 10.33):
 
 $$N_{\text{milk}} = \frac{\text{Milk} \times \text{MilkProtein\%}}{6.38 \times 100}$$
+
+For growing animals, IPCC Eq. 10.33 adds a body-tissue retention term:
+
+$$N_{\text{growth}} = \frac{WG \times (268 - 7.03 \times NE_g / WG)}{1000 \times 6.25}$$
+
+so that $N_{\text{retained}} = N_{\text{milk}} + N_{\text{growth}}$. For non-growing sub-categories ($WG \leq 0$) the growth term is set to zero.
 
 The annual nitrogen excreted per sub-category ($N_{\text{ex,annual}}$, kg N yr$^{-1}$) is:
 
@@ -250,9 +258,15 @@ $$N_{\text{ex,annual}} = N_{\text{ex}} \times N \times 365$$
 
 ## Volatile Solids and Manure CH$_4$
 
-Total manure CH$_4$ emissions are given by IPCC 2006 Vol.4 Ch.10 Eq. 10.22 (the top-level emissions equation, EF $\times$ population $\times$ 10$^{-6}$). The per-head per-year emission factor is given by Eq. 10.23, and the daily volatile-solid (VS) excretion rate that feeds Eq. 10.23 is given by Eq. 10.24:
+Total manure CH$_4$ emissions are given by IPCC 2006 Vol.4 Ch.10 Eq. 10.22 (the top-level emissions equation, EF $\times$ population $\times$ 10$^{-6}$). The per-head per-year emission factor is given by Eq. 10.23:
 
-$$EF_{\text{mm,CH}_4} = VS \times 365 \times B_o \times 0.67 \times \sum_s \left( MS_s \times MCF_s \right)$$
+$$EF_{\text{mm,CH}_4} = VS \times 365 \times B_o \times 0.67 \times \sum_s \left( MS_s \times MCF_s \right) \quad \text{(Eq. 10.23)}$$
+
+The daily volatile-solid excretion rate $VS$ (kg dry-matter head$^{-1}$ day$^{-1}$) that feeds Eq. 10.23 is given by IPCC Eq. 10.24:
+
+$$VS = \left[ GE \times (1 - DE/100) + (UE \times GE) \right] \times \left( \frac{1 - \text{ASH}}{18.45} \right) \quad \text{(Eq. 10.24)}$$
+
+where $UE$ is the fraction of GE excreted as urinary energy (default 0.04 for cattle, IPCC Eq. 10.24 footnote) and ASH is the ash content of manure (default 0.08 for cattle).
 
 where $B_o$ is the maximum methane producing capacity (m$^3$ CH$_4$ kg$^{-1}$ VS), $0.67$ is the conversion factor from m$^3$ CH$_4$ to kg CH$_4$ (the density of methane at standard conditions, kg m$^{-3}$), $MS_s$ is the fraction of manure managed in system $s$, and $MCF_s$ is the methane conversion factor for system $s$ (fraction of $B_o$). The 2019 Refinement Table 10.17 (Updated) provides MCF defaults across 11 manure management systems — eight inherited from the 2006 Guidelines plus four added in 2019 (anaerobic digester / biogas, aerobic treatment, solid storage – covered/compacted, and burned for fuel). Default $B_o$ values for cattle are given in Table 10.16a. Per-MMS uncertainty in $MCF$ and in the manure fractions $MS_s$ is sampled independently — when the user supplies optional `lower_fraction` / `upper_fraction` / `distribution_fraction` columns on the Manure_Management sheet, each Monte Carlo iteration's $MS_s$ row is renormalised after sampling so the simplex constraint $\sum_s MS_s = 1$ is preserved exactly.
 
@@ -262,7 +276,7 @@ Direct N$_2$O emissions from manure management are given by IPCC 2006 Vol.4 Ch.1
 
 $$E_{\text{direct,mm}} = N_{\text{ex,annual}} \times EF_3 \times \frac{44}{28} \quad \text{(kg N}_2\text{O yr}^{-1}\text{)}$$
 
-where $EF_3$ is the emission factor for direct N$_2$O (kg N$_2$O-N kg$^{-1}$ N) and 44/28 converts N$_2$O-N to N$_2$O. For mixed MMS systems, $EF_3$ is computed as the weighted average of per-MMS factors:
+where $EF_3$ is the emission factor for direct N$_2$O (kg N$_2$O-N kg$^{-1}$ N) and 44/28 converts N$_2$O-N to N$_2$O. For multiple MMS systems, $EF_3$ is computed as the weighted average of per-MMS factors:
 
 $$EF_3 = \sum_s MS_s \times EF_{3,s}$$
 
@@ -276,7 +290,7 @@ $$E_{\text{vol,mm}} = N_{\text{ex,annual}} \times \text{Frac\_GasMS} \times EF_4
 \textbf{Leaching and runoff} — Frac\_LeachMS from Eq. 10.28 multiplied by $EF_5$ in Eq. 10.29:
 $$E_{\text{leach,mm}} = N_{\text{ex,annual}} \times \text{Frac\_LeachMS} \times EF_5 \times \frac{44}{28}$$
 
-where $EF_4$ (kg N$_2$O-N kg$^{-1}$ NH$_3$-N + NO$_x$-N volatilised) and $EF_5$ (kg N$_2$O-N kg$^{-1}$ N leached/runoff) are from IPCC Vol.4 Ch.11 Table 11.3. In the 2006 Guidelines $EF_4 = 0.010$ (range 0.002--0.05) and $EF_5 = 0.0075$ (range 0.0005--0.025). The 2019 Refinement keeps the aggregated $EF_4 = 0.010$ (range 0.002--0.018) and additionally provides climate-disaggregated values of 0.014 in wet climates (range 0.011--0.017) and 0.005 in dry climates (range 0.000--0.011); $EF_5$ is updated to 0.011 (range 0.000--0.020) with no climate disaggregation. Frac\_GasMS and Frac\_LeachMS are MMS- and country-specific fractions (defaults in Vol.4 Ch.10 Tables 10.22 and 10.23 of the 2019 Refinement); on the soil side of Eq.~11.9/11.10 the same role is played by FracGASM and FracLEACH-(H) in Vol.4 Ch.11 Table 11.3.
+where $EF_4$ (kg N$_2$O-N kg$^{-1}$ NH$_3$-N + NO$_x$-N volatilised) and $EF_5$ (kg N$_2$O-N kg$^{-1}$ N leached/runoff) are from IPCC Vol.4 Ch.11 Table 11.3. In the 2006 Guidelines $EF_4 = 0.010$ (range 0.002--0.05) and $EF_5 = 0.0075$ (range 0.0005--0.025). The 2019 Refinement keeps the aggregated $EF_4 = 0.010$ (range 0.002--0.018) and additionally provides climate-disaggregated values of 0.014 in wet climates (range 0.011--0.017) and 0.005 in dry climates (range 0.000--0.011); $EF_5$ is updated to 0.011 (range 0.000--0.020) with no climate disaggregation. Frac\_GasMS and Frac\_LeachMS are MMS- and country- or climate-specific fractions (defaults in Vol.4 Ch.10 Tables 10.22 and 10.23 of the 2019 Refinement).
 
 ## Pasture/Range/Paddock N$_2$O (Direct)
 
@@ -288,13 +302,17 @@ where Frac\_PRP is the fraction of total annual N excretion deposited on pasture
 
 $$E_{\text{direct,PRP}} = F_{\text{PRP}} \times EF_{3,\text{PRP}} \times \frac{44}{28}$$
 
-where $EF_{3,\text{PRP}}$ is the emission factor for direct N$_2$O from PRP given in IPCC Vol.4 Chapter 11, Table 11.1. The 2006 value is 0.02 kg N$_2$O-N kg$^{-1}$ N (cattle, poultry, pigs combined). The 2019 Refinement updates this to $EF_{3PRP,CPP}$ for cattle, poultry and pigs with an aggregated default of 0.004 kg N$_2$O-N kg$^{-1}$ N (range 0.000--0.014). When the climate is known, the disaggregated values are 0.006 in wet climates (range 0.000--0.027) and 0.002 in dry climates (range 0.000--0.007). For sheep and other animals ($EF_{3PRP,SO}$) the 2019 Refinement gives 0.003 (range 0.000--0.010), with no climate disaggregation.
+where $EF_{3,\text{PRP}}$ is the emission factor for direct N$_2$O from PRP given in IPCC Vol.4 Chapter 11, Table 11.1. The 2006 value is 0.02 kg N$_2$O-N kg$^{-1}$ N (cattle, poultry, pigs combined). The 2019 Refinement updates this to $EF_{3PRP,CPP}$ for cattle, poultry and pigs with an aggregated default of 0.004 kg N$_2$O-N kg$^{-1}$ N (range 0.000--0.014). When the climate is known, the disaggregated values are 0.006 in wet climates (range 0.000--0.027) and 0.002 in dry climates (range 0.000--0.007).
 
 ## Pasture N$_2$O (Indirect)
 
 Indirect N$_2$O from pasture deposition follows IPCC Vol.4 Ch.11 Eq. 11.9 (volatilisation pathway) and Eq. 11.10 (leaching/runoff pathway), using the same pathway structure as managed manure:
 
 $$E_{\text{indirect,PRP}} = F_{\text{PRP}} \times \left( \text{Frac\_GasPRP} \times EF_4 + \text{Frac\_LeachPRP} \times EF_5 \right) \times \frac{44}{28}$$
+
+On the soil side of Eq.~11.9/11.10 the same role played by Frac\_GasMS and Frac\_LeachMS for managed manure is played by FracGASM and FracLEACH-(H) in IPCC Vol.4 Ch.11 Table 11.3 — Frac\_GasPRP corresponds to FracGASM (the fraction of applied/deposited N volatilised as NH$_3$ and NO$_x$) and Frac\_LeachPRP corresponds to FracLEACH-(H) (the fraction leached/runoff in regions with annual precipitation exceeding evapotranspiration).
+
+Per IPCC Vol.4 Ch.11, where evapotranspiration exceeds precipitation, leaching may be assumed not to occur — in the tool, \texttt{Frac\_LeachPRP} may be set equal to zero in those climate cases.
 
 ## GWP-Based CO$_2$eq Conversion
 
@@ -340,7 +358,7 @@ Each parameter is assigned a probability distribution reflecting the state of kn
 Normal & mean $\mu$, SD $\sigma$ & Body weight, milk yield, population counts with symmetric survey error \\[4pt]
 Positive-Normal & Normal truncated at zero & Non-negative symmetric parameters where negative draws are implausible \\[4pt]
 Lognormal & log-mean, log-SD (fitted from mean and CV\%) & Strictly positive, right-skewed; milk yield in heterogeneous herds; some EFs \\[4pt]
-Beta & rescaled $\text{Beta}(\alpha,\beta)$ matching the supplied mean and bounds & Fractions in $[0,1]$ with mode strictly in the interior; pct\_calving, Cp \\[4pt]
+Beta & rescaled $\text{Beta}(\alpha,\beta)$ matching the supplied mean and bounds & Fractions in $[0,1]$ with mode strictly in the interior; pct\_pregnant, Cp \\[4pt]
 Truncated-Normal {[}0,1{]} & Normal clipped to $[0,1]$ & Fractions in $[0,1]$ when a symmetric error around the mean is appropriate \\[4pt]
 PERT & minimum, most-likely, maximum & Emission factors with expert-elicited bounds; EF3\_PRP, EF4, EF5, Bo, MCF \\[4pt]
 Triangular & minimum, most-likely, maximum & Similar to PERT but with sharper tails; Ca, C\_growth \\[4pt]
@@ -431,7 +449,7 @@ where $\sigma$ is the standard deviation and $\bar{x}$ is the mean. CV\% is \tex
 
 IPCC (2006) Volume 1, Table 3.3 requires reporting uncertainty for each emission category as follows:
 
-| Source / Sink Category | Emission (Gg CO$_2$eq) | AD Uncertainty (95\% MoE \%) | EF Uncertainty (95\% MoE \%) | Combined Uncertainty (95\% MoE \%) |
+| Source / Sink Category | Emission (t CH$_4$ or t N$_2$O) | AD Uncertainty (95\% MoE \%) | EF Uncertainty (95\% MoE \%) | Combined Uncertainty (95\% MoE \%) |
 |---|---|---|---|---|
 | Enteric fermentation CH$_4$ | ... | MoE\% from AD-only run | MoE\% from EF-only run | MoE\% from combined run |
 | ... | | | | |
@@ -497,7 +515,7 @@ The tornado chart displays the top parameters ranked by $|\text{SRC}|$ or $|\tex
 
 - **Green bars** (positive coefficient) — increasing this parameter increases total emissions; reduction in uncertainty would directly reduce total emission uncertainty.
 - **Red bars** (negative coefficient) — increasing this parameter decreases total emissions.
-- **Dark (slate) bars** — IPCC-defined coefficients that cannot be improved by the national inventory compiler (e.g. GWP values, Bo, MCF default values). Uncertainty in these parameters is irreducible without IPCC guidance changes.
+- **Dark (slate) bars** — IPCC-defined coefficients that cannot be improved by the national inventory compiler (e.g. GWP values, Cfi, Cp). Uncertainty in these parameters is irreducible without IPCC guidance changes.
 - **Bright (green/red) bars** — user-reducible parameters where better national data could meaningfully reduce inventory uncertainty.
 
 \newpage
@@ -510,7 +528,7 @@ Correlations between activity data parameters (e.g.\ body weight and mature weig
 
 \begin{itemize}
   \item \textbf{No correlations} (independence) — the default. All parameters are drawn independently. This is the conservative IPCC Approach 2 starting point and is appropriate when the inventory compiler has no defensible information about parameter co-movement.
-  \item \textbf{From template (auto, time-series)} — the matrix is computed automatically from the \texttt{Parameter\_TimeSeries} sheet of the upload using a \textbf{Spearman rank correlation} after detrending (first differences by default; linear and raw alternatives available). Spearman is preferred over Pearson because (i) it is robust to skewed marginals (Ym, Bo, milk yield), (ii) it matches the rank-correlation target the sampler reproduces (per IPCC Vol.1 Ch.3 §3.2.3.2), and (iii) it is the natural choice when the user wants the \emph{rank} dependence preserved rather than a linear product-moment relationship that can be distorted by outliers. Requires $\ge$ 5 annual rows and $\ge$ 2 non-constant numeric columns to produce a usable matrix; otherwise the option is greyed out (see ``UI gating'' below).
+  \item \textbf{From template (auto, time-series)} — the matrix is computed automatically from the \texttt{Parameter\_TimeSeries} sheet of the upload using a \textbf{Spearman rank correlation} after detrending (first differences by default; linear and raw alternatives available). Spearman is preferred over Pearson because (i) it is robust to skewed marginals (Ym, Bo, milk yield), (ii) it matches the rank-correlation target the sampler reproduces (per IPCC Vol.1 Ch.3 §3.2.3.2), and (iii) it is the preferred option when the user wants the \emph{rank} dependence preserved rather than a linear product-moment relationship that can be distorted by outliers. Requires $\ge$ 5 annual rows and $\ge$ 2 non-constant numeric columns to produce a usable matrix; otherwise the option is greyed out (see ``UI gating'' below).
   \item \textbf{Structural-defaults preset} — a small set of expert-elicited pairs drawn from the IPCC equation structure and the published livestock literature (see Section~``Structural-Defaults Preset'' below). Independent of the upload's time-series, so this is the option that works for single-year inventories without historical data.
   \item \textbf{Manual entry} — the user uploads a square symmetric CSV. The diagonal must be 1; entries are interpreted as Spearman rank correlations on $[-1, +1]$; the matrix is projected onto the nearest positive-definite correlation matrix if needed, with a warning if any entry shifts by more than $0.01$.
 \end{itemize}
