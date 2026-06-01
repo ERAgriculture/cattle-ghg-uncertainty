@@ -129,7 +129,7 @@ Table \ref{tab:params} lists all parameters used in the calculation chain, their
 \texttt{Cp} & Pregnancy coefficient & — & 0.10 (cattle) & Eq.~10.13; Table 10.7 (Updated) & Constant \\
 \texttt{DE\_pct} & Digestible energy (\% of GE) & \% & 55.0 (Africa) & Eq.~10.14--16; Annex 10A & Normal \\
 \texttt{Ym} & Methane conversion factor & \% & 6.5 (cattle on forage) & Eq.~10.21; Table 10.12 & Normal/PERT \\
-\texttt{MMS\_fractions} & Fraction of manure in each MMS & — & country-specific (Worksheet 10.A-9) & Eq.~10.23 & Uniform/Dirichlet \\
+\texttt{MMS\_fractions} & Fraction of manure in each MMS (deterministic; constrained to sum to 1 per sub-category). Optional per-row \texttt{lower\_fraction} / \texttt{upper\_fraction} / \texttt{distribution\_fraction} columns on the Manure\_Management sheet enable per-iteration sampling within the user's bounds, renormalised to preserve the simplex; sampled fractions surface as \texttt{fraction\_<mms>} in the sensitivity tornado. & — & country-specific (Worksheet 10.A-9) & Eq.~10.23 & Deterministic (default) or per-MMS PERT/Normal/etc.\ with renormalisation \\
 \texttt{Bo} & Maximum CH$_4$ producing capacity & m$^3$ CH$_4$/kg VS & 0.13 (2019R ``Other regions, low productivity'' cattle); 2006 Africa = 0.10 & Eq.~10.23; Table 10.16(a) (Updated) & Normal \\
 \texttt{MCF} & Methane conversion factor (MMS) & — & per-MMS \& climate (e.g.\ 80\% lagoon tropical) & Eq.~10.23; Table 10.17 (Updated) & Normal/PERT \\
 \texttt{EF3} & Direct-N$_2$O EF (per MMS) & kg N$_2$O-N/kg N & per-MMS (e.g.\ 0.005 solid storage) & Eq.~10.25; Table 10.21 & Lognormal/PERT \\
@@ -200,7 +200,7 @@ The net energy allocated to fetal growth during pregnancy ($NE_p$, MJ head$^{-1}
 
 $$NE_p = C_p \times NE_m$$
 
-where $C_p$ is a coefficient for the energy cost of pregnancy (0.10 for cattle). The parameter `pct_calving` can pro-rate $C_p$ when not all females in a sub-category are pregnant in the same year ($0 \leq \text{pct\_calving} \leq 1$).
+where $C_p$ is a coefficient for the energy cost of pregnancy (0.10 for cattle). The parameter `pct_pregnant` can pro-rate $C_p$ when not all females in a sub-category are pregnant in the same year ($0 \leq \text{pct\_pregnant} \leq 1$). Includes pregnant heifers that have not yet calved (Andreas 28/5/26 #2 — earlier name `pct_calving` accepted as alias on upload).
 
 ## Energy Ratios: REM and REG
 
@@ -395,7 +395,7 @@ Monte Carlo estimates converge as $n_{\text{iter}} \to \infty$. For practical us
 - **25,000–30,000 iterations** — recommended for final reporting, especially when correlations are enabled or the inventory has many sub-categories or asymmetric distributions.
 - **50,000 iterations** — high-precision run; use when the 95\% CI bounds need to be stable to two significant figures.
 
-**Convergence check:** Re-run with a different random seed (e.g. 123 and 456). If the CV\% changes by more than 1–2 percentage points, increase the number of iterations.
+**Convergence check:** Re-run with a different random seed (e.g. 123 and 456). If the 95\% MoE changes by more than 1–2 percentage points, increase the number of iterations.
 
 \newpage
 
@@ -411,32 +411,32 @@ $$\text{CI}_{95} = [Q_{0.025},\ Q_{0.975}]$$
 
 This is a simulation-based (quantile) interval — it does not assume a normal distribution and is therefore valid for asymmetric emission distributions.
 
-## Coefficient of Variation
-
-The coefficient of variation (CV\%) expresses uncertainty relative to the mean:
-
-$$\text{CV\%} = \frac{\sigma}{\bar{x}} \times 100$$
-
-where $\sigma$ is the standard deviation and $\bar{x}$ is the mean of the Monte Carlo output distribution. CV\% is the primary metric used in IPCC Table 3.3 uncertainty reporting. It is undefined (reported as NA) when the mean emission is zero (e.g. pasture N$_2$O for fully housed systems).
-
-## Margin of Error
+## Margin of Error (the IPCC reporting metric)
 
 The margin of error (MoE\%) is the half-width of the 95\% CI expressed as a percentage of the mean:
 
 $$\text{MoE\%} = \frac{Q_{0.975} - Q_{0.025}}{2 \times \bar{x}} \times 100$$
 
-Unlike CV\%, MoE\% is derived from the quantiles of the actual distribution and correctly captures skewness. For a perfectly normal distribution, MoE\% $\approx 1.96 \times$ CV\%.
+\textbf{MoE\% is the metric IPCC Vol.1 Ch.3 Table 3.3 requires} ("\% uncertainty" in that table is defined as the half-width of the 95\% CI divided by the mean). It is the headline number reported in the user-facing value boxes, in the IPCC Report tab, and in the Excel / Word downloads. Because MoE is derived from the empirical 2.5\% / 97.5\% quantiles of the Monte Carlo output, it correctly captures distribution skewness — for a perfectly normal distribution it reduces to $\approx 1.96 \times \text{CV\%}$, but for skewed distributions (lognormal EFs, PERT-bounded fractions, manure-N$_2$O sums) MoE and 1.96·CV differ.
+
+## Coefficient of Variation (kept for reference, not reported as headline)
+
+The coefficient of variation (CV\%) expresses uncertainty relative to the mean:
+
+$$\text{CV\%} = \frac{\sigma}{\bar{x}} \times 100$$
+
+where $\sigma$ is the standard deviation and $\bar{x}$ is the mean. CV\% is \textbf{still computed} for every emission source and is available in the by-system / by-category in-app tables and in the CSV download alongside MoE, but it is no longer the headline metric — IPCC Annex 7 expects MoE, not CV. It is undefined (reported as NA) when the mean emission is zero (e.g. pasture N$_2$O for fully housed systems).
 
 ## IPCC Table 3.3 Format
 
 IPCC (2006) Volume 1, Table 3.3 requires reporting uncertainty for each emission category as follows:
 
-| Source / Sink Category | Emission (Gg CO$_2$eq) | AD Uncertainty (\%) | EF Uncertainty (\%) | Combined Uncertainty (\%) |
+| Source / Sink Category | Emission (Gg CO$_2$eq) | AD Uncertainty (95\% MoE \%) | EF Uncertainty (95\% MoE \%) | Combined Uncertainty (95\% MoE \%) |
 |---|---|---|---|---|
-| Enteric fermentation CH$_4$ | ... | CV\% from AD-only run | CV\% from EF-only run | CV\% from combined run |
+| Enteric fermentation CH$_4$ | ... | MoE\% from AD-only run | MoE\% from EF-only run | MoE\% from combined run |
 | ... | | | | |
 
-The tool generates this table automatically after each simulation run.
+The tool generates this table automatically after each simulation run. The Excel download labels each uncertainty column explicitly as "(95\% MoE \%)" so there is no ambiguity with CV.
 
 \newpage
 
@@ -445,8 +445,8 @@ The tool generates this table automatically after each simulation run.
 To separate the contributions of activity data (AD) uncertainty and emission factor (EF) uncertainty to the combined uncertainty, the tool performs three simulation runs:
 
 1. **Combined run** — all parameters varied according to their distributions. This is the primary result.
-2. **AD-only run** — emission factors fixed at their central values ($\sigma = 0$); only AD parameters vary. CV\% from this run = AD uncertainty contribution.
-3. **EF-only run** — AD parameters fixed at their central values; only emission factors vary. CV\% from this run = EF uncertainty contribution.
+2. **AD-only run** — emission factors fixed at their central values ($\sigma = 0$); only AD parameters vary. 95\% MoE from this run = AD uncertainty contribution.
+3. **EF-only run** — AD parameters fixed at their central values; only emission factors vary. 95\% MoE from this run = EF uncertainty contribution.
 
 This approach correctly handles multi-group inventories by running all three simulations through the full multi-sub-category equation chain and aggregating to national totals before computing metrics.
 
@@ -517,9 +517,28 @@ Emission factors that are structurally linked (e.g.\ EF4 is applied to volatilis
 
 ## Structural-Defaults Preset (Expert-Elicited)
 
-The tool provides a **structural-defaults preset** correlation matrix as a middle ground between full independence and user-specified correlations. This preset assigns non-zero correlations to a small set of structurally linked pairs drawn from the IPCC equation structure and the published livestock literature (e.g. body weight and mature weight, via the growth-curve asymptote relation; milk yield and milk fat content, via the dilution effect). \textit{These values are expert-elicited; the IPCC publishes no numerical correlation coefficients for any livestock parameter pair.} All other pairs are set to zero. Hover any non-zero cell in the heatmap for the per-pair source citation. This is appropriate when no empirical correlation data are available but the inventory compiler wants to avoid the unrealistic assumption of full independence.
+The tool provides a **structural-defaults preset** correlation matrix as a middle ground between full independence and user-specified correlations. This preset assigns non-zero correlations to a small set of structurally linked pairs drawn from the IPCC equation structure and the published livestock literature. \textit{These values are expert-elicited; the IPCC publishes no numerical correlation coefficients for any livestock parameter pair.} All other pairs are set to zero. Hover any non-zero cell in the heatmap for the per-pair source citation. This is appropriate when no empirical correlation data are available but the inventory compiler wants to avoid the unrealistic assumption of full independence.
 
-\textit{May 2026 audit re-review.} DE $\leftrightarrow$ Ym was strengthened from $-$0.40 to $-$0.50 to better match IPCC 2019 Refinement Eq 10.21 and the meta-analysis evidence (Niu et al. 2018 Global Change Biology; Hristov et al. 2013). Cfi $\leftrightarrow$ Ca was lowered from 0.60 to 0.30: the previous 0.60 invoked an estimation-covariance argument that does not apply because Cfi and Ca are independent inputs in IPCC Eq 10.3 / 10.4, not jointly estimated. The earlier N $\leftrightarrow$ BW = 0.30 cross-block pair was removed (no defensible cross-country source). The resulting preset matrix is positive-definite without nearest-PD repair (smallest eigenvalue 0.06).
+The current preset contains seven pairs (June 2026 revision):
+
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{p{2.6cm} p{1.1cm} p{9.5cm}}
+\toprule
+\textbf{Pair} & \textbf{$\rho$} & \textbf{Source / rationale} \\
+\midrule
+BW $\leftrightarrow$ MW       & $+0.50$ & Growth-curve relation (Brody 1945) reused in IPCC Eq 10.3. The high same-survey value $0.85$ only holds when BW and MW are measured together; in most national inventories MW is taken from a breed reference table while BW comes from the livestock census, so the cross-source correlation is closer to $0.5$. \\
+BW $\leftrightarrow$ WG       & $+0.40$ & IPCC Eq 10.6: $NE_g \propto BW^{0.75} \cdot WG^{1.097}$; joint regression-estimation correlation in NRC (2001) energy-balance studies, published range $0.30$--$0.50$. Sign is system-dependent (heavy growing animals gain slower $\Rightarrow$ negative; well-fed adults are both heavier and gain more $\Rightarrow$ positive). The $+0.40$ default reflects the well-fed-adult case typical of dairy/beef finishing systems. \\
+Milk $\leftrightarrow$ Fat    & $-0.30$ & Milk dilution effect, dairy genetics literature (Wilmink 1987; VandeHaar 1998). Within-herd literature gives $-0.20$ to $-0.40$; $-0.30$ is the midpoint. \\
+Milk $\leftrightarrow$ BW     & $+0.30$ & High-producing dairy breeds are physically larger: Holstein $\sim$650 kg, $\sim$30 kg milk/day vs Jersey $\sim$450 kg, $\sim$20 kg milk/day. NRC Dairy (2001); Stallings \& Knowlton (2013). Added in June 2026 to capture a real cross-group biological linkage. \\
+Milk $\leftrightarrow$ DE     & $+0.30$ & Higher feed digestibility $\Rightarrow$ more nutrient availability $\Rightarrow$ higher milk yield, especially in concentrate-fed dairy systems. NRC Dairy (2001) Ch.2. Added in June 2026. \\
+DE $\leftrightarrow$ CP       & $+0.50$ & Forage-quality co-variation across feed types (NRC 2001; INRA; Feedipedia). High-quality forages have both high DE and high CP; cross-feedstuff correlations range $0.4$--$0.7$. \\
+DE $\leftrightarrow$ Ym       & $-0.50$ & IPCC 2019 Refinement Eq 10.21 makes Ym an explicit decreasing function of DE (with NDF, EE). Meta-analyses (Niu et al. 2018 \emph{Global Change Biology}; Hristov et al. 2013) show a cross-diet negative correlation close to the equation slope. The single cross-block (activity-data $\leftrightarrow$ coefficient) pair in the preset and the one most likely to move headline emissions. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textit{Revision history.} The 2026-05 statistical audit dropped the previous N $\leftrightarrow$ BW $= 0.30$ pair (no defensible cross-country source), strengthened DE $\leftrightarrow$ Ym from $-0.40$ to $-0.50$, and lowered Cfi $\leftrightarrow$ Ca from $0.60$ to $0.30$. The 2026-06 review (in response to A. Wilkes' livestock-science feedback) further refined the set: it lowered BW $\leftrightarrow$ MW from $0.85$ to $0.50$ to reflect typical mixed-source data provenance; added the two cross-group dairy pairs (Milk $\leftrightarrow$ BW and Milk $\leftrightarrow$ DE) that capture real biological linkages between herd-population and feed-quality parameters; and dropped Milk $\leftrightarrow$ pct\_pregnant (sign ambiguous between per-cow genetic and per-herd management interpretations) and Cfi $\leftrightarrow$ Ca (independent inputs in IPCC Eq 10.3 / 10.4, not jointly estimated). The resulting matrix is positive-definite without nearest-PD repair.
 
 ## Cross-Block Correlations
 

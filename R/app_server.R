@@ -23,6 +23,14 @@ app_server <- function(input, output, session) {
     show_diagnostics = FALSE,
     upload_status = NULL,   # NULL | list(type = "success"|"error", message = "...")
     has_custom_upload = FALSE,
+    # 2026-06 Andreas review: gate the corr_mode radio so users can't pick a
+    # mode whose underlying matrix is empty. ts_available is TRUE when the
+    # current dataset (example or upload) has a populated Parameter_TimeSeries
+    # sheet that compute_corr_from_population() could turn into a matrix.
+    # manual_uploaded is TRUE once the user has uploaded a CSV correlation
+    # matrix via corr_matrix_upload (reset to FALSE on any new template load).
+    ts_available     = FALSE,
+    manual_uploaded  = FALSE,
     sim_view = "settings"   # R1.5: "settings" or "results" — drives Tab 5 panel toggle
   )
 
@@ -102,6 +110,10 @@ app_server <- function(input, output, session) {
     # without needing to run the simulation first.
     .apply_completeness()
     rv$has_custom_upload <- FALSE
+    # Built-in examples ship with synthetic time-series → ts_available = TRUE.
+    # Any prior manual-matrix upload is implicitly discarded by the new dataset.
+    rv$ts_available    <- !is.null(rv$corr_matrix)
+    rv$manual_uploaded <- FALSE
     rv$upload_status     <- list(type = "success",
                                  message = sprintf("%s example loaded — %d parameters (with example time-series)",
                                    if (name == "country_x") "Country X" else "Country Y",
@@ -131,7 +143,12 @@ app_server <- function(input, output, session) {
       rv$inv_metadata   <- parsed$metadata
       rv$manure_data    <- parsed$manure
       rv$population     <- parsed$population
-      if (!is.null(parsed$corr_matrix)) rv$corr_matrix <- parsed$corr_matrix
+      # 2026-06: only adopt the uploaded TS matrix when it's actually populated;
+      # otherwise wipe rv$corr_matrix so a stale matrix from a previous upload
+      # doesn't pretend the new dataset has TS data.
+      rv$corr_matrix    <- parsed$corr_matrix   # may be NULL if TS sheet empty
+      rv$ts_available   <- !is.null(parsed$corr_matrix)
+      rv$manual_uploaded <- FALSE                # new template wipes prior manual matrix
       rv$has_custom_upload <- TRUE
 
       msg <- sprintf("%d parameters loaded from %s", nrow(parsed$param_specs), fname)
@@ -372,7 +389,11 @@ app_server <- function(input, output, session) {
                   nzchar(rv$inv_metadata$region %||% "")) {
       rv$inv_metadata$region
     } else "global"
-    run_qaqc(rv$param_specs, region = region)
+    # Pass the Manure_Management sheet so cross-sheet sub-category-key
+    # reconciliation (auto-match / ambiguous / no-match) surfaces in the same
+    # QAQC table as the per-parameter checks (Andreas 28/5/26 follow-up).
+    run_qaqc(rv$param_specs, region = region,
+             manure_data = rv$manure_data)
   })
 
   # --- Auto-filled parameters card (Round 6b #4) ---
@@ -675,9 +696,26 @@ app_server <- function(input, output, session) {
       }
       rv$corr_matrix <- preset
       showNotification(
-        sprintf("Loaded structural-defaults preset (%d parameters). May 2026 re-review: DE↔Ym=−0.50, Cfi↔Ca=0.30.",
+        sprintf("Loaded structural-defaults preset (%d parameters). June 2026 review: added Milk↔BW and Milk↔DE (+0.30 each), lowered BW↔MW to 0.50, dropped Milk↔pct_pregnant and Cfi↔Ca.",
                 nrow(preset)),
         type = "message", duration = 6)
+    } else if (input$corr_mode == "timeseries") {
+      # 2026-06: when the user switches *into* timeseries (e.g. from preset),
+      # recompute from the current population data so the heatmap and the MC
+      # both reflect the time-series, not whatever matrix the previous mode
+      # left behind. If no time-series is available, leave rv$corr_matrix NULL
+      # — the gated radio will keep this option disabled, but if a stale state
+      # reaches here we explicitly clear rather than carrying a wrong matrix.
+      if (!is.null(rv$population)) {
+        rv$corr_matrix <- .compute_corr_now(rv$population)
+      } else {
+        rv$corr_matrix <- NULL
+      }
+    } else if (input$corr_mode == "manual") {
+      # 2026-06: clear rv$corr_matrix if no manual matrix has been uploaded in
+      # this session, so the heatmap doesn't show a stale preset. If the user
+      # already uploaded one earlier, keep it.
+      if (!isTRUE(rv$manual_uploaded)) rv$corr_matrix <- NULL
     } else if (input$corr_mode == "none") {
       # Don't wipe an uploaded matrix — just don't apply it (sim observer reads input$corr_mode)
     }
@@ -704,7 +742,8 @@ app_server <- function(input, output, session) {
       if (any(diag(m) != 1))
         stop("Diagonal entries must be 1.")
       m <- as.matrix(Matrix::nearPD(m, corr = TRUE)$mat)
-      rv$corr_matrix <- m
+      rv$corr_matrix    <- m
+      rv$manual_uploaded <- TRUE
       showNotification(sprintf("Loaded manual correlation matrix (%d parameters).",
                                nrow(m)), type = "message", duration = 5)
     }, error = function(e) {
@@ -740,27 +779,102 @@ app_server <- function(input, output, session) {
     }
   })
 
-  # 2026-05 audit follow-up: wire up the corr_group_scope radio (was dead).
-  # When corr_mode == "timeseries" and the user picks "population" or "intake",
-  # restrict the active correlation matrix to that subgroup; uncorrelated
-  # parameters fall to identity rows/cols via the unified-matrix expansion
-  # downstream.
-  .CORR_GROUPS <- list(
-    population = c("N", "BW", "MW", "WG",
-                   # legacy aliases (accepted on upload via PARAM_ALIASES, but
-                   # surface here too in case raw template headers leaked through)
-                   "cattle_pop", "live_weight", "mature_weight", "weight_gain"),
-    intake     = c("DE", "DE_pct", "CP", "CP_pct", "Ym", "Ym_pct",
-                   "Cfi", "Ca", "C", "C_growth", "Cp", "hours")
-  )
-  effective_corr_matrix <- reactive({
-    m <- rv$corr_matrix
-    if (is.null(m)) return(NULL)
-    scope <- if (isTRUE(input$corr_mode == "timeseries")) input$corr_group_scope else "all"
-    if (is.null(scope) || scope == "all" || !(scope %in% names(.CORR_GROUPS))) return(m)
-    keep <- intersect(rownames(m), .CORR_GROUPS[[scope]])
-    if (length(keep) < 2) return(NULL)   # nothing meaningful to correlate after filter
-    m[keep, keep, drop = FALSE]
+  # 2026-06 Andreas review: the per-scope ("population only" / "intake only")
+  # filter was retired. The "shared data source" framing didn't survive the
+  # statistical review (national animal-count statistics rarely include BW /
+  # MW / WG, so the implied common provenance was thin), and
+  # R/_test_correlation_effect.R confirmed the filter had no observable effect
+  # on the headline for typical livestock inputs. The reactive is kept as a
+  # thin wrapper around rv$corr_matrix so downstream callers don't change.
+  effective_corr_matrix <- reactive({ rv$corr_matrix })
+
+  # 2026-06 Andreas review: the corr_mode radio is rendered server-side so we
+  # can disable choices whose prerequisites are missing (empty TS sheet, no
+  # manual CSV uploaded, no template loaded). Uses Shiny's standard
+  # radioButtons() (so the input binding works) with HTML choiceNames carrying
+  # per-choice help text, plus a JS post-step that sets `disabled` on the
+  # underlying <input> for greyed options. Prevents the silent no-op Andreas
+  # hit on his ZIM run.
+  output$corr_mode_ui <- renderUI({
+    has_template <- !is.null(rv$param_specs)
+    ts_ok        <- isTRUE(rv$ts_available)
+    manual_ok    <- isTRUE(rv$manual_uploaded)
+    current_mode <- input$corr_mode %||% "none"
+
+    # Snap the selection back to "none" if the currently-active mode just
+    # became unavailable (e.g. user uploaded a new template whose TS sheet
+    # is empty while previously on timeseries). Deferred via session.
+    if ((current_mode == "timeseries" && !ts_ok) ||
+        (current_mode == "manual"     && !manual_ok) ||
+        (current_mode == "preset"     && !has_template)) {
+      isolate({
+        updateRadioButtons(session, "corr_mode", selected = "none")
+        current_mode <- "none"
+      })
+    }
+
+    label_for <- function(value, title, enabled, help_enabled, help_disabled) {
+      help <- if (enabled) help_enabled
+              else tagList(tags$strong("Disabled — "), help_disabled)
+      help_style <- "font-size:0.78rem; color:#52525B; line-height:1.4; margin-top:-2px; margin-bottom:6px;"
+      wrap_style <- if (!enabled) "opacity:0.45; cursor:not-allowed;" else ""
+      tags$span(
+        style = wrap_style,
+        tags$strong(title),
+        tags$div(style = help_style, help)
+      )
+    }
+
+    radio <- radioButtons("corr_mode",
+      label = tagList(
+        "Mode ",
+        bslib::tooltip(
+          tags$span(icon("circle-question"),
+                    style = "color:#2D6A4F; cursor:help; vertical-align:middle;"),
+          "How should the tool decide which input parameters move together? Modes whose prerequisites are missing (no time-series, no manual matrix uploaded) are greyed out below.",
+          placement = "right"
+        )
+      ),
+      choiceValues = c("none", "timeseries", "preset", "manual"),
+      choiceNames = list(
+        label_for("none", "No correlations (default)",
+          enabled       = TRUE,
+          help_enabled  = "Pick this if you have no information about how your parameters move together. Matches the standard IPCC Approach 2 starting point."),
+        label_for("timeseries", "From template (auto, time-series)",
+          enabled       = ts_ok,
+          help_enabled  = tagList("Pick this when your upload contains a ", tags$code("Parameter_TimeSeries"), " sheet with ≥5 years of data. ", tags$em("Recommended whenever you have the data.")),
+          help_disabled = tagList("your ", tags$code("Parameter_TimeSeries"), " sheet is empty or missing. Upload a template with a populated TS sheet (≥5 years, ≥2 numeric columns) to enable.")),
+        label_for("preset", "Structural defaults (expert-elicited)",
+          enabled       = has_template,
+          help_enabled  = tagList("Known biological linkages (BW↔MW, DE↔Ym, Milk↔BW, Milk↔DE, etc.) applied automatically. ", tags$em("Recommended for single-year inventories.")),
+          help_disabled = "no parameter data loaded yet. Load Country X / Country Y or upload your own template to enable."),
+        label_for("manual", "Advanced — manual entry",
+          enabled       = manual_ok,
+          help_enabled  = "Use the uploaded CSV matrix below. Only pick this if you have a matrix from expert elicitation or a published study.",
+          help_disabled = "no manual CSV matrix uploaded yet. Use the file picker further down this card to upload a square symmetric matrix.")
+      ),
+      selected = current_mode)
+
+    # Disable individual <input type="radio"> elements via JS. Has to be
+    # deferred to fire after the radio is mounted in the DOM; using
+    # session$onFlushed would also work but a one-shot setTimeout(0) is enough
+    # because renderUI inserts the script after the radio markup.
+    disabled_values <- c()
+    if (!ts_ok)        disabled_values <- c(disabled_values, "timeseries")
+    if (!has_template) disabled_values <- c(disabled_values, "preset")
+    if (!manual_ok)    disabled_values <- c(disabled_values, "manual")
+    js_disable <- if (length(disabled_values) > 0) {
+      tags$script(HTML(sprintf(
+        "setTimeout(function(){var vals=%s; vals.forEach(function(v){var el=document.querySelector('input[name=\"corr_mode\"][value=\"'+v+'\"]'); if(el){el.disabled=true;}});}, 0);",
+        jsonlite::toJSON(disabled_values)
+      )))
+    } else {
+      tags$script(HTML(
+        "setTimeout(function(){document.querySelectorAll('input[name=\"corr_mode\"]').forEach(function(el){el.disabled=false;});}, 0);"
+      ))
+    }
+
+    tagList(radio, js_disable)
   })
 
   output$corr_heatmap <- plotly::renderPlotly({
@@ -856,6 +970,22 @@ app_server <- function(input, output, session) {
   output$ef_rho_manureCH_interp <- renderText(.rho_band(input$ef_rho_manureCH))
   output$ef_rho_manureN_interp  <- renderText(.rho_band(input$ef_rho_manureN))
 
+  # 2026-06: warn when block-mode is selected but all three sliders are at 0.
+  # Without this the user gets a silent no-op identical to the AD-side empty-TS
+  # case Andreas hit.
+  output$ef_rho_all_zero_warning <- renderUI({
+    rhos <- c(input$ef_rho_energy   %||% 0,
+              input$ef_rho_manureCH %||% 0,
+              input$ef_rho_manureN  %||% 0)
+    if (all(rhos == 0)) {
+      tags$div(
+        style = "font-size:0.82rem; color:#92400E; background:#FEF3C7; padding:8px 10px; border-radius:6px; margin-top:8px;",
+        icon("exclamation-triangle"),
+        " All three within-block ρ sliders are at 0 — block-structured EF correlation will have no effect. Move at least one slider above 0, or switch the mode above back to ", tags$strong("No EF correlations"), "."
+      )
+    }
+  })
+
   output$ef_corr_heatmap <- plotly::renderPlotly({
     mat <- ef_corr_reactive()
     if (is.null(mat)) {
@@ -910,6 +1040,29 @@ app_server <- function(input, output, session) {
       rv$sim_log <- paste0(rv$sim_log,
         "Run blocked: no emission sources selected.\n")
       session$sendCustomMessage("scrollTo", "emission_sources")
+      return()
+    }
+
+    # 2026-06 Andreas review: belt-and-suspenders check that the selected
+    # correlation mode actually has a matrix. The corr_mode_ui radio greys
+    # out unavailable options, but a stale state (or a future code path
+    # that bypasses the gated UI) could still reach here with a "lying"
+    # mode setting. Block the run with an explicit error rather than a
+    # silent no-op.
+    if (isTRUE(input$corr_mode == "timeseries") && !isTRUE(rv$ts_available)) {
+      showNotification(
+        "Correlation mode is 'From template (auto, time-series)' but no Parameter_TimeSeries data is loaded. Either upload a template with a populated TS sheet, or switch the mode to 'Structural defaults' / 'No correlations' on Tab 4 before running.",
+        type = "error", duration = 12)
+      rv$sim_log <- paste0(rv$sim_log,
+        "Run blocked: corr_mode='timeseries' selected but TS sheet is empty.\n")
+      return()
+    }
+    if (isTRUE(input$corr_mode == "manual") && !isTRUE(rv$manual_uploaded)) {
+      showNotification(
+        "Correlation mode is 'Advanced — manual entry' but no CSV matrix has been uploaded. Either upload a manual matrix, or switch the mode on Tab 4 before running.",
+        type = "error", duration = 12)
+      rv$sim_log <- paste0(rv$sim_log,
+        "Run blocked: corr_mode='manual' selected but no matrix uploaded.\n")
       return()
     }
 
@@ -1020,29 +1173,62 @@ app_server <- function(input, output, session) {
           group_key  <- make_group_key(specs)
           sys_groups <- unique(group_key)
 
-          # Andreas 2026-05 follow-up: warn when a Parameters group has no
-          # matching Manure_Management rows (e.g. cattle_type or sub_category
-          # spelt differently between sheets — "DINT_heif" vs "DINT_heifer"
-          # silently makes the heifer
-          # group fall back to the default pasture allocation). The warning
-          # surfaces in the simulation log on Tab 5 so the user catches the
-          # mismatch instead of getting wrong N2O numbers.
-          if (!is.null(manure) && nrow(manure) > 0 &&
-              all(c("cattle_type","aggregation_level","sub_category") %in%
-                  names(manure))) {
-            manure_keys <- unique(make_group_key(manure))
-            mismatched  <- setdiff(sys_groups, manure_keys)
-            if (length(mismatched) > 0) {
-              msg <- paste0(
-                "WARNING: ", length(mismatched), " Parameters group(s) have no ",
-                "matching Manure_Management rows. These groups fall back to ",
-                "the default pasture allocation, which will under-count their ",
-                "manure CH4 and direct/indirect MM N2O. Check spelling of ",
-                "cattle_type / aggregation_level / sub_category across both ",
-                "sheets. Mismatched: ",
-                paste(head(mismatched, 5), collapse = "; "),
-                if (length(mismatched) > 5) ", ..." else "", "\n")
-              rv$sim_log <- paste0(rv$sim_log, msg)
+          # Andreas 28/5/26 follow-up: a sub-category-key typo across the two
+          # sheets (e.g. Parameters "DINT_heif" vs Manure_Management
+          # "DINT_heifer") used to silently fall back to a default 70/30
+          # pasture/solid_storage allocation, materially under-counting MM
+          # N2O. resolve_sub_category_matches() now performs a single round
+          # of unambiguous fuzzy matching (same cattle_type + aggregation_level,
+          # case-insensitive equal OR adist <= 2). Exactly-one match is auto-
+          # substituted and shown to the user as a Shiny warning + QAQC row;
+          # ambiguous matches (more than one candidate) block the run.
+          sg_resolve <- resolve_sub_category_matches(specs, manure)
+          sg_to_mm   <- sg_resolve$matched
+          sg_issues  <- sg_resolve$issues
+
+          ambig_rows <- sg_issues[sg_issues$status == "fail" &
+                                    sg_issues$check == "sub_category_ambiguous", ,
+                                  drop = FALSE]
+          if (nrow(ambig_rows) > 0) {
+            msg <- paste0(
+              "ERROR: ", nrow(ambig_rows), " Parameters sub_category key(s) ",
+              "are ambiguously close to multiple Manure_Management rows and ",
+              "cannot be auto-matched. Fix the spelling in the template so ",
+              "each Parameters key resolves to exactly one MM key, then ",
+              "re-upload.\n", paste("  -", ambig_rows$message,
+                                     collapse = "\n"), "\n")
+            rv$sim_log <- paste0(rv$sim_log, msg)
+            showNotification(
+              "Sub-category key ambiguous between Parameters and Manure_Management. See simulation log for details.",
+              type = "error", duration = NULL)
+            stop("Ambiguous sub-category key — run blocked.", call. = FALSE)
+          }
+
+          auto_rows <- sg_issues[sg_issues$status == "warn" &
+                                   sg_issues$check == "sub_category_auto_match", ,
+                                 drop = FALSE]
+          if (nrow(auto_rows) > 0) {
+            for (ri in seq_len(nrow(auto_rows))) {
+              rv$sim_log <- paste0(rv$sim_log,
+                "INFO (auto-match): ", auto_rows$message[ri], "\n")
+            }
+            showNotification(
+              paste0(nrow(auto_rows),
+                     " sub-category key(s) auto-matched between Parameters and ",
+                     "Manure_Management (likely typos). Verify on Tab 2 QAQC. ",
+                     "Examples: ",
+                     paste(head(sub("\\..*$", ".", auto_rows$message), 2),
+                           collapse = " ")),
+              type = "warning", duration = 12)
+          }
+
+          nomatch_rows <- sg_issues[sg_issues$status == "warn" &
+                                      sg_issues$check == "sub_category_no_match", ,
+                                    drop = FALSE]
+          if (nrow(nomatch_rows) > 0) {
+            for (ri in seq_len(nrow(nomatch_rows))) {
+              rv$sim_log <- paste0(rv$sim_log,
+                "WARNING (no MM match): ", nomatch_rows$message[ri], "\n")
             }
           }
 
@@ -1062,12 +1248,18 @@ app_server <- function(input, output, session) {
             frac_leach_vals <- NULL
             # Andreas 2026-05 follow-up (C4 / C6): per-MMS uncertainty matrices
             # populated below if the manure sheet has lower/upper/dist cols.
-            mcf_samples <- ef3_samples <- fg_samples <- fl_samples <- NULL
+            # Andreas 28/5/26 #4: fraction_samples is the new per-MMS sampled
+            # allocation matrix (n_iter × n_mms, rows renormalised to sum to 1).
+            mcf_samples <- ef3_samples <- fg_samples <- fl_samples <-
+              fraction_samples <- NULL
 
             if (!is.null(manure) && nrow(manure) > 0 &&
                 all(c("mms_type", "fraction_pct", "MCF_pct", "EF3") %in% names(manure))) {
               manure_key <- make_group_key(manure)
-              mms_rows   <- manure[manure_key == sg, ]
+              # Use the auto-matched MM key from resolve_sub_category_matches
+              # (falls through to the literal sg when no remap was needed).
+              sg_lookup  <- if (sg %in% names(sg_to_mm)) sg_to_mm[[sg]] else sg
+              mms_rows   <- manure[manure_key == sg_lookup, ]
               if (nrow(mms_rows) > 0) {
                 # Defensive coercion in case Excel stored these as text
                 fp_num   <- suppressWarnings(as.numeric(mms_rows$fraction_pct))
@@ -1138,12 +1330,40 @@ app_server <- function(input, output, session) {
                   mr_fl_scaled, "Frac_LeachMS_pct", "lower_frac_leach",
                   "upper_frac_leach", "distribution_frac_leach",
                   mc_n_iter, default_dist = "pert")
+
+                # Andreas 28/5/26 #4: sample fraction_pct per-MMS so MMS
+                # allocation can show up in the tornado / rank-correlation.
+                # If lower_fraction / upper_fraction are absent or equal to
+                # the central value, the sampler degenerates to a constant
+                # row (matching the prior deterministic behaviour). Each
+                # iteration row is then divided by 100 and renormalised so
+                # it sums to 1 — keeps the values on the simplex (Option A
+                # from the design Q: independent sample + renormalise).
+                if (any(c("lower_fraction", "upper_fraction",
+                           "distribution_fraction") %in% names(mms_rows))) {
+                  fraction_samples <- sample_per_mms_param(
+                    mms_rows, "fraction_pct", "lower_fraction",
+                    "upper_fraction", "distribution_fraction",
+                    mc_n_iter, default_dist = "pert")
+                  if (!is.null(fraction_samples)) {
+                    # `pmax(0, x)` strips the matrix dim attribute; clamp
+                    # in place to keep `fraction_samples` a matrix.
+                    fraction_samples[fraction_samples < 0] <- 0
+                    fraction_samples <- fraction_samples / 100
+                    rs <- rowSums(fraction_samples)
+                    rs[rs <= 0] <- 1  # safeguard against degenerate rows
+                    fraction_samples <- fraction_samples / rs
+                  }
+                }
+
                 # Reorder columns to match mms_fracs ordering.
                 ord_names <- names(mms_fracs)
                 if (!is.null(mcf_samples)) mcf_samples <- mcf_samples[, ord_names, drop = FALSE]
                 if (!is.null(ef3_samples)) ef3_samples <- ef3_samples[, ord_names, drop = FALSE]
                 if (!is.null(fg_samples))  fg_samples  <- fg_samples[, ord_names, drop = FALSE]
                 if (!is.null(fl_samples))  fl_samples  <- fl_samples[, ord_names, drop = FALSE]
+                if (!is.null(fraction_samples))
+                  fraction_samples <- fraction_samples[, ord_names, drop = FALSE]
                 # Final guard: if all MMS rows were unparsable, use defaults
                 if (length(mms_fracs) == 0) {
                   mms_fracs <- default_mms_fracs
@@ -1171,8 +1391,6 @@ app_server <- function(input, output, session) {
             coef_names <- sys_specs$parameter[sys_specs$param_type == "coefficient"]
             all_names  <- c(ad_names, coef_names)
 
-            # 2026-05 audit follow-up: route through effective_corr_matrix() so
-            # the corr_group_scope radio actually filters the matrix used by MC.
             corr_mtx_active <- effective_corr_matrix()
 
             unified_corr <- if (input$corr_mode != "none" && !is.null(corr_mtx_active)) {
@@ -1203,7 +1421,9 @@ app_server <- function(input, output, session) {
               mms_fractions = mms_fracs, mcf_values = mcf_vals, ef3_values = ef3_vals,
               frac_gas_values = frac_gas_vals, frac_leach_values = frac_leach_vals,
               mcf_samples = mcf_samples, ef3_samples = ef3_samples,
-              frac_gas_samples = fg_samples, frac_leach_samples = fl_samples
+              frac_gas_samples = fg_samples, frac_leach_samples = fl_samples,
+              # Andreas 28/5/26 #4: per-iteration MMS allocation samples
+              mms_fraction_samples = fraction_samples
             )
           }
 
@@ -1218,9 +1438,9 @@ app_server <- function(input, output, session) {
             gwp = input$gwp_version, seed = input$seed,
             # Andreas 2026-05 follow-up: Tw is now sourced exclusively from
             # the Parameters template (per sub-category) — the UI input was
-            # removed. pct_calving is still read here as a single global
+            # removed. pct_pregnant is still read here as a single global
             # value (Cp pro-rate applies inventory-wide).
-            pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1,
+            pct_pregnant = if (!is.null(input$pct_pregnant)) input$pct_pregnant else 1,
             # All correlated paths use the rank-correlation-preserving
             # restricted-pairing procedure (IPCC Vol.1 Ch.3 §3.2.3.2).
             sampler = "iman_conover"
@@ -1340,10 +1560,31 @@ app_server <- function(input, output, session) {
               ps$lower[rows] <- ps$mean[rows]
               ps$upper[rows] <- ps$mean[rows]
               sd$param_specs <- ps
-              if (fix_type == "coefficient") sd$ef_corr_matrix <- NULL
+              if (fix_type == "coefficient") {
+                sd$ef_corr_matrix <- NULL
+                # Andreas 28/5/26 #9: per-MMS sample matrices (mcf_samples,
+                # ef3_samples, frac_gas_samples, frac_leach_samples) and the
+                # MMS-allocation sample matrix (mms_fraction_samples) all
+                # carry coefficient-side variance — they were leaking
+                # iteration-to-iteration MCF / EF3 / Frac variation into the
+                # AD-only run, so AD-only CV differed across emission sources
+                # even though N was the only AD parameter. Null them here so
+                # the AD-only run sees deterministic per-MMS values
+                # (mcf_values / ef3_values / frac_gas_values / frac_leach_values
+                # / mms_fractions are still respected — they are the central
+                # values used when the matrices are NULL).
+                sd$mcf_samples           <- NULL
+                sd$ef3_samples           <- NULL
+                sd$frac_gas_samples      <- NULL
+                sd$frac_leach_samples    <- NULL
+                sd$mms_fraction_samples  <- NULL
+              }
               if (fix_type == "activity_data") {
                 sd$corr_matrix         <- NULL
                 sd$unified_corr_matrix <- NULL
+                # Per-MMS sample matrices STAY active in the EF-only run —
+                # they are coefficient-side variance and are exactly what
+                # the EF-only run is meant to expose.
               }
               sd
             }
@@ -1352,7 +1593,7 @@ app_server <- function(input, output, session) {
             ad_result  <- run_inventory_simulation(
               systems_ad, n_iter = n_iter_val,
               gwp = input$gwp_version, seed = input$seed,
-              pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1
+              pct_pregnant = if (!is.null(input$pct_pregnant)) input$pct_pregnant else 1
             )
 
             setProgress(0.70, detail = sprintf("Running EF-only simulation (%d group(s))...",
@@ -1361,7 +1602,7 @@ app_server <- function(input, output, session) {
             ef_result  <- run_inventory_simulation(
               systems_ef, n_iter = n_iter_val,
               gwp = input$gwp_version, seed = input$seed,
-              pct_calving = if (!is.null(input$pct_calving)) input$pct_calving else 1
+              pct_pregnant = if (!is.null(input$pct_pregnant)) input$pct_pregnant else 1
             )
 
             rv$decomposition <- list(
@@ -1382,40 +1623,21 @@ app_server <- function(input, output, session) {
 
           # ---- Stage 5: sensitivity analysis ----
           # For multi-group inventories, combine each group's parameter samples
-          # (column-labelled by sub-category) and regress against the TOTAL
-          # inventory CO2eq. This gives true aggregate sensitivity rankings rather
-          # than rankings for the first group only.
-          .aggregate_sensitivity <- function(by_system, total_co2e) {
-            if (length(by_system) == 0) return(NULL)
-            # B1: prefix every column with "cattle_type | sub_category – " so the
-            # tornado shows which animal group each parameter belongs to, not just
-            # the bare parameter name. This lets users see "dairy | cows – Ym" vs
-            # "dairy | heifers – Ym" and target research at the right sub-category.
-            make_prefix <- function(sn) {
-              parts <- strsplit(sn, "||", fixed = TRUE)[[1]]
-              ct   <- trimws(parts[1L])
-              subc <- trimws(parts[length(parts)])
-              paste0(ct, " | ", subc)
-            }
-            label_samples <- function(sn) {
-              samp <- by_system[[sn]]$samples
-              if (is.null(samp) || ncol(samp) == 0) return(NULL)
-              colnames(samp) <- paste0(make_prefix(sn), " – ", colnames(samp))
-              samp
-            }
-            if (length(by_system) == 1) {
-              samp <- label_samples(names(by_system)[[1]])
-              if (is.null(samp)) return(NULL)
-              return(sensitivity_analysis(samp, total_co2e, method = "both"))
-            }
-            blocks <- Filter(Negate(is.null), lapply(names(by_system), label_samples))
-            if (length(blocks) == 0) return(NULL)
-            sensitivity_analysis(do.call(cbind, blocks), total_co2e, method = "both")
-          }
+          # and regress against the TOTAL inventory CO2eq. Aggregate sensitivity
+          # rankings — not rankings for the first group only.
+          # Andreas 28/5/26 #8: column labels now read "param (sub_category)"
+          # so the tornado clearly identifies which animal sub-category each
+          # influential parameter belongs to (e.g. "Ym (DINT_cow)" vs
+          # "Ym (DINT_heif)"). Inventory teams can then target research at the
+          # specific sub-category that drives uncertainty rather than the
+          # ambiguous "Ym" label. The helper is also exposed at server scope
+          # so the per-source sensitivity dropdown (active_sensitivity below)
+          # can aggregate across systems instead of falling back to the first
+          # system only.
 
           setProgress(0.92, detail = "Running sensitivity analysis...")
           if (length(sim_result$by_system) > 0) {
-            rv$sensitivity <- .aggregate_sensitivity(
+            rv$sensitivity <- aggregate_sensitivity(
               sim_result$by_system, sim_result$inventory$total_co2e)
             rv$sim_log <- paste0(rv$sim_log,
               sprintf("Sensitivity analysis complete (%d group(s)).\n",
@@ -1438,7 +1660,7 @@ app_server <- function(input, output, session) {
             )
             rv$comparison_result <- nocorr_result
             if (length(nocorr_result$by_system) > 0) {
-              rv$comparison_sensitivity <- .aggregate_sensitivity(
+              rv$comparison_sensitivity <- aggregate_sensitivity(
                 nocorr_result$by_system, nocorr_result$inventory$total_co2e)
             }
             rv$sim_log <- paste0(rv$sim_log, "Comparison (no correlations) complete.\n")
@@ -1566,16 +1788,45 @@ app_server <- function(input, output, session) {
   # reporting categories (enteric CH₄, manure CH₄, MM N₂O total, PRP N₂O total).
   # Column names refer to inventory aggregator output (mc_simulation.R
   # run_inventory_simulation), not per-system results.
+  #
+  # Andreas 28/5/26 #6: per-source value boxes now include a 95 % MoE
+  # suffix (e.g. "1,234 t · ±12 %") so the headline uncertainty is visible
+  # without drilling into the by-system table. IPCC uses MoE % (the half-
+  # width of the 95 % CI as a fraction of the mean), not CV — confirmed by
+  # IPCC 2006 Vol.1 Ch.3 Table 3.3.
+  .moe_suffix <- function(row) {
+    if (nrow(row) == 0 || is.na(row$moe_pct)) return("")
+    paste0(" · ±", round(row$moe_pct, 1), "%")
+  }
   .vb_mean <- function(var) {
     row <- rv$uncertainty[rv$uncertainty$variable == var, ]
     if (nrow(row) == 0) return("---")
-    paste0(round(row$mean, if (row$mean < 10) 3 else 1), " t")
+    paste0(round(row$mean, if (row$mean < 10) 3 else 1), " t",
+           .moe_suffix(row))
   }
   .vb_sum_means <- function(vars) {
     rows <- rv$uncertainty[rv$uncertainty$variable %in% vars, ]
     if (nrow(rows) == 0) return("---")
     s <- sum(rows$mean, na.rm = TRUE)
-    paste0(round(s, if (s < 10) 3 else 1), " t")
+    # MoE on a sum of (positively correlated) per-iteration vectors is not
+    # the sum of MoEs — compute it from the per-iteration combined series
+    # in the inventory frame when available; otherwise fall back to the
+    # max of the contributing MoEs as a conservative estimate.
+    moe_str <- ""
+    if (!is.null(rv$mc_results$inventory)) {
+      inv <- rv$mc_results$inventory
+      cols <- intersect(vars, names(inv))
+      if (length(cols) > 0) {
+        x <- rowSums(inv[, cols, drop = FALSE])
+        if (length(x) > 1 && mean(x) > 0) {
+          lo <- stats::quantile(x, 0.025, names = FALSE)
+          hi <- stats::quantile(x, 0.975, names = FALSE)
+          moe <- ((hi - lo) / 2) / mean(x) * 100
+          moe_str <- paste0(" · ±", round(moe, 1), "%")
+        }
+      }
+    }
+    paste0(round(s, if (s < 10) 3 else 1), " t", moe_str)
   }
   output$vb_enteric_ch4 <- renderText({ req(rv$uncertainty); .vb_mean("total_enteric_ch4") })
   output$vb_manure_ch4  <- renderText({ req(rv$uncertainty); .vb_mean("total_manure_ch4") })
@@ -1603,10 +1854,14 @@ app_server <- function(input, output, session) {
                               round(row$ci_upper, 1), ")") else "---"
   })
 
-  output$vb_cv <- renderText({
+  # Andreas 28/5/26 #6: the value box previously titled "Total CV (%)" now
+  # shows the inventory-total 95 % MoE — IPCC's reporting convention. CV is
+  # still available alongside MoE in the by-system / by-category tables for
+  # users who want both.
+  output$vb_moe_total <- renderText({
     req(rv$uncertainty)
     row <- rv$uncertainty[rv$uncertainty$variable == "total_co2e", ]
-    if (nrow(row) > 0) paste0(round(row$cv_pct, 1), "%") else "---"
+    if (nrow(row) > 0) paste0("±", round(row$moe_pct, 1), "%") else "---"
   })
 
   # T6.1 / T8.1: IPCC 95% margin of error
@@ -1636,24 +1891,28 @@ app_server <- function(input, output, session) {
       )
   })
 
+  # Andreas 28/5/26 #6: the AD / EF / Combined decomposition chart now
+  # uses 95 % MoE on the y-axis (IPCC Vol.1 Ch.3 Table 3.3 convention),
+  # not CV. The underlying decomposition data frame still carries both
+  # cv_pct and moe_pct, so consumers that want CV can pull it from
+  # rv$decomposition directly.
   output$decomposition_plot <- plotly::renderPlotly({
     req(rv$decomposition)
-    vars <- c("total_co2e")
     categories <- c("AD Only", "EF Only", "Combined")
-    cv_vals <- sapply(categories, function(cat) {
+    moe_vals <- sapply(categories, function(cat) {
       df <- switch(cat,
-        "AD Only" = rv$decomposition$ad_only,
-        "EF Only" = rv$decomposition$ef_only,
+        "AD Only"  = rv$decomposition$ad_only,
+        "EF Only"  = rv$decomposition$ef_only,
         "Combined" = rv$decomposition$combined
       )
       row <- df[df$variable == "total_co2e", ]
-      if (nrow(row) > 0) row$cv_pct else NA
+      if (nrow(row) > 0) row$moe_pct else NA
     })
 
-    plotly::plot_ly(x = categories, y = cv_vals, type = "bar",
+    plotly::plot_ly(x = categories, y = moe_vals, type = "bar",
                     marker = list(color = c("#40916C", "#4361EE", "#2D6A4F"))) %>%
-      plotly::layout(title = "Uncertainty Decomposition (CV %)",
-                     yaxis = list(title = "CV (%)"))
+      plotly::layout(title = "Uncertainty Decomposition (95% MoE, total CO2eq)",
+                     yaxis = list(title = "95% MoE (%)"))
   })
 
   # ---- Simulation diagnostics ----
@@ -1812,6 +2071,51 @@ app_server <- function(input, output, session) {
     out
   }
 
+  # Andreas 28/5/26 #7.1: tell the UI whether the inventory has more than
+  # one cattle_type so the headline-split card can show/hide automatically.
+  output$has_multi_cattle_type <- reactive({
+    by_sys <- rv$mc_results$by_system
+    if (is.null(by_sys) || length(by_sys) == 0) return(FALSE)
+    parts <- strsplit(names(by_sys), "\\|\\|", fixed = FALSE)
+    ct <- unique(sapply(parts, function(p) if (length(p) >= 1) p[1] else ""))
+    length(ct) > 1
+  })
+  outputOptions(output, "has_multi_cattle_type", suspendWhenHidden = FALSE)
+
+  # Andreas 28/5/26 #7.1: compact summary table directly under the headline
+  # value boxes. One row per cattle_type, columns = the four headline
+  # emission sources + total CO₂eq. Mean and 95 % MoE % per cell. Uses the
+  # existing .agg_results_by_level("cattle_type") helper.
+  output$results_headline_by_cattle_type <- DT::renderDT({
+    req(rv$mc_results)
+    agg <- .agg_results_by_level("cattle_type")
+    if (length(agg) == 0) return(DT::datatable(data.frame()))
+    fmt <- function(x) {
+      m  <- mean(x); if (!is.finite(m) || m == 0) return("0")
+      lo <- quantile(x, 0.025, names = FALSE)
+      hi <- quantile(x, 0.975, names = FALSE)
+      moe <- ((hi - lo) / 2) / m * 100
+      sprintf("%.3g ± %.1f%%", m, moe)
+    }
+    rows <- lapply(names(agg), function(gn) {
+      r <- agg[[gn]]
+      manure_n2o  <- r$direct_n2o_mm_total  + r$indirect_n2o_mm_total
+      pasture_n2o <- r$direct_n2o_prp_total + r$indirect_n2o_prp_total
+      data.frame(
+        `Cattle type`        = gn,
+        `Enteric CH₄ (t)`    = fmt(r$enteric_ch4_total),
+        `Manure CH₄ (t)`     = fmt(r$manure_ch4_total),
+        `Manure N₂O (t)`     = fmt(manure_n2o),
+        `Pasture N₂O (t)`    = fmt(pasture_n2o),
+        `Total CO₂eq (t)`    = fmt(r$total_co2e),
+        check.names = FALSE)
+    })
+    df <- do.call(rbind, rows)
+    DT::datatable(df, rownames = FALSE,
+                  options = list(dom = "t", paging = FALSE, ordering = FALSE,
+                                 scrollX = TRUE))
+  })
+
   output$results_by_system <- DT::renderDT({
     req(rv$mc_results)
     level <- input$results_aggregation_level %||% "cattle_type"
@@ -1838,41 +2142,73 @@ app_server <- function(input, output, session) {
                   options = list(pageLength = 20, scrollX = TRUE))
   })
 
-  # T6.2: per-reporting-category breakdown using GWP-aligned t CO₂eq, grouped
-  # by the aggregation level chosen on the Results tab (#32, C2).
+  # T6.2: per-reporting-category breakdown grouped by the aggregation level
+  # chosen on the Results tab (#32, C2).
+  # Andreas 28/5/26 #7.2 + #7.3: always show cattle_type as a column (even
+  # when the user selects aggregation_level / sub_category as the secondary
+  # grouping) AND show raw t CH₄ / t N₂O alongside t CO₂eq so inventory teams
+  # have the gas-specific numbers they actually report.
   output$results_by_category <- DT::renderDT({
     req(rv$mc_results)
     level <- input$results_aggregation_level %||% "cattle_type"
     agg <- .agg_results_by_level(level)
+
+    # Always also compute a cattle_type lookup. If the level IS cattle_type,
+    # group names ARE the cattle_types. Otherwise build a mapping by
+    # re-parsing sys_names — a sub_category / aggregation_level group could
+    # technically span multiple cattle_types, but in practice one group key
+    # maps cleanly to one cattle_type. Fall back to "—" if ambiguous.
+    cattle_type_of <- if (level == "cattle_type") {
+      setNames(names(agg), names(agg))
+    } else {
+      by_sys_names <- names(rv$mc_results$by_system)
+      parts <- strsplit(by_sys_names, "\\|\\|", fixed = FALSE)
+      idx <- switch(level, "aggregation_level" = 2, "sub_category" = 3, 1)
+      kk <- sapply(parts, function(p)
+        if (length(p) >= max(idx, 1) && nzchar(p[idx])) p[idx] else
+          paste(p, collapse = " / "))
+      ct <- sapply(parts, function(p) if (length(p) >= 1) p[1] else "—")
+      uniq_ct_per_group <- tapply(ct, kk, function(x) {
+        u <- unique(x); if (length(u) == 1) u else paste(u, collapse = " / ")
+      })
+      uniq_ct_per_group[names(agg)]
+    }
+
     gwp_vals <- GWP_VALUES[[input$gwp_version]]
     g_ch4 <- gwp_vals$CH4
     g_n2o <- gwp_vals$N2O
 
-    # source_label, ch4 column, n2o column (column-name lookup so we get t CO₂eq).
     sources <- list(
-      list(label = "Enteric fermentation CH₄",        ch4 = "enteric_ch4_total",    n2o = NULL),
-      list(label = "Manure management CH₄",           ch4 = "manure_ch4_total",     n2o = NULL),
-      list(label = "Manure management N₂O direct",    ch4 = NULL,                   n2o = "direct_n2o_mm_total"),
-      list(label = "Manure management N₂O indirect",  ch4 = NULL,                   n2o = "indirect_n2o_mm_total"),
-      list(label = "Pasture deposition N₂O direct",   ch4 = NULL,                   n2o = "direct_n2o_prp_total"),
-      list(label = "Pasture deposition N₂O indirect", ch4 = NULL,                   n2o = "indirect_n2o_prp_total")
+      list(label = "Enteric fermentation CH₄",        gas = "CH4", col = "enteric_ch4_total"),
+      list(label = "Manure management CH₄",           gas = "CH4", col = "manure_ch4_total"),
+      list(label = "Manure management N₂O direct",    gas = "N2O", col = "direct_n2o_mm_total"),
+      list(label = "Manure management N₂O indirect",  gas = "N2O", col = "indirect_n2o_mm_total"),
+      list(label = "Pasture deposition N₂O direct",   gas = "N2O", col = "direct_n2o_prp_total"),
+      list(label = "Pasture deposition N₂O indirect", gas = "N2O", col = "indirect_n2o_prp_total")
     )
 
     rows <- list()
     for (gn in names(agg)) {
       res <- agg[[gn]]
+      ct <- cattle_type_of[gn]
+      if (is.na(ct) || !nzchar(ct)) ct <- "—"
       for (s in sources) {
-        co2e <- if (!is.null(s$ch4)) res[[s$ch4]] * g_ch4 else res[[s$n2o]] * g_n2o
-        if (is.null(co2e) || all(co2e == 0)) next
-        m  <- mean(co2e)
+        raw <- res[[s$col]]
+        if (is.null(raw) || all(raw == 0)) next
+        co2e <- raw * (if (s$gas == "CH4") g_ch4 else g_n2o)
+        m_raw  <- mean(raw)
+        m_co2e <- mean(co2e)
         lo <- quantile(co2e, 0.025, names = FALSE)
         hi <- quantile(co2e, 0.975, names = FALSE)
         rows[[length(rows) + 1]] <- data.frame(
-          Group = gn,
-          Source = s$label,
-          `Mean (t CO₂eq)` = round(m, 2),
-          `MoE 95% (%)`    = if (m > 0) round(((hi - lo) / 2) / m * 100, 1) else NA_real_,
-          `CV (%)`         = if (m > 0) round(sd(co2e) / m * 100, 1) else NA_real_,
+          `Cattle type`        = ct,
+          Group                = gn,
+          Source               = s$label,
+          `Mean (t CH₄)`       = if (s$gas == "CH4") round(m_raw, 3)  else NA_real_,
+          `Mean (t N₂O)`       = if (s$gas == "N2O") round(m_raw, 4)  else NA_real_,
+          `Mean (t CO₂eq)`     = round(m_co2e, 2),
+          `MoE 95% (%)`        = if (m_co2e > 0) round(((hi - lo) / 2) / m_co2e * 100, 1) else NA_real_,
+          `CV (%)`             = if (m_co2e > 0) round(sd(co2e) / m_co2e * 100, 1) else NA_real_,
           `CI lower (t CO₂eq)` = round(lo, 2),
           `CI upper (t CO₂eq)` = round(hi, 2),
           check.names = FALSE
@@ -1880,7 +2216,11 @@ app_server <- function(input, output, session) {
       }
     }
     if (length(rows) == 0) return(DT::datatable(data.frame()))
-    DT::datatable(do.call(rbind, rows), rownames = FALSE,
+    df <- do.call(rbind, rows)
+    # When the secondary level IS cattle_type, the Group column duplicates
+    # the new Cattle-type column; drop it for a tidier table.
+    if (level == "cattle_type") df$Group <- NULL
+    DT::datatable(df, rownames = FALSE,
                   options = list(pageLength = 30, scrollX = TRUE))
   })
 
@@ -1939,12 +2279,11 @@ app_server <- function(input, output, session) {
   })
 
   # Helper: pick the right sensitivity dataset.
-  # Extract the group prefix from a labelled sensitivity variable name.
-  # Column format: "cattle_type | sub_category – parameter"
-  .sens_group <- function(var_name) {
-    parts <- strsplit(var_name, " – ", fixed = TRUE)[[1]]
-    if (length(parts) >= 2) trimws(parts[1]) else "(ungrouped)"
-  }
+  # Andreas 28/5/26 #8: sensitivity parameter names now end with the sub-
+  # category in parentheses (e.g. "Ym (DINT_cow)"). Delegate to the shared
+  # `sens_group_of()` helper defined in R/mc_sensitivity.R so the audit can
+  # exercise it directly.
+  .sens_group <- sens_group_of
 
   # Render a group-filter dropdown once a simulation result is available.
   output$sens_group_filter_ui <- renderUI({
@@ -2009,9 +2348,18 @@ app_server <- function(input, output, session) {
     } else if (!src %in% names(first_sys$results)) {
       raw <- rv$sensitivity
     } else {
-      raw <- sensitivity_analysis(first_sys$samples,
-                                  first_sys$results[[src]],
-                                  method = "both")
+      # Andreas 28/5/26 #8: per-source sensitivity now aggregates across ALL
+      # systems and emits sub-category-suffixed labels via
+      # aggregate_sensitivity(), instead of regressing only the first system's
+      # samples against its own per-source result (which produced unlabelled
+      # bare parameter names and missed every other sub-category's contribution).
+      per_source_total <- if (length(base$by_system) == 1) {
+        first_sys$results[[src]]
+      } else {
+        rowSums(sapply(base$by_system, function(s) s$results[[src]]))
+      }
+      raw <- aggregate_sensitivity(base$by_system, per_source_total,
+                                    method = "both")
     }
 
     # Group filter — only apply when the dropdown is rendered (multi-group runs).
@@ -2370,6 +2718,7 @@ app_server <- function(input, output, session) {
       )
       df <- rv$uncertainty
       out <- data.frame(
+        cattle_type       = "TOTAL",
         emission_category = ifelse(df$variable %in% names(cat_map),
                                     cat_map[df$variable], df$variable),
         unit              = ifelse(df$variable %in% names(unit_map),
@@ -2382,6 +2731,40 @@ app_server <- function(input, output, session) {
         cv_pct            = df$cv_pct,
         stringsAsFactors  = FALSE
       )
+
+      # Andreas 28/5/26 #7.1 + #7.2: append per-cattle_type rows so inventory
+      # compilers can see dairy / non-dairy / other contributions to each
+      # IPCC reporting category, not only the inventory total.
+      agg_ct <- .agg_results_by_level("cattle_type")
+      per_source_vars <- c("enteric_ch4_total", "manure_ch4_total",
+                            "direct_n2o_mm_total", "indirect_n2o_mm_total",
+                            "direct_n2o_prp_total", "indirect_n2o_prp_total")
+      ct_rows <- list()
+      for (ct in names(agg_ct)) {
+        res <- agg_ct[[ct]]
+        for (v in per_source_vars) {
+          if (!v %in% names(res)) next
+          x <- res[[v]]
+          if (all(x == 0)) next
+          m  <- mean(x)
+          lo <- stats::quantile(x, 0.025, names = FALSE)
+          hi <- stats::quantile(x, 0.975, names = FALSE)
+          ct_rows[[length(ct_rows) + 1L]] <- data.frame(
+            cattle_type       = ct,
+            emission_category = cat_map[[v]],
+            unit              = unit_map[[v]],
+            variable          = v,
+            mean              = m,
+            ci_lower          = lo,
+            ci_upper          = hi,
+            moe_pct           = if (m > 0) ((hi - lo) / 2) / m * 100 else NA_real_,
+            cv_pct            = if (m > 0) stats::sd(x) / m * 100 else NA_real_,
+            stringsAsFactors  = FALSE
+          )
+        }
+      }
+      if (length(ct_rows) > 0) out <- rbind(out, do.call(rbind, ct_rows))
+
       write.csv(out, file, row.names = FALSE)
     }
   )

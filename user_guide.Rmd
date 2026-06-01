@@ -113,7 +113,7 @@ Before opening the tool, assemble the following:
    - A percentage uncertainty (e.g. ±20% representing the half-width of a 95% confidence interval), or
    - Explicit lower and upper bounds.
 
-3. **Manure management fractions** (if running manure N\textsubscript{2}O): The percentage of manure allocated to each management system (pasture, solid storage, liquid, etc.).
+3. **Manure management fractions** (if running manure N\textsubscript{2}O): The percentage of manure allocated to each management system (pasture, solid storage, liquid, etc.). If you are uncertain about the allocation itself, the Manure_Management tab also has optional \texttt{lower\_fraction} / \texttt{upper\_fraction} / \texttt{distribution\_fraction} columns — fill them and the tool will sample each MMS within its range, renormalising every Monte Carlo iteration so the simplex (per-group rows sum to 100\%) is preserved. The sampled values surface as \texttt{fraction\_<mms>} in the sensitivity tornado so MMS allocation can show up as an influential driver. Leave blank to keep \texttt{fraction\_pct} deterministic (the default, matching the IPCC Inventory Software).
 
 If you do not yet have uncertainty estimates, see Section 2.4 for guidance on obtaining them.
 
@@ -170,9 +170,9 @@ N & Number of animals in this sub-category & head & \textit{n/a} & ±10\% & Norm
 BW & Average live body weight (also TAM = Typical Animal Mass) & kg & 275 & ±15\% & Normal & Eq. 10.3 / 10.6 \\
 MW & Mature (adult) body weight — used in NEg growth equation & kg & 300 & ±10\% & Normal & Eq. 10.6 \\
 WG & Average daily weight gain — set 0 for non-growing adults & kg/day & 0 & ±30\% & PERT & Eq. 10.6 \\
-Milk & Daily milk yield per \textit{lactating} animal (not sub-category average; tool multiplies by pct\_calving internally). Set 0 for non-dairy sub-categories. & kg/head/day & 4.0 & ±20\% & Normal & Eq. 10.8 \\
+Milk & Daily milk yield per \textit{lactating} animal (not sub-category average; tool multiplies by pct\_pregnant internally). Set 0 for non-dairy sub-categories. & kg/head/day & 4.0 & ±20\% & Normal & Eq. 10.8 \\
 Fat & Fat content of milk & \% & 4.0 & ±10\% & Normal & Eq. 10.8 \\
-pct\_calving & Fraction of females in this sub-category that give birth (calve) during the year, 0--1. & fraction & 0.60 & ±20\% & Beta & 2019 Refinement Vol.4 Ch.10 §10.5 \\
+pct\_pregnant & Fraction of females in this sub-category pregnant during the year, 0--1 — includes pregnant heifers that have not yet calved. Aliases \texttt{pct\_calving} and \texttt{pct\_lactating} are accepted on upload. & fraction & 0.60 & ±20\% & Beta & 2019 Refinement Vol.4 Ch.10 §10.5; Eq. 10.13 \\
 MilkPR & Protein content of milk — feeds the milk-N term in Eq. 10.33 (N retention rates for cattle, where the 6.38 milk-protein-to-N conversion is defined). The 2019 Refinement gives the relation \%MilkPR $= 1.9 + 0.4\times$\%Fat (so 4\% fat $\to$ 3.5\% protein); illustrative values are tabulated in Annex 10A.1 / 10A.2 / 10A.3. & \% & 3.3 & ±10\% & Normal & Eq. 10.33; Annex 10A.1–10A.3 \\
 \addlinespace[4pt]
 \multicolumn{7}{l}{\textbf{\textcolor{cgiargreen}{Energy coefficients}}} \\
@@ -212,7 +212,7 @@ Frac\_LeachPRP & Fraction of N lost through leaching from pasture deposition (us
 \end{longtable}
 \end{landscape}
 
-\textit{Note on asymmetric uncertainty}: Parameters flagged "asymmetric" use explicit lower/upper bounds from the IPCC tables rather than a symmetric ±\% formula. The template pre-fills these bounds automatically from the IPCC 2019 Refinement tables. \textit{Note on pct\_calving}: legacy column names \texttt{pct\_lactating} and \texttt{pct\_pregnant} are automatically renamed to \texttt{pct\_calving} on upload.
+\textit{Note on asymmetric uncertainty}: Parameters flagged "asymmetric" use explicit lower/upper bounds from the IPCC tables rather than a symmetric ±\% formula. The template pre-fills these bounds automatically from the IPCC 2019 Refinement tables. \textit{Note on \texttt{pct\_pregnant}}: this is the canonical name (matches IPCC Vol.4 Ch.10 Eq. 10.13's "% females pregnant" — includes pregnant heifers that have not yet calved). Legacy column names \texttt{pct\_lactating} and \texttt{pct\_calving} are automatically renamed to \texttt{pct\_pregnant} on upload, so existing templates continue to work without edits.
 
 ## Understanding the input structure
 
@@ -364,11 +364,15 @@ The QA/QC tab runs automated checks on your parameter values and flags any that 
 \end{tabular}
 \end{center}
 
+\textit{Scope of the benchmark-deviation check.} The deviation check is applied \textbf{only to BW (body weight)} — the one parameter for which the tool keeps a defensible continental IPCC table lookup (Annex Tables 10A.1 dairy / 10A.2 non-dairy / 10A.3 buffalo). Milk, MW, DE, Ym, Bo no longer fire benchmark warnings — the 2019 Refinement publishes these by production system rather than continent, so any single mid-point comparison was misleading. They are still pre-filled with IPCC defaults when missing (flagged \textit{Missing}), they just no longer raise \textit{Warn} purely for differing from a heuristic mid-point.
+
+\textit{Cross-sheet sub-category-key check.} If a Parameters-sheet \texttt{sub\_category} (e.g.\ \texttt{DINT\_heif}) has no exact match in the Manure_Management sheet but \textit{is} close to exactly one Manure_Management sub-category (e.g.\ \texttt{DINT\_heifer}, edit distance ≤ 2), the tool auto-matches them and emits a \textit{Warn} row labelled \texttt{sub\_category\_auto\_match} so you can verify the substitution. If multiple candidates match, the run is blocked with a clear error.
+
 ## What to do for each status
 
 \textbf{Pass}: No action needed. The value is within ±50\% of the IPCC default for the parameter (Vol.4 Ch.10 / Ch.11).
 
-\textbf{Warn}: The value deviates 50--200\% from the IPCC default. This may be legitimate (country-specific data, distinct production system, or a specific climate regime — e.g. EF\textsubscript{4}, EF\textsubscript{5} or EF\textsubscript{3,PRP} differ between wet and dry climates) or it may be a data-entry issue. Possible actions:
+\textbf{Warn}: The value deviates 50--200\% from the IPCC default \textbf{(BW only)}, or another non-fatal QA condition fired (e.g.\ asymmetric-bounds reminder for EF\textsubscript{3,PRP}/Frac_GASM_PRP/Frac_LEACH_PRP, sub-category auto-match). Possible actions:
 \begin{itemize}
   \item Confirm the value matches your country context
   \item If it is country-specific and well-justified, document the source in your inventory report
@@ -444,16 +448,6 @@ If you included a Parameter\_TimeSeries sheet in your upload, the tool can compu
   \item \textbf{Linear detrend} --- subtracts a fitted linear trend. Use when the trend is approximately linear and you want to keep more of the series structure.
   \item \textbf{Raw series} --- legacy behaviour. Use only if the input is already stationary (e.g. you uploaded already-differenced data).
 \end{itemize}
-
-\textbf{Subgroup scope.} You can restrict the matrix to a subset of parameters:
-
-\begin{itemize}
-  \item \textbf{All parameters} (default) --- correlations apply across the full parameter set.
-  \item \textbf{Population-related only} (N, BW, MW, WG) --- when only the population/animal-size variables are jointly uncertain.
-  \item \textbf{Intake / feed-quality only} (DE, CP, Ym, Cfi, Ca, …) --- when the diet-related parameters share an estimation source but population data are independent.
-\end{itemize}
-
-Parameters outside the chosen subgroup are sampled independently of everything else.
 
 ## Manual correlation matrix
 
@@ -575,15 +569,17 @@ After a successful run, five value boxes show:
 
 \begin{itemize}
   \item \textbf{Total CO\textsubscript{2}eq (t)}: The mean of the simulated total emission estimate, in tonnes CO\textsubscript{2}-equivalent
-  \item \textbf{Enteric CH\textsubscript{4} (t)}: Mean enteric fermentation contribution
-  \item \textbf{Manure CH\textsubscript{4} (t)}: Mean manure management CH\textsubscript{4} contribution
-  \item \textbf{Pasture N\textsubscript{2}O (t)}: Mean combined direct and indirect N\textsubscript{2}O from pasture deposition
-  \item \textbf{Total CV (\%)}: Coefficient of variation = SD / mean × 100. Note: the IPCC reporting metric is the \% uncertainty (MoE\%) shown in the IPCC Report tab.
+  \item \textbf{Enteric CH\textsubscript{4} (t)}: Mean enteric fermentation contribution \textit{plus} the source-specific 95\% margin of error inline (e.g.\ \texttt{2,608 t · ±12\%})
+  \item \textbf{Manure CH\textsubscript{4} (t)}: Mean manure CH\textsubscript{4} \textit{plus} its 95\% MoE
+  \item \textbf{Pasture N\textsubscript{2}O (t)}: Mean combined direct and indirect N\textsubscript{2}O from pasture deposition \textit{plus} its 95\% MoE
+  \item \textbf{Total 95\% MoE (\%)}: The headline uncertainty — half-width of the 95\% confidence interval as a percentage of the mean. This is the IPCC reporting convention (Vol.1 Ch.3 Table 3.3). Coefficient of variation (CV\%) is still computed and available in the by-system / by-category tables further down the page, but the headline bubble now leads with MoE to match the IPCC convention.
 \end{itemize}
+
+\textbf{Headline by cattle type.} Directly below the value boxes, a "Headline by cattle type" card appears whenever your inventory contains more than one \texttt{cattle\_type} on the Parameters sheet (typically \texttt{dairy} and \texttt{other}). It shows one row per cattle type with mean ± 95\% MoE for each of the four headline sources plus the total CO\textsubscript{2}eq. Single-cattle-type runs do not see this card.
 
 ## Uncertainty decomposition (AD vs EF)
 
-If "Run uncertainty decomposition (AD/EF/Combined)" was checked, the results include a breakdown:
+If "Run uncertainty decomposition (AD/EF/Combined)" was checked, the results include a bar chart with the 95\% MoE on the y-axis (IPCC reporting convention) under three configurations:
 \begin{itemize}
   \item \textbf{AD uncertainty}: Driven by activity data only (N, BW, Milk, WG) with all emission factors fixed at their means
   \item \textbf{EF uncertainty}: Driven by emission factors and coefficients only with activity data fixed at means
@@ -595,8 +591,8 @@ If AD uncertainty dominates, improving livestock population surveys would most e
 ## By-system and by-category breakdown
 
 \begin{itemize}
-  \item \textbf{By-system breakdown}: Mean, 95\% CI, MoE\%, and CV\% for each production system and emission source
-  \item \textbf{By reporting category (IPCC Table 3.3 layout)}: Same information grouped by IPCC source category (3.A.1, 3.A.2, 3.C.4, 3.C.5)
+  \item \textbf{By-system breakdown}: Mean, 95\% CI, MoE\%, and CV\% for each production system and emission source. The aggregation-level selector at the top of the section lets you switch between \texttt{cattle\_type} (default — dairy / other), \texttt{aggregation\_level} (production system) and \texttt{sub\_category}.
+  \item \textbf{By reporting category (IPCC Table 3.3 layout)}: Grouped by IPCC source category (3.A.1, 3.A.2, 3.C.4, 3.C.5). The leftmost column is always \texttt{Cattle type}, regardless of the aggregation-level selector. Each row carries mean values for the raw gas (\texttt{Mean (t CH\textsubscript{4})} \textit{or} \texttt{Mean (t N\textsubscript{2}O)} — only one is populated per source) \textit{plus} \texttt{Mean (t CO\textsubscript{2}eq)} for cross-source comparison, plus MoE\%, CV\%, and the 95\% CI bounds.
 \end{itemize}
 
 \newpage
@@ -635,15 +631,15 @@ Both are shown; they typically agree on the top-ranked parameters. If they disag
 
 ## IPCC Table 3.3
 
-The IPCC Report tab shows your results formatted as IPCC 2006 Vol. 1 Ch. 3 Table 3.3. The three uncertainty columns show:
+The IPCC Report tab shows your results formatted as IPCC 2006 Vol. 1 Ch. 3 Table 3.3. The three uncertainty columns in the downloadable Excel sheet are now labelled explicitly so there is no ambiguity:
 
 \begin{itemize}
-  \item \textbf{AD uncertainty (\%)}: \% uncertainty (MoE\%) from activity data alone
-  \item \textbf{EF uncertainty (\%)}: \% uncertainty (MoE\%) from emission factors alone
-  \item \textbf{Combined uncertainty (\%)}: Overall \% uncertainty (MoE\%)
+  \item \textbf{AD uncertainty (95\% MoE \%)}: \% uncertainty from activity data alone
+  \item \textbf{EF uncertainty (95\% MoE \%)}: \% uncertainty from emission factors alone
+  \item \textbf{Combined uncertainty (95\% MoE \%)}: Overall \% uncertainty
 \end{itemize}
 
-\textbf{Definition of \% uncertainty}: Following IPCC Table 3.3 conventions, all values are expressed as the half-width of the 95\% confidence interval divided by the mean, multiplied by 100.
+\textbf{Definition of \% uncertainty}: Following IPCC Table 3.3 conventions, all values are expressed as the half-width of the 95\% confidence interval divided by the mean, multiplied by 100 — i.e.\ \texttt{MoE\% = ((CI\_upper − CI\_lower) / 2) / mean × 100}. CV (\texttt{SD/mean}) is a different metric and is \textbf{not} what IPCC Annex 7 expects in this column.
 
 \textit{Example: a Combined uncertainty of 35\% means the 95\% CI is approximately ±35\% of the mean emission estimate.}
 

@@ -1,14 +1,14 @@
 # AUDIT_REPORT.md — Statistician's end-to-end audit
 
-Generated 2026-05-27 11:31 CEST by `_audit.R`.
+Generated 2026-06-01 13:25 CEST by `_audit.R`.
 
 ## Summary
 
-- Tests run: **55**
-- Pass: **55**
-- Fail: **0**
+- Tests run: **77**
+- Pass: **75**
+- Fail: **2**
 - Skip: **0**
-- Verdict: **AUDIT CLEAN**
+- Verdict: **2 FAILED** — see Bug Findings below
 
 ## Golden case
 
@@ -64,6 +64,10 @@ Synthetic single-sub-category dairy inventory with all 27 IPCC-aligned parameter
 | C12 | C | Decomposition: format_ipcc_table populates all rows that have non-zero emissions | ✅ PASS | n_rows=9, non-zero rows populated: TRUE |
 | C13 | C | Decomposition OFF: export_results_xlsx gracefully emits placeholder sheet | ✅ PASS |  |
 | C14 | C | Comparison-run (no correlations) produces valid result | ✅ PASS |  |
+| C15 | C | Iman-Conover: 2-param product, rho=+0.80 amplifies output SD (ratio >= 1.20) | ✅ PASS | sd_ratio = 1.328 (expected >= 1.20) |
+| C16 | C | Iman-Conover: 2-param product, rho=-0.50 dampens output SD (ratio <= 0.85) | ✅ PASS | sd_ratio = 0.716 (expected <= 0.85) |
+| C17 | C | Iman-Conover: 10-param product, ONE pair at -0.50 has small headline effect (|ratio - 1| <= 0.10) | ✅ PASS | sd_ratio = 0.959 (expected within 0.90-1.10) |
+| C18 | C | Empty Parameter_TimeSeries → compute_corr_from_population returns NULL (Andreas June 2026: catches the silent no-op the UI gate now prevents) | ✅ PASS |  |
 | D1 | D | Trend year_corr='full' completes and produces table with 5 rows | ✅ PASS |  |
 | D2 | D | Trend year_corr='partial' lag-1 Spearman for Ym ≈ 0.7 | ✅ PASS | realised lag-1=0.679 |
 | D3 | D | Trend year_corr='none' completes and produces table with 5 rows | ✅ PASS |  |
@@ -79,9 +83,27 @@ Synthetic single-sub-category dairy inventory with all 27 IPCC-aligned parameter
 | F6 | F | Source-aware deps: CH4-only excludes all manure-N2O / PRP params | ✅ PASS | CH4 needs Ym/UE/ASH/Bo; not the N2O EFs |
 | F7 | F | Gate allows CH4-only run when only N2O params (EF3_PRP/EF4/EF5) are blank | ✅ PASS | blocking cells = 0 |
 | F8 | F | Gate still blocks blank Ym when enteric_ch4 is selected | ✅ PASS | blocking cells = 1 |
-| G1 | G | export_results_xlsx produces non-empty file | ✅ PASS | 9588 bytes |
+| F9 | F | resolve_sub_category_matches: DINT_heif auto-matched to DINT_heifer with warn row | ✅ PASS | matched key=dairy||Intensive||DINT_heifer; warn row present=TRUE |
+| F10 | F | Ambiguous sub_category produces fail row and is NOT auto-remapped | ✅ PASS | no remap=TRUE, fail row present=TRUE |
+| F11 | F | Multi-MMS direct + indirect N2O headline matches hand-comp within 0.5% | ✅ PASS | direct: tool=21.32 vs ref=21.27 (err 0.0024); indirect: tool=7.12 vs ref=7.101 (err 0.0028) |
+| F12a | F | MMS fraction sampler: row sums == 1 post-renormalisation | ✅ PASS | max |rowSum-1| = 2.22e-16 |
+| F12b | F | Per-MMS fraction sampler: empirical mean within 2% of central value | ✅ PASS | pasture mean=0.5926 (bias 0.0123); solid_storage mean=0.4074 (bias 0.0184) |
+| F12c | F | fraction_<mms> sample columns appear in samples (visible to sensitivity) | ✅ PASS | fraction_pasture, fraction_solid_storage |
+| F12d | F | MMS-fraction uncertainty yields non-trivial CV on direct + indirect MM N2O | ✅ PASS | direct CV=0.1173, indirect CV=0.1173 |
+| F13a | F | BW benchmark_deviation still fires + cites IPCC Table 10A.1 for dairy | ✅ PASS | status=fail; msg snippet: Mean (1500) deviates 445% from IPCC Vol.4 Ch.10 Annex Table 10A.1 (dairy cows, continental |
+| F13b | F | Milk benchmark_deviation no longer fires (heuristic mid-point removed) | ✅ PASS | benchmark_deviation rows for Milk: 0 |
+| F13c | F | EF4 / EF5 no longer flagged asymmetric; EF3_PRP still IS | ✅ PASS | EF4 rows=0; EF5 rows=0; EF3_PRP rows=1 |
+| F14a | F | Per-source breakdown flextable splits by cattle_type | ✅ PASS | cattle_types in flextable: dairy, other |
+| F14b | F | Per-source breakdown flextable has raw t CH4, t N2O, t CO2eq columns | ✅ PASS | Mean (t CH4), Mean (t N2O), Mean (t CO2eq) |
+| F14c | F | Sum of per-cattle_type total_co2e equals inventory total | ✅ PASS | sum by ct = 2.89e+05; inventory = 2.89e+05 |
+| F15a | F | aggregate_sensitivity labels each parameter with its sub_category in (...) | ✅ PASS | dairy_cows present=TRUE; other_cows present=TRUE; sample labels: BW (dairy_cows); BW (other_cows) |
+| F15b | F | sens_group_of extracts sub_category from labelled parameter names | ✅ PASS | 'Ym (DINT_cow)' -> DINT_cow; 'MCF_solid_storage (DINT_heif)' -> DINT_heif; 'Ym' -> (ungrouped) |
+| F16 | F | AD-only CV equals CV(N) for every emission source (single-system) | ✅ PASS | CV(N)=10.212; CV per source=10.212, 10.212, 10.212, 10.212; max rel.dev.=0.000000 |
+| F17a | F | Sensitivity_SRC Excel sheet: populated, no backticks, sub-category in (...) | ❌ FAIL | nrow=1; sample params:  |
+| F17b | F | Sensitivity_PRCC Excel sheet: populated, no `..` mangling, sub-category in (...) | ❌ FAIL | nrow=1; sample params:  |
+| G1 | G | export_results_xlsx produces non-empty file | ✅ PASS | 9593 bytes |
 | G2 | G | CSV write of uncertainty frame produces non-empty file | ✅ PASS | 1874 bytes |
-| G3 | G | build_run_summary_docx produces Word file > 50 KB | ✅ PASS | 75488 bytes |
+| G3 | G | build_run_summary_docx produces Word file > 50 KB | ✅ PASS | 76512 bytes |
 
 ## Detailed numerics
 
@@ -124,6 +146,10 @@ Synthetic single-sub-category dairy inventory with all 27 IPCC-aligned parameter
 | C12 | TRUE | TRUE | PASS |
 | C13 | TRUE | TRUE | PASS |
 | C14 | TRUE | TRUE | PASS |
+| C15 | TRUE | TRUE | PASS |
+| C16 | TRUE | TRUE | PASS |
+| C17 | TRUE | TRUE | PASS |
+| C18 | TRUE | TRUE | PASS |
 | D1 | TRUE | TRUE | PASS |
 | D2 | 0.7 | 0.6791913 | PASS |
 | D3 | TRUE | TRUE | PASS |
@@ -139,9 +165,44 @@ Synthetic single-sub-category dairy inventory with all 27 IPCC-aligned parameter
 | F6 | TRUE | TRUE | PASS |
 | F7 | TRUE | TRUE | PASS |
 | F8 | TRUE | TRUE | PASS |
+| F9 | TRUE | TRUE | PASS |
+| F10 | TRUE | TRUE | PASS |
+| F11 | TRUE | TRUE | PASS |
+| F12a | TRUE | TRUE | PASS |
+| F12b | TRUE | TRUE | PASS |
+| F12c | TRUE | TRUE | PASS |
+| F12d | TRUE | TRUE | PASS |
+| F13a | TRUE | TRUE | PASS |
+| F13b | TRUE | TRUE | PASS |
+| F13c | TRUE | TRUE | PASS |
+| F14a | TRUE | TRUE | PASS |
+| F14b | TRUE | TRUE | PASS |
+| F14c | TRUE | TRUE | PASS |
+| F15a | TRUE | TRUE | PASS |
+| F15b | TRUE | TRUE | PASS |
+| F16 | TRUE | TRUE | PASS |
+| F17a | TRUE | FALSE | FAIL |
+| F17b | TRUE | FALSE | FAIL |
 | G1 | TRUE | TRUE | PASS |
 | G2 | TRUE | TRUE | PASS |
 | G3 | TRUE | TRUE | PASS |
+
+## Bug findings
+
+The following tests failed and warrant investigation. The audit task does NOT fix them; they are to be triaged into a follow-up task.
+
+### F17a — Sensitivity_SRC Excel sheet: populated, no backticks, sub-category in (...)
+
+- Expected: `TRUE`
+- Actual:   `FALSE`
+- Notes:    nrow=1; sample params: 
+
+### F17b — Sensitivity_PRCC Excel sheet: populated, no `..` mangling, sub-category in (...)
+
+- Expected: `TRUE`
+- Actual:   `FALSE`
+- Notes:    nrow=1; sample params: 
+
 
 ## Findings & recommendations
 

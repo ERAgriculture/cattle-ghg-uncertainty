@@ -308,18 +308,44 @@ sample_per_mms_param <- function(mms_rows, value_col, lower_col, upper_col,
 # Each entry carries a `source` field surfaced in the UI tooltip so users can
 # trace where the value came from.
 #
-# Note: 2026-05 statistical audit dropped the previous N <-> BW = 0.30 pair —
-# population size and per-animal weight have no defensible cross-country
-# correlation. The pair was Round-7 T4.3 expert judgement, not IPCC guidance.
+# Revisions:
+#   - 2026-05: dropped the previous N <-> BW = 0.30 pair (N is sampled as a
+#     scalar broadcast, so any N-X correlation is inert at MC time).
+#   - 2026-06 (Andreas livestock-science review): lowered BW-MW from 0.85 to
+#     0.50 (BW is typically a census average while MW is a breed reference
+#     constant, so they're not from the same survey); dropped Milk-pct_pregnant
+#     (sign is ambiguous: negative per-cow genetic correlation vs positive
+#     per-herd management correlation); dropped Cfi-Ca (independent inputs in
+#     IPCC Eq 10.3/10.4, not jointly estimated -- continues the May 2026
+#     trajectory that already lowered this from 0.60 -> 0.30); added two
+#     cross-group biological linkages Andreas flagged as real (Milk-BW and
+#     Milk-DE, both +0.30).
 PRESET_PAIRS <- list(
-  list(a = "BW",   b = "MW",          rho =  0.85,
-       source = "Growth-curve asymptote relation (Brody 1945); reused in IPCC Eq 10.3 net-energy parameterisation. High value assumes BW and MW come from the same livestock census; if sourced from independent surveys, ~0.5 is more typical."),
+  # 2026-06: lowered from 0.85 to 0.50. In practice MW is taken from a breed
+  # reference table (essentially constant per breed) while BW comes from the
+  # national livestock census (varies with diet/condition). The high 0.85 only
+  # holds if both come from the same animal-condition survey. 0.50 covers the
+  # typical mixed-source case; users with same-source data can override via
+  # the manual matrix mode.
+  list(a = "BW",   b = "MW",          rho =  0.50,
+       source = "Growth-curve relation (Brody 1945) reused in IPCC Eq 10.3. Lowered from 0.85 in June 2026 review: 0.85 assumes BW and MW come from the same survey; in practice MW is usually a breed-reference constant while BW is from the national livestock census, so the cross-source correlation is closer to 0.5."),
+  # 2026-06: kept at 0.40 but the source comment now flags the sign ambiguity
+  # so reviewers don't read it as settled.
   list(a = "BW",   b = "WG",          rho =  0.40,
-       source = "IPCC Eq 10.6 (NEg scales with BW^0.75 x WG^1.097); joint regression estimation correlation. Published range 0.30-0.50 (NRC 2001 energy-balance studies)."),
+       source = "IPCC Eq 10.6 (NEg scales with BW^0.75 x WG^1.097); joint regression estimation correlation, NRC 2001. Note the sign is system-dependent: heavy growing animals gain slower (negative), while well-fed adults are both heavier and gain more (positive). +0.40 reflects the well-fed-adult case typical of dairy/beef finishing systems; growing-young-stock systems may warrant a negative override."),
   list(a = "Milk", b = "Fat",         rho = -0.30,
        source = "Milk dilution effect, dairy genetics literature (Wilmink 1987; VandeHaar 1998). Within-herd literature -0.20 to -0.40; 0.30 is the midpoint."),
-  list(a = "Milk", b = "pct_calving", rho =  0.20,
-       source = "Herd-management intensity linkage (expert judgement). Conservative: Milk is per-lactating animal in the IPCC equation, so the link is weaker than at herd-aggregate level."),
+  # 2026-06 ADDED (Andreas review): Milk-BW. High-producing cows are larger;
+  # Holstein vs Jersey illustrate the linkage (~650 kg vs ~450 kg, ~30 vs ~20
+  # kg milk/day). This is one of the "real biological linkages cutting across
+  # the old population/intake groups" Andreas highlighted.
+  list(a = "Milk", b = "BW",          rho =  0.30,
+       source = "High-producing dairy breeds are physically larger (Holstein ~650 kg ~30 kg milk/d vs Jersey ~450 kg ~20 kg milk/d). NRC Dairy 2001; Stallings & Knowlton 2013. Added in June 2026 review at Andreas' suggestion as a real cross-group biological linkage."),
+  # 2026-06 ADDED (Andreas review): Milk-DE. Higher feed digestibility lifts
+  # nutrient availability and so milk yield, especially in concentrate-fed
+  # dairy systems. Andreas' second flagged linkage.
+  list(a = "Milk", b = "DE",          rho =  0.30,
+       source = "Higher digestibility → more nutrient availability → higher milk yield, especially in concentrate-fed dairy. NRC Dairy 2001 Ch.2. Added in June 2026 review at Andreas' suggestion as a real cross-group biological linkage."),
   list(a = "DE",   b = "CP",          rho =  0.50,
        source = "Forage-quality co-variation across feed types (NRC 2001; INRA; Feedipedia). High-quality forages have both high DE and high CP; cross-feedstuff correlations 0.4-0.7."),
   # 2026-05 audit re-review: strengthened from -0.40 to -0.50. IPCC 2019
@@ -328,15 +354,17 @@ PRESET_PAIRS <- list(
   # Change Biology; Hristov et al. 2013) show a stronger negative cross-
   # diet correlation than -0.40, closer to the equation slope.
   list(a = "DE",   b = "Ym",          rho = -0.50,
-       source = "IPCC 2019 Refinement Eq 10.21 (Ym decreases with DE) + meta-analysis (Niu et al. 2018 GCB; Hristov et al. 2013). Strengthened from -0.40 in May 2026 audit re-review."),
-  # 2026-05 audit re-review: lowered from 0.60 to 0.30. The previous 0.60
-  # value invoked an "estimation covariance" between intercept (Cfi) and
-  # slope (Ca) of a shared regression -- but Cfi and Ca are treated as
-  # independent inputs in IPCC Eq 10.3 / 10.4 (NEm = Cfi*BW^0.75 and
-  # NEa = Ca*NEm), not jointly fit. 0.30 captures the weak "both
-  # energy-equation constants" linkage without overstating.
-  list(a = "Cfi",  b = "Ca",          rho =  0.30,
-       source = "Weak linkage as both are energy-equation constants in IPCC Eq 10.3 / 10.4 (expert judgement). Lowered from 0.60 in May 2026 audit re-review: the original estimation-covariance justification does not apply because Cfi and Ca are independent inputs in the IPCC formula, not jointly estimated.")
+       source = "IPCC 2019 Refinement Eq 10.21 (Ym decreases with DE) + meta-analysis (Niu et al. 2018 GCB; Hristov et al. 2013). Strengthened from -0.40 in May 2026 audit re-review.")
+  # 2026-06: Milk-pct_pregnant was dropped. Sign is ambiguous: per-cow genetic
+  # studies show high milk yield <-> reduced fertility (negative); per-herd
+  # management gives the opposite (positive: well-run dairies have both high
+  # milk and high pregnancy rates). Without committing to one frame, the pair
+  # added noise rather than signal.
+  #
+  # 2026-06: Cfi-Ca was dropped. Cfi and Ca are independent inputs in IPCC Eq
+  # 10.3 / 10.4 (not jointly estimated), so the "both energy constants"
+  # linkage was a soft hand-wave. The May 2026 audit had already lowered this
+  # from 0.60 to 0.30 for the same reason; June 2026 continues to 0.
 )
 
 # Legacy alias table — accept Round-3 names so the helper finds pairs even if

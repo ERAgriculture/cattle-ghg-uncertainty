@@ -743,76 +743,13 @@ app_ui <- function() {
                 "If you have a multi-year ", tags$strong("Parameter_TimeSeries"),
                 " sheet in your upload, the tool can learn the relationships from your own data. ",
                 "If not, pick a preset or skip."),
-            # 2026-05 UX overhaul: AD radio gets a question-mark tooltip on its
-            # label and a per-choice help block immediately below so first-time
-            # users can scan the trade-offs without reading the page-level intro.
-            radioButtons("corr_mode",
-                         label = tagList(
-                           "Mode ",
-                           bslib::tooltip(
-                             span(icon("circle-question"),
-                                  style = "color:#2D6A4F; cursor:help; vertical-align:middle;"),
-                             "How should the tool decide which input parameters move together? If you have multi-year national data, the tool can learn the relationships from your own series. Otherwise pick a preset or skip.",
-                             placement = "right"
-                           )
-                         ),
-                         choices = c("No correlations"        = "none",
-                                     "From template (auto, time-series)" = "timeseries",
-                                     "Structural defaults (expert-elicited)" = "preset",
-                                     "Advanced — manual entry"= "manual"),
-                         selected = "none"),
-            div(class = "small text-muted",
-                style = "margin-top:-4px; margin-bottom:8px; font-size:0.82rem; line-height:1.45;",
-                tags$ul(style = "padding-left:18px; margin:0;",
-                  tags$li(tags$strong("No correlations (default)"),
-                          " — pick this if you have no information about how your parameters move together. ",
-                          "Conservative and defensible; matches the standard IPCC Approach 2 starting point."),
-                  tags$li(tags$strong("From template (auto, time-series)"),
-                          " — pick this when your upload contains a ", tags$code("Parameter_TimeSeries"),
-                          " sheet with ≥5 years of national data. ", tags$em("Recommended whenever you have the data.")),
-                  tags$li(tags$strong("Structural defaults (expert-elicited)"),
-                          " — pick this when you have no time series but want to capture well-known biological linkages ",
-                          "(e.g. body weight and mature weight). Middle ground between independence and a fully custom matrix."),
-                  tags$li(tags$strong("Advanced — manual entry"),
-                          " — pick this only if you have a correlation matrix from expert elicitation or a published study ",
-                          "and you're comfortable interpreting one.")
-                )),
-            # Group selector for time-series mode (Andreas: "correlate within all AD / population only / intake only")
+            # 2026-06 Andreas review: the corr_mode radio is now rendered
+            # server-side so that modes whose prerequisites are missing (TS
+            # sheet empty / no manual CSV uploaded) appear visibly disabled.
+            # Prevents the silent no-op that fooled Andreas' ZIM run.
+            uiOutput("corr_mode_ui"),
             conditionalPanel(
               condition = "input.corr_mode == 'timeseries'",
-              radioButtons("corr_group_scope",
-                           label = tagList(
-                             "Apply correlations within ",
-                             bslib::tooltip(
-                               span(icon("circle-question"),
-                                    style = "color:#2D6A4F; cursor:help; vertical-align:middle;"),
-                               "Did all the columns in your Parameter_TimeSeries sheet come from the same data source? If yes, leave on 'All parameters'. If your animal counts come from one source (e.g. the national livestock survey) and your feed-quality data from a different programme (e.g. a feed-analysis lab), pick the matching subset so the tool doesn't invent correlations between unrelated data streams.",
-                               placement = "right"
-                             )
-                           ),
-                           choices = c(
-                             "All parameters"                          = "all",
-                             "Population-related only (N, BW, MW, WG)" = "population",
-                             "Intake / feed-quality only (DE, CP, Ym, Cfi, Ca, …)" = "intake"
-                           ),
-                           selected = "all"),
-              div(class = "small text-muted",
-                  style = "margin-top:-4px; margin-bottom:8px; font-size:0.82rem; line-height:1.45;",
-                  tags$ul(style = "padding-left:18px; margin:0;",
-                    tags$li(tags$strong("All parameters"),
-                            " — every column in your ", tags$code("Parameter_TimeSeries"),
-                            " sheet came from the same data source, so it makes sense to let any pair be correlated. (Default — pick this if you're unsure.)"),
-                    tags$li(tags$strong("Population-related only"),
-                            " — your animal-count and body-weight columns come from a reliable source ",
-                            "(typically the national livestock survey run by the statistics agency or ministry of agriculture). ",
-                            "Your feed-quality columns come from a ", tags$em("different"),
-                            " source (e.g. a separate feed-analysis programme). ",
-                            "Pick this so only N, BW, MW and WG are jointly sampled; DE, CP and the coefficients are sampled independently."),
-                    tags$li(tags$strong("Intake / feed-quality only"),
-                            " — the opposite situation: your feed-analysis programme is the consistent source, ",
-                            "but the animal counts come from independent annual sources. ",
-                            "Pick this so only DE, CP, Ym, Cfi, Ca and friends are jointly sampled; N, BW, MW and WG are sampled independently.")
-                  )),
               # 2026-05 audit follow-up: detrending option. Most national livestock
               # series share a long-run growth trend; raw Pearson/Spearman of two
               # upward-trending series is mechanically high. First differences
@@ -962,7 +899,11 @@ app_ui <- function() {
               div(style = "font-size:0.82rem; color:#555; margin-top:4px;",
                   "These sliders only matter when you want to capture systematic measurement bias ",
                   tags$em("within"), " one literature. Cross-block correlation is always zero — ",
-                  "the three coefficient groups come from independent measurement programmes.")
+                  "the three coefficient groups come from independent measurement programmes."),
+              # 2026-06: warn when all three sliders are at 0 — selecting
+              # block-structured then leaving the sliders at zero is a silent
+              # no-op exactly like the AD-side empty-TS issue.
+              uiOutput("ef_rho_all_zero_warning")
             ),
             plotly::plotlyOutput("ef_corr_heatmap", height = "350px")
           )
@@ -1169,9 +1110,13 @@ app_ui <- function() {
                               value = textOutput("vb_pasture_n2o"),
                               p("Direct + indirect"),
                               showcase = icon("seedling"), theme = "primary"),
-            bslib::value_box(title = "Total CV (%)",
-                              value = textOutput("vb_cv"),
-                              p("Coefficient of variation"),
+            # Andreas 28/5/26 #6: the headline uncertainty bubble now shows
+            # 95% MoE (the IPCC reporting convention per Vol.1 Ch.3 Table 3.3)
+            # instead of CV. CV is still available alongside MoE in the
+            # by-system / by-category tables further down the page.
+            bslib::value_box(title = "Total 95% MoE (%)",
+                              value = textOutput("vb_moe_total"),
+                              p("± half-width of 95% CI / mean — IPCC convention"),
                               showcase = icon("percent"), theme = "warning")
           ),
           div(style = "padding: 0 12px 8px; color: #555; font-size: 0.85rem;",
@@ -1179,6 +1124,22 @@ app_ui <- function() {
               tags$em(" · 95% MoE: "), textOutput("vb_moe", inline = TRUE),
               tags$em(" · Total CH₄: "), textOutput("vb_ch4", inline = TRUE),
               tags$em(" · Total N₂O: "), textOutput("vb_n2o", inline = TRUE)),
+          # Andreas 28/5/26 #7.1: headline split by cattle_type so dairy and
+          # non-dairy contributions are visible without having to drill into
+          # the aggregation-level selector below. Only rendered when the
+          # inventory has more than one cattle_type.
+          conditionalPanel(
+            condition = "output.has_multi_cattle_type == true",
+            bslib::card(
+              bslib::card_header("Headline by cattle type (dairy / other)"),
+              bslib::card_body(
+                p(tags$em(style = "color:#555; font-size:0.85rem;",
+                  "One row per cattle_type from the Parameters sheet. ",
+                  "Per-source means are inventory-summed across iterations; ± is the 95 % margin of error (MoE).")),
+                DT::DTOutput("results_headline_by_cattle_type")
+              )
+            )
+          ),
           bslib::layout_columns(
             col_widths = c(6, 6),
             bslib::card(

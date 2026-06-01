@@ -26,7 +26,7 @@
 # HAND-COMPUTED GOLDEN-CASE REFERENCE  (verified by paper-and-pencil 2026-05-21)
 # -----------------------------------------------------------------------------
 # Inputs:
-#   N=100000, BW=300, MW=300, WG=0, Milk=5.0, Fat=4.0, pct_calving=0.50,
+#   N=100000, BW=300, MW=300, WG=0, Milk=5.0, Fat=4.0, pct_pregnant=0.50,
 #   DE=60, CP=12, hours=0, Tw=20, Cfi=0.386, Ca=0.17, C=0.80, Cp=0.10,
 #   Ym=6.5, Bo=0.13, ASH=0.08, UE=0.04, MilkPR=3.3,
 #   EF3_PRP=0.004, EF4=0.010, EF5=0.011,
@@ -84,7 +84,11 @@
 
 options(warn = 1)
 suppressMessages({
-  for (f in list.files("R", pattern = "\\.R$", full.names = TRUE)) source(f)
+  # Source library files only; skip entry-point scripts like R/_test_*.R that
+  # execute top-level diagnostics when loaded.
+  for (f in list.files("R", pattern = "\\.R$", full.names = TRUE)) {
+    if (!grepl("^_", basename(f))) source(f)
+  }
 })
 
 # Allow LaTeX-free run (we don't render anything from here)
@@ -147,7 +151,7 @@ make_golden_specs <- function(constant_dist = TRUE) {
     list(p = "WG",            v = 0,      t = "coefficient",    pct = 0),
     list(p = "Milk",          v = 5.0,    t = "coefficient",    pct = 0),
     list(p = "Fat",           v = 4.0,    t = "coefficient",    pct = 0),
-    list(p = "pct_calving",   v = 0.5,    t = "coefficient",    pct = 0),
+    list(p = "pct_pregnant",   v = 0.5,    t = "coefficient",    pct = 0),
     list(p = "DE",            v = 60,     t = "coefficient",    pct = 0),
     list(p = "CP",            v = 12,     t = "coefficient",    pct = 0),
     list(p = "hours",         v = 0,      t = "coefficient",    pct = 0),
@@ -250,13 +254,13 @@ section_A <- function() {
   cat("\n[A] Equation chain on golden case (n_iter=1, all distributions=constant)...\n")
   sd <- build_golden_system()
   sim <- run_inventory_simulation(sd, n_iter = 10, gwp = "AR5",
-                                   seed = 42, pct_calving = 1)
+                                   seed = 42, pct_pregnant = 1)
   # The deterministic per-head intermediates are not exposed by
   # run_inventory_simulation directly, so we also call ghg_emissions() once.
   golden_in <- list(
     cattle_pop = 100000, live_weight = 300, weight_gain = 0,
     mature_weight = 300, milk_yield = 5.0, milk_fat = 4.0,
-    pct_calving = 0.5, hours = 0, DE = 60, Cfi = 0.386, Ca = 0.17,
+    pct_pregnant = 0.5, hours = 0, DE = 60, Cfi = 0.386, Ca = 0.17,
     C_growth = 0.8, Cp = 0.10, Ym = 6.5, Bo = 0.13, ASH = 0.08,
     UE = 0.04, CP = 12, MilkPR = 3.3,
     EF3_PRP = 0.004, Frac_GASMS = 0.21, EF4 = 0.010, EF5 = 0.011,
@@ -269,9 +273,9 @@ section_A <- function() {
   NEG <- calc_neg(golden_in$live_weight, golden_in$weight_gain,
                    golden_in$C_growth, golden_in$mature_weight)
   NEL <- calc_nel(golden_in$milk_yield, golden_in$milk_fat,
-                   pct_calving = golden_in$pct_calving)
+                   pct_pregnant = golden_in$pct_pregnant)
   NEW <- calc_new(NEM, golden_in$hours)
-  NEP <- calc_nep(NEM, golden_in$Cp, pct_calving = golden_in$pct_calving)
+  NEP <- calc_nep(NEM, golden_in$Cp, pct_pregnant = golden_in$pct_pregnant)
   REM <- calc_rem(golden_in$DE)
   REG <- calc_reg(golden_in$DE)
   GE  <- calc_ge(NEM, NEA, NEL, NEP, NEW, NEG, REM, REG, golden_in$DE)
@@ -280,7 +284,7 @@ section_A <- function() {
   mch4_head <- calc_manure_ch4(VS, golden_in$Bo,
                                 c(pasture = 1.0), c(pasture = 0.015))
   Nex <- calc_n_excretion(GE, golden_in$CP, golden_in$milk_yield,
-                          golden_in$pct_calving, golden_in$weight_gain,
+                          golden_in$pct_pregnant, golden_in$weight_gain,
                           MilkPR = golden_in$MilkPR)
   d_mm  <- calc_direct_n2o_mm(Nex, c(pasture = 1.0),
                               c(pasture = 0.020))
@@ -419,11 +423,11 @@ section_C <- function() {
   # are then applied to this result.
   sd <- build_golden_system()
   sim_AR5 <- run_inventory_simulation(sd, n_iter = 10, gwp = "AR5",
-                                       seed = 42, pct_calving = 1)
+                                       seed = 42, pct_pregnant = 1)
   sim_AR4 <- run_inventory_simulation(sd, n_iter = 10, gwp = "AR4",
-                                       seed = 42, pct_calving = 1)
+                                       seed = 42, pct_pregnant = 1)
   sim_AR6 <- run_inventory_simulation(sd, n_iter = 10, gwp = "AR6",
-                                       seed = 42, pct_calving = 1)
+                                       seed = 42, pct_pregnant = 1)
   # All 10 rows are identical because every distribution is "constant" — take
   # the first row so apply_filter() returns scalars rather than length-10
   # vectors.
@@ -504,7 +508,7 @@ section_C <- function() {
   ok_preset <- tryCatch({
     sim_preset <- run_inventory_simulation(sd_preset, n_iter = 1000,
                                             gwp = "AR5", seed = 11,
-                                            pct_calving = 1)
+                                            pct_pregnant = 1)
     all(is.finite(sim_preset$inventory$total_co2e))
   }, error = function(e) FALSE,
      warning = function(w) FALSE)
@@ -565,13 +569,13 @@ section_C <- function() {
   sd_var[[1]]$param_specs$upper[sd_var[[1]]$param_specs$parameter %in% c("WG","hours")] <- 0
   set.seed(123)
   sim_comb <- run_inventory_simulation(sd_var, n_iter = 500, gwp = "AR5",
-                                        seed = 123, pct_calving = 1)
+                                        seed = 123, pct_pregnant = 1)
   sim_ad   <- run_inventory_simulation(lapply(sd_var, fix_params, fix_type = "coefficient"),
                                         n_iter = 500, gwp = "AR5",
-                                        seed = 123, pct_calving = 1)
+                                        seed = 123, pct_pregnant = 1)
   sim_ef   <- run_inventory_simulation(lapply(sd_var, fix_params, fix_type = "activity_data"),
                                         n_iter = 500, gwp = "AR5",
-                                        seed = 123, pct_calving = 1)
+                                        seed = 123, pct_pregnant = 1)
   unc_comb <- calc_all_uncertainty(sim_comb$inventory)
   unc_ad   <- calc_all_uncertainty(sim_ad$inventory)
   unc_ef   <- calc_all_uncertainty(sim_ef$inventory)
@@ -609,12 +613,109 @@ section_C <- function() {
   # a result that can sit alongside the main result without issue.
   set.seed(123)
   sim_nocorr <- run_inventory_simulation(sd_var, n_iter = 500, gwp = "AR5",
-                                          seed = 123, pct_calving = 1)
+                                          seed = 123, pct_pregnant = 1)
   comp_ok <- all(is.finite(sim_nocorr$inventory$total_co2e)) &&
               nrow(sim_nocorr$inventory) == 500
   check_bool("C14", "C",
              "Comparison-run (no correlations) produces valid result",
              comp_ok)
+
+  # C15 / C16 / C17 — correlation-effect regression guards (Andreas review,
+  # 2026-06). Codifies the qualitative behaviour demonstrated by
+  # R/_test_correlation_effect.R: the Iman-Conover sampler must (a) amplify
+  # output SD for strong +rho on a 2-parameter product, (b) dampen output SD
+  # for strong -rho, and (c) produce only a sub-10% headline shift when a
+  # single -0.50 pair is embedded in a 10-parameter product (the "ZIM-like
+  # sparse matrix" case that explains why time-series correlation modes don't
+  # visibly change the inventory total). If a future refactor accidentally
+  # makes correlations a no-op or makes them dominate the result, one of
+  # these three checks trips.
+  #
+  # Uses the unified_corr_matrix path directly, with a 2-parameter (C15/C16)
+  # or 10-parameter (C17) specs frame so the test isolates the sampler from
+  # the full IPCC equation chain.
+  build_corr_specs <- function(k = 2, cv = 0.30, mean = 100) {
+    nms <- paste0("X", seq_len(k))
+    do.call(rbind, lapply(seq_len(k), function(i) data.frame(
+      cattle_type       = "corrtest",
+      aggregation_level = "corrtest",
+      sub_category      = "corrtest",
+      parameter         = nms[i],
+      mean              = mean,
+      uncertainty_pct   = 1.96 * cv * 100,
+      lower             = mean * (1 - 1.96 * cv),
+      upper             = mean * (1 + 1.96 * cv),
+      distribution      = "normal",
+      param_type        = if (i == 1) "activity_data" else "coefficient",
+      stringsAsFactors  = FALSE)))
+  }
+  sd_ratio <- function(specs, rho_matrix, n_iter = 10000, seed = 2026) {
+    set.seed(seed)
+    s_ind <- generate_mc_samples(specs, n_iter = n_iter, seed = seed,
+                                  sampler = "iman_conover")
+    set.seed(seed)
+    s_cor <- generate_mc_samples(specs, n_iter = n_iter, seed = seed,
+                                  unified_corr_matrix = rho_matrix,
+                                  sampler = "iman_conover")
+    y_ind <- Reduce(`*`, s_ind[, specs$parameter])
+    y_cor <- Reduce(`*`, s_cor[, specs$parameter])
+    sd(y_cor) / sd(y_ind)
+  }
+  # C15: 2-param product, both CVs 30%, rho = +0.80 -> sd_ratio >= 1.20
+  specs2 <- build_corr_specs(k = 2, cv = 0.30)
+  m_pos  <- matrix(c(1, 0.80, 0.80, 1), 2, 2,
+                   dimnames = list(specs2$parameter, specs2$parameter))
+  ratio_C15 <- sd_ratio(specs2, m_pos)
+  check_bool("C15", "C",
+             "Iman-Conover: 2-param product, rho=+0.80 amplifies output SD (ratio >= 1.20)",
+             ratio_C15 >= 1.20,
+             notes = sprintf("sd_ratio = %.3f (expected >= 1.20)", ratio_C15))
+
+  # C16: 2-param product, both CVs 30%, rho = -0.50 -> sd_ratio <= 0.85
+  m_neg <- matrix(c(1, -0.50, -0.50, 1), 2, 2,
+                  dimnames = list(specs2$parameter, specs2$parameter))
+  ratio_C16 <- sd_ratio(specs2, m_neg)
+  check_bool("C16", "C",
+             "Iman-Conover: 2-param product, rho=-0.50 dampens output SD (ratio <= 0.85)",
+             ratio_C16 <= 0.85,
+             notes = sprintf("sd_ratio = %.3f (expected <= 0.85)", ratio_C16))
+
+  # C17: 10-param product, ONE pair at -0.50, rest independent -> sd_ratio
+  # within +/- 0.10 of 1.0. Codifies the "single non-zero pair in a many-
+  # parameter product has small headline effect" property -- the mechanism
+  # behind Andreas' observation that correlation modes are nearly invisible
+  # on his ZIM intensive-dairy run.
+  specs10 <- build_corr_specs(k = 10, cv = 0.15)
+  m_sparse <- diag(10)
+  dimnames(m_sparse) <- list(specs10$parameter, specs10$parameter)
+  m_sparse[1, 2] <- -0.50
+  m_sparse[2, 1] <- -0.50
+  ratio_C17 <- sd_ratio(specs10, m_sparse)
+  check_bool("C17", "C",
+             "Iman-Conover: 10-param product, ONE pair at -0.50 has small headline effect (|ratio - 1| <= 0.10)",
+             abs(ratio_C17 - 1.0) <= 0.10,
+             notes = sprintf("sd_ratio = %.3f (expected within 0.90-1.10)", ratio_C17))
+
+  # C18 — empty-TS-sheet silent no-op (Andreas June 2026 review).
+  # When parse_uploaded_template() returns corr_matrix = NULL (e.g. the
+  # Parameter_TimeSeries sheet is empty), the run-button observer must NOT
+  # quietly run with corr_matrix = NULL while input$corr_mode = "timeseries".
+  # The June 2026 UI fix greys out the radio AND adds a pre-run validation.
+  # This test codifies the matrix-side invariant: when compute_corr_from_population
+  # is fed a TS-style frame with all-NA data rows, it returns NULL (the signal
+  # the UI gate and pre-run check both rely on).
+  empty_ts <- data.frame(
+    year = 2017:2021,
+    N    = rep(NA_real_, 5),
+    BW   = rep(NA_real_, 5),
+    DE   = rep(NA_real_, 5),
+    Ym   = rep(NA_real_, 5)
+  )
+  empty_result <- tryCatch(compute_corr_from_population(empty_ts),
+                           error = function(e) NULL)
+  check_bool("C18", "C",
+             "Empty Parameter_TimeSeries → compute_corr_from_population returns NULL (Andreas June 2026: catches the silent no-op the UI gate now prevents)",
+             is.null(empty_result))
 }
 
 # =============================================================================
@@ -732,7 +833,7 @@ section_E <- function() {
       frac_gas_samples = NULL, frac_leach_samples = NULL)
   )
   sim <- run_inventory_simulation(sd, n_iter = 10, gwp = "AR5",
-                                   seed = 42, pct_calving = 1)
+                                   seed = 42, pct_pregnant = 1)
   inv <- sim$inventory
   per_sys_co2e <- sapply(sim$by_system, function(s) s$results$total_co2e[1])
   check_close("E1", "E",
@@ -801,7 +902,7 @@ section_F <- function() {
   sd_zero <- build_golden_system(zero_specs)
   sim_zero <- tryCatch(
     run_inventory_simulation(sd_zero, n_iter = 10, gwp = "AR5", seed = 1,
-                             pct_calving = 1),
+                             pct_pregnant = 1),
     error = function(e) NULL)
   if (is.null(sim_zero)) {
     record("F4", "F", "N=0 simulation completes without error", "OK", "FAIL", "FAIL")
@@ -858,6 +959,510 @@ section_F <- function() {
              "Gate still blocks blank Ym when enteric_ch4 is selected",
              na_block_ym == 1,
              notes = sprintf("blocking cells = %d", na_block_ym))
+
+  # F9 — sub_category-key auto-match (Andreas 28/5/26 follow-up). Mimic the
+  # ZIM template's Parameters="DINT_heif" vs Manure_Management="DINT_heifer"
+  # typo and assert resolve_sub_category_matches() returns the heifer MM key
+  # as the unambiguous auto-match and surfaces it as a `warn` row.
+  p_zim <- data.frame(
+    cattle_type       = rep("dairy", 2),
+    aggregation_level = rep("Intensive", 2),
+    sub_category      = c("DINT_cow", "DINT_heif"),
+    parameter         = c("N", "N"),
+    stringsAsFactors  = FALSE)
+  m_zim <- data.frame(
+    cattle_type       = rep("dairy", 4),
+    aggregation_level = rep("Intensive", 4),
+    sub_category      = c("DINT_cow", "DINT_cow", "DINT_heifer", "DINT_heifer"),
+    mms_type          = c("solid_storage", "pasture",
+                          "solid_storage", "pasture"),
+    fraction_pct      = c(77, 23, 50, 50),
+    stringsAsFactors  = FALSE)
+  sg <- resolve_sub_category_matches(p_zim, m_zim)
+  heif_key <- "dairy||Intensive||DINT_heif"
+  resolved_ok <- !is.null(sg$matched[heif_key]) &&
+                  sg$matched[heif_key] == "dairy||Intensive||DINT_heifer"
+  has_warn   <- any(sg$issues$status == "warn" &
+                    sg$issues$check  == "sub_category_auto_match")
+  check_bool("F9", "F",
+             "resolve_sub_category_matches: DINT_heif auto-matched to DINT_heifer with warn row",
+             resolved_ok && has_warn,
+             notes = sprintf("matched key=%s; warn row present=%s",
+                             sg$matched[heif_key], has_warn))
+
+  # F10 — sub_category-key ambiguity must produce a `fail` and NOT remap.
+  # Build a Parameters key that is distance <= 2 from two MM candidates.
+  p_amb <- data.frame(
+    cattle_type       = "beef",
+    aggregation_level = "Extensive",
+    sub_category      = "calf",
+    parameter         = "N",
+    stringsAsFactors  = FALSE)
+  m_amb <- data.frame(
+    cattle_type       = rep("beef", 2),
+    aggregation_level = rep("Extensive", 2),
+    sub_category      = c("calf1", "calf2"),  # both adist 1 from "calf"
+    mms_type          = c("solid_storage", "pasture"),
+    fraction_pct      = c(50, 50),
+    stringsAsFactors  = FALSE)
+  sg_amb <- resolve_sub_category_matches(p_amb, m_amb)
+  amb_key  <- "beef||Extensive||calf"
+  no_remap <- sg_amb$matched[amb_key] == amb_key
+  has_fail <- any(sg_amb$issues$status == "fail" &
+                  sg_amb$issues$check  == "sub_category_ambiguous")
+  check_bool("F10", "F",
+             "Ambiguous sub_category produces fail row and is NOT auto-remapped",
+             no_remap && has_fail,
+             notes = sprintf("no remap=%s, fail row present=%s",
+                             no_remap, has_fail))
+
+  # F11 — multi-MMS direct/indirect N2O hand-comp end-to-end. Set up a single
+  # sub-category with the Zim-style DINT_cow MMS allocation, run the engine
+  # at the parameter means (constant distributions, n_iter = 1) and assert
+  # the headline direct/indirect MM N2O numbers match the hand-computed
+  # reference within 0.5%. This is the assertion the prior audit was missing
+  # — it pins down the multi-MMS path that the calculation-bug report hinges
+  # on.
+  multi_specs <- make_golden_specs(constant_dist = TRUE)
+  multi_specs$sub_category <- "DINT_cow"
+  # ZIM DINT_cow inputs: BW=539.3, Milk=15.22, Fat=3.8, pct_pregnant=0.81,
+  # DE=73.52, CP=14.8, MilkPR=3.42, Cfi=0.322. Adjust the golden vector.
+  set_p <- function(df, p, v) { df$mean[df$parameter==p] <- v
+                                df$lower[df$parameter==p] <- v
+                                df$upper[df$parameter==p] <- v; df }
+  multi_specs <- set_p(multi_specs, "BW", 539.3)
+  multi_specs <- set_p(multi_specs, "MW", 539.0)
+  multi_specs <- set_p(multi_specs, "Milk", 15.22)
+  multi_specs <- set_p(multi_specs, "Fat", 3.8)
+  multi_specs <- set_p(multi_specs, "pct_pregnant", 0.81)
+  multi_specs <- set_p(multi_specs, "DE", 73.52)
+  multi_specs <- set_p(multi_specs, "CP", 14.8)
+  multi_specs <- set_p(multi_specs, "MilkPR", 3.42)
+  multi_specs <- set_p(multi_specs, "Cfi", 0.322)
+  multi_specs <- set_p(multi_specs, "N", 19545)
+
+  # ZIM DINT_cow MMS allocation: lagoon 5, liquid_slurry 4, solid_storage 77,
+  # dry_lot 8, daily_spread 5, anaerobic_digester 1, pasture 0.
+  mms_keys  <- c("lagoon", "liquid_slurry", "solid_storage", "dry_lot",
+                 "daily_spread", "anaerobic_digester", "pasture")
+  mms_fracs <- setNames(c(0.05, 0.04, 0.77, 0.08, 0.05, 0.01, 0.00), mms_keys)
+  mcf_vals  <- setNames(c(0.76, 0.73, 0.05, 0.02, 0.01, 0.0955, 0.0047),
+                        mms_keys)
+  ef3_vals  <- setNames(c(0.000, 0.005, 0.010, 0.020, 0.000, 0.0006, 0.006),
+                        mms_keys)
+  fg_vals   <- setNames(c(0.35, 0.48, 0.30, 0.30, 0.07, 0.23, 0.21), mms_keys)
+  fl_vals   <- setNames(c(0.00, 0.00, 0.02, 0.035, 0.00, 0.00, 0.24),
+                        mms_keys)
+
+  multi_sd <- list(`dairy||Intensive||DINT_cow` = list(
+    param_specs = multi_specs,
+    corr_matrix = NULL, ef_corr_matrix = NULL, unified_corr_matrix = NULL,
+    mms_fractions = mms_fracs, mcf_values = mcf_vals, ef3_values = ef3_vals,
+    frac_gas_values = fg_vals, frac_leach_values = fl_vals,
+    mcf_samples = NULL, ef3_samples = NULL,
+    frac_gas_samples = NULL, frac_leach_samples = NULL))
+
+  # n_iter >= 2 to avoid the documented rowSums-on-vector crash for a single-
+  # system run at n_iter=1. All distributions are constant so every iteration
+  # is identical and the realised mean equals the central value exactly.
+  sim_multi <- run_inventory_simulation(multi_sd, n_iter = 10, gwp = "AR5",
+                                         seed = 1, pct_pregnant = 0.81)
+  inv_m <- as.list(sim_multi$inventory[1, , drop = FALSE])
+
+  # Hand-comp Nex for DINT_cow at the means:
+  # NEm = 0.322 * 539.3^0.75 = 36.07; NEa = 0.17*36.07 = 6.13;
+  # NEl = 15.22*(1.47+0.4*3.8)*0.81 = 36.86; NEp = 0.10*0.81*36.07 = 2.92.
+  # REM = 1.123 - 4.092e-3*73.52 + 1.126e-5*73.52^2 - 25.4/73.52 ≈ 0.5385
+  # GE_num = (36.07+6.13+36.86+0+2.92)/0.5385 = 152.04; GE = 152.04/0.7352=206.80
+  # DMI = 206.80/18.45 = 11.21; N_intake = 11.21*0.148/6.25 = 0.2655 kg N/day
+  # N_retained_milk = 15.22*0.81*0.0342/6.38 = 0.0660 kg N/day
+  # Nex/day = 0.1995; Nex/yr = 72.81 kg N/head/yr
+  nex_ref <- 72.81
+  # MM direct (excl pasture):
+  # sum(fr*EF3) = 0.04*0.005 + 0.77*0.01 + 0.08*0.02 + 0.01*0.0006 = 0.00951
+  # direct/head = 72.81 * 0.00951 * 44/28 = 1.088 kg N2O/head/yr
+  # total t = 1.088 * 19545 / 1000 = 21.26 t N2O
+  direct_mm_ref <- nex_ref * 0.00951 * 44 / 28 * 19545 / 1000
+  # MM indirect volat: sum(fr*fg) = 0.05*0.35 + 0.04*0.48 + 0.77*0.30 +
+  #   0.08*0.30 + 0.05*0.07 + 0.01*0.23 = 0.2975
+  #   = 72.81*0.2975*0.01*44/28 = 0.3402 kg N2O/head/yr * 19545 / 1000 = 6.65 t
+  # MM indirect leach: sum(fr*fl) = 0.77*0.02 + 0.08*0.035 = 0.01820
+  #   = 72.81*0.01820*0.011*44/28 = 0.0229 kg N2O/head/yr * 19545 / 1000 = 0.45 t
+  indirect_mm_ref <- nex_ref * (0.2975 * 0.010 + 0.01820 * 0.011) *
+                      44 / 28 * 19545 / 1000
+
+  err_dir  <- abs(inv_m$total_direct_n2o_mm   - direct_mm_ref)   / direct_mm_ref
+  err_ind  <- abs(inv_m$total_indirect_n2o_mm - indirect_mm_ref) / indirect_mm_ref
+  check_bool("F11", "F",
+             "Multi-MMS direct + indirect N2O headline matches hand-comp within 0.5%",
+             err_dir < 0.005 && err_ind < 0.005,
+             notes = sprintf(
+               "direct: tool=%.4g vs ref=%.4g (err %.4f); indirect: tool=%.4g vs ref=%.4g (err %.4f)",
+               inv_m$total_direct_n2o_mm, direct_mm_ref, err_dir,
+               inv_m$total_indirect_n2o_mm, indirect_mm_ref, err_ind))
+
+  # F12 — MMS-allocation uncertainty (Andreas 28/5/26 #4). Sample the per-MMS
+  # fraction matrix on a 2-MMS system with wide bounds, run the simulation
+  # with all per-parameter MC vars held constant, and assert:
+  #   (a) row sums of the renormalised matrix == 1 to machine epsilon
+  #   (b) fraction_<mms> columns appear in samples$ for sensitivity
+  #   (c) mean of each fraction column is close to the user's central value
+  #       (renormalisation introduces <2% bias at these widths)
+  set.seed(12)
+  mr_mms <- data.frame(
+    mms_type              = c("pasture", "solid_storage"),
+    fraction_pct          = c(60, 40),
+    lower_fraction        = c(40, 25),
+    upper_fraction        = c(75, 60),
+    distribution_fraction = c("pert", "pert"),
+    stringsAsFactors      = FALSE)
+  mat <- sample_per_mms_param(mr_mms, "fraction_pct", "lower_fraction",
+                               "upper_fraction", "distribution_fraction",
+                               n_iter = 5000, default_dist = "pert")
+  mat[mat < 0] <- 0       # preserve matrix dim (pmax(0, mat) strips it)
+  mat <- mat / 100
+  rs  <- rowSums(mat)
+  rs[rs <= 0] <- 1
+  mat <- mat / rs
+  row_ok      <- isTRUE(all.equal(unname(rowSums(mat)), rep(1, nrow(mat)),
+                                   tolerance = 1e-10))
+  mean_p      <- mean(mat[, "pasture"])
+  mean_ss     <- mean(mat[, "solid_storage"])
+  bias_p      <- abs(mean_p - 0.60) / 0.60
+  bias_ss     <- abs(mean_ss - 0.40) / 0.40
+  check_bool("F12a", "F",
+             "MMS fraction sampler: row sums == 1 post-renormalisation",
+             row_ok,
+             notes = sprintf("max |rowSum-1| = %.2e",
+                             max(abs(rowSums(mat) - 1))))
+  check_bool("F12b", "F",
+             "Per-MMS fraction sampler: empirical mean within 2% of central value",
+             bias_p < 0.02 && bias_ss < 0.02,
+             notes = sprintf("pasture mean=%.4f (bias %.4f); solid_storage mean=%.4f (bias %.4f)",
+                             mean_p, bias_p, mean_ss, bias_ss))
+
+  # Now exercise the full propagation: build a system with the matrix
+  # attached and verify fraction_<mms> appears in samples + the engine
+  # returns a non-trivial CV on direct/indirect MM N2O.
+  specs_mms <- make_golden_specs(constant_dist = TRUE)
+  specs_mms$sub_category <- "DINT_cow"
+  set_p2 <- function(df, p, v) { df$mean[df$parameter==p] <- v
+                                 df$lower[df$parameter==p] <- v
+                                 df$upper[df$parameter==p] <- v; df }
+  specs_mms <- set_p2(specs_mms, "N", 10000)
+  # Use the 2-MMS allocation from above (renormalised).
+  mms_fracs2 <- setNames(c(0.60, 0.40), c("pasture", "solid_storage"))
+  mcf_vals2  <- setNames(c(0.015, 0.05), c("pasture", "solid_storage"))
+  ef3_vals2  <- setNames(c(0.006, 0.005), c("pasture", "solid_storage"))
+  sd_mms <- list(`dairy||golden||DINT_cow` = list(
+    param_specs = specs_mms,
+    corr_matrix = NULL, ef_corr_matrix = NULL, unified_corr_matrix = NULL,
+    mms_fractions = mms_fracs2, mcf_values = mcf_vals2,
+    ef3_values  = ef3_vals2,
+    frac_gas_values = NULL, frac_leach_values = NULL,
+    mcf_samples = NULL, ef3_samples = NULL,
+    frac_gas_samples = NULL, frac_leach_samples = NULL,
+    mms_fraction_samples = mat))
+  sim_mms <- run_inventory_simulation(sd_mms, n_iter = 5000, gwp = "AR5",
+                                       seed = 99, pct_pregnant = 0.5)
+  samp_one <- sim_mms$by_system[[1]]$samples
+  has_frac_cols <- all(c("fraction_pasture", "fraction_solid_storage") %in%
+                       names(samp_one))
+  d_cv <- sd(sim_mms$inventory$total_direct_n2o_mm) /
+          mean(sim_mms$inventory$total_direct_n2o_mm)
+  i_cv <- sd(sim_mms$inventory$total_indirect_n2o_mm) /
+          mean(sim_mms$inventory$total_indirect_n2o_mm)
+  check_bool("F12c", "F",
+             "fraction_<mms> sample columns appear in samples (visible to sensitivity)",
+             has_frac_cols,
+             notes = paste(grep("^fraction_", names(samp_one), value = TRUE),
+                           collapse = ", "))
+  check_bool("F12d", "F",
+             "MMS-fraction uncertainty yields non-trivial CV on direct + indirect MM N2O",
+             is.finite(d_cv) && d_cv > 0.01 && is.finite(i_cv) && i_cv > 0.01,
+             notes = sprintf("direct CV=%.4f, indirect CV=%.4f", d_cv, i_cv))
+
+  # F13 — QA/QC benchmark + asymmetric-bounds checks (Andreas 28/5/26 #3).
+  # Build a minimal Parameters frame and run_qaqc() with each scenario, then
+  # inspect the returned rows.
+
+  mk_qa_spec <- function(p, mean, lower, upper, cattle_type = "dairy",
+                          distribution = "normal") {
+    data.frame(
+      cattle_type       = cattle_type,
+      aggregation_level = "golden",
+      sub_category      = "DINT_cow",
+      parameter         = p,
+      mean              = mean,
+      lower             = lower,
+      upper             = upper,
+      distribution      = distribution,
+      param_type        = "coefficient",
+      stringsAsFactors  = FALSE)
+  }
+
+  # F13a — BW deviation still fires for an off-value
+  bw_spec <- mk_qa_spec("BW", 1500, 1400, 1600, cattle_type = "dairy")
+  qa_bw <- run_qaqc(bw_spec, region = "africa")
+  bw_rows <- qa_bw[qa_bw$parameter == "BW" &
+                    qa_bw$check == "benchmark_deviation", ]
+  bw_ok <- nrow(bw_rows) >= 1 &&
+            any(bw_rows$status %in% c("warn", "fail")) &&
+            grepl("10A\\.1", bw_rows$message[1])
+  check_bool("F13a", "F",
+             "BW benchmark_deviation still fires + cites IPCC Table 10A.1 for dairy",
+             bw_ok,
+             notes = sprintf("status=%s; msg snippet: %s",
+                             paste(bw_rows$status, collapse = ","),
+                             substr(bw_rows$message[1], 1, 90)))
+
+  # F13b — Milk deviation no longer fires
+  milk_spec <- mk_qa_spec("Milk", 0.5, 0.4, 0.6)
+  qa_milk <- run_qaqc(milk_spec, region = "africa")
+  milk_rows <- qa_milk[qa_milk$parameter == "Milk" &
+                        qa_milk$check == "benchmark_deviation", ]
+  check_bool("F13b", "F",
+             "Milk benchmark_deviation no longer fires (heuristic mid-point removed)",
+             nrow(milk_rows) == 0,
+             notes = sprintf("benchmark_deviation rows for Milk: %d",
+                             nrow(milk_rows)))
+
+  # F13c — EF4 asymmetric-bounds warning no longer fires on symmetric IPCC
+  # Table 11.3 range; EF5 similarly. EF3_PRP stays in ASYMMETRIC_PARAMS, so
+  # an actually-symmetric range there should still trigger warn.
+  ef4_spec <- mk_qa_spec("EF4", 0.010, 0.002, 0.018)
+  qa_ef4 <- run_qaqc(ef4_spec, region = "global")
+  ef4_rows <- qa_ef4[qa_ef4$parameter == "EF4" &
+                      qa_ef4$check == "asymmetric_bounds", ]
+  ef5_spec <- mk_qa_spec("EF5", 0.011, 0.0005, 0.020)
+  qa_ef5 <- run_qaqc(ef5_spec, region = "global")
+  ef5_rows <- qa_ef5[qa_ef5$parameter == "EF5" &
+                      qa_ef5$check == "asymmetric_bounds", ]
+  ef3p_spec <- mk_qa_spec("EF3_PRP", 0.004, 0.0035, 0.0045)
+  qa_ef3p <- run_qaqc(ef3p_spec, region = "global")
+  ef3p_rows <- qa_ef3p[qa_ef3p$parameter == "EF3_PRP" &
+                        qa_ef3p$check == "asymmetric_bounds", ]
+  check_bool("F13c", "F",
+             "EF4 / EF5 no longer flagged asymmetric; EF3_PRP still IS",
+             nrow(ef4_rows) == 0 && nrow(ef5_rows) == 0 &&
+               nrow(ef3p_rows) >= 1 &&
+               any(ef3p_rows$status == "warn"),
+             notes = sprintf("EF4 rows=%d; EF5 rows=%d; EF3_PRP rows=%d",
+                             nrow(ef4_rows), nrow(ef5_rows), nrow(ef3p_rows)))
+
+  # F14 — Per-(cattle_type × source) breakdown (Andreas 28/5/26 #7).
+  # Build a two-cattle-type inventory (dairy + other), run the simulation,
+  # and exercise the per-source breakdown flextable.
+  specs_dairy <- make_golden_specs(constant_dist = TRUE)
+  specs_dairy$cattle_type <- "dairy"
+  specs_dairy$aggregation_level <- "golden"
+  specs_dairy$sub_category <- "dairy_cows"
+  specs_other <- make_golden_specs(constant_dist = TRUE)
+  specs_other$cattle_type <- "other"
+  specs_other$aggregation_level <- "golden"
+  specs_other$sub_category <- "other_cows"
+  # Halve N for the "other" group so the two cattle types contribute
+  # different headline totals.
+  specs_other$mean[specs_other$parameter == "N"]  <- 50000
+  specs_other$lower[specs_other$parameter == "N"] <- 50000
+  specs_other$upper[specs_other$parameter == "N"] <- 50000
+
+  mms_fracs2 <- setNames(c(0.70, 0.30), c("pasture", "solid_storage"))
+  mcf_vals2  <- setNames(c(0.015, 0.05), c("pasture", "solid_storage"))
+  ef3_vals2  <- setNames(c(0.020, 0.005), c("pasture", "solid_storage"))
+  build_sys <- function(specs) list(
+    param_specs = specs,
+    corr_matrix = NULL, ef_corr_matrix = NULL, unified_corr_matrix = NULL,
+    mms_fractions = mms_fracs2, mcf_values = mcf_vals2, ef3_values = ef3_vals2,
+    frac_gas_values = NULL, frac_leach_values = NULL,
+    mcf_samples = NULL, ef3_samples = NULL,
+    frac_gas_samples = NULL, frac_leach_samples = NULL,
+    mms_fraction_samples = NULL)
+  sd_2ct <- list(
+    `dairy||golden||dairy_cows` = build_sys(specs_dairy),
+    `other||golden||other_cows` = build_sys(specs_other))
+  sim_2ct <- run_inventory_simulation(sd_2ct, n_iter = 10, gwp = "AR5",
+                                       seed = 7, pct_pregnant = 0.5)
+
+  ft <- .per_source_breakdown_flextable(sim_2ct, "AR5")
+  ft_df <- if (!is.null(ft)) ft$body$dataset else NULL
+  cattle_types_in_ft <- if (!is.null(ft_df) && "Cattle type" %in% names(ft_df))
+                          unique(ft_df[["Cattle type"]]) else character()
+  has_both <- all(c("dairy", "other") %in% cattle_types_in_ft)
+  has_raw_cols <- !is.null(ft_df) &&
+                   "Mean (t CH4)" %in% names(ft_df) &&
+                   "Mean (t N2O)" %in% names(ft_df) &&
+                   "Mean (t CO2eq)" %in% names(ft_df)
+  check_bool("F14a", "F",
+             "Per-source breakdown flextable splits by cattle_type",
+             has_both,
+             notes = sprintf("cattle_types in flextable: %s",
+                             paste(cattle_types_in_ft, collapse = ", ")))
+  check_bool("F14b", "F",
+             "Per-source breakdown flextable has raw t CH4, t N2O, t CO2eq columns",
+             has_raw_cols,
+             notes = if (!is.null(ft_df))
+                       paste(intersect(c("Mean (t CH4)", "Mean (t N2O)",
+                                          "Mean (t CO2eq)"), names(ft_df)),
+                              collapse = ", ") else "no flextable")
+
+  # F14c — per-cattle_type CO2eq sums to (approximately) the inventory total
+  # under constant distributions (every iteration identical).
+  inv1 <- as.list(sim_2ct$inventory[1, , drop = FALSE])
+  by_ct <- list()
+  for (sn in names(sim_2ct$by_system)) {
+    ct <- strsplit(sn, "\\|\\|", fixed = FALSE)[[1]][1]
+    co2e <- sim_2ct$by_system[[sn]]$results$total_co2e[1]
+    by_ct[[ct]] <- (by_ct[[ct]] %||% 0) + co2e
+  }
+  sum_by_ct <- sum(unlist(by_ct))
+  err_total <- abs(sum_by_ct - inv1$total_co2e) /
+                max(abs(inv1$total_co2e), 1e-6)
+  check_bool("F14c", "F",
+             "Sum of per-cattle_type total_co2e equals inventory total",
+             err_total < 1e-9,
+             notes = sprintf("sum by ct = %.4g; inventory = %.4g",
+                             sum_by_ct, inv1$total_co2e))
+
+  # F15 — Sensitivity labels carry sub-category (Andreas 28/5/26 #8).
+  # Reuse the two-cattle-type setup built above (sim_2ct). Need a stochastic
+  # input for sensitivity_analysis to compute non-NA SRC, so build a second
+  # variant with one parameter varying (BW) per sub-category.
+  specs_dairy_v <- specs_dairy
+  bw_idx <- which(specs_dairy_v$parameter == "BW")
+  specs_dairy_v$mean[bw_idx]   <- 300
+  specs_dairy_v$lower[bw_idx]  <- 200
+  specs_dairy_v$upper[bw_idx]  <- 400
+  specs_dairy_v$distribution[bw_idx] <- "normal"
+  specs_other_v <- specs_other
+  bw_idx2 <- which(specs_other_v$parameter == "BW")
+  specs_other_v$mean[bw_idx2]  <- 350
+  specs_other_v$lower[bw_idx2] <- 250
+  specs_other_v$upper[bw_idx2] <- 450
+  specs_other_v$distribution[bw_idx2] <- "normal"
+
+  sd_sens <- list(
+    `dairy||golden||dairy_cows` = build_sys(specs_dairy_v),
+    `other||golden||other_cows` = build_sys(specs_other_v))
+  sim_sens <- run_inventory_simulation(sd_sens, n_iter = 500, gwp = "AR5",
+                                        seed = 11, pct_pregnant = 0.5)
+
+  agg_sens <- aggregate_sensitivity(sim_sens$by_system,
+                                     sim_sens$inventory$total_co2e,
+                                     method = "src")
+  param_labels <- if (!is.null(agg_sens$src)) agg_sens$src$parameter else character()
+  has_dairy_cows <- any(grepl("\\(dairy_cows\\)", param_labels))
+  has_other_cows <- any(grepl("\\(other_cows\\)", param_labels))
+  check_bool("F15a", "F",
+             "aggregate_sensitivity labels each parameter with its sub_category in (...)",
+             has_dairy_cows && has_other_cows,
+             notes = sprintf("dairy_cows present=%s; other_cows present=%s; sample labels: %s",
+                             has_dairy_cows, has_other_cows,
+                             paste(head(param_labels, 4), collapse = "; ")))
+
+  # F15b — sens_group_of correctly extracts the sub_category suffix.
+  g1 <- sens_group_of("Ym (DINT_cow)")
+  g2 <- sens_group_of("MCF_solid_storage (DINT_heif)")
+  g3 <- sens_group_of("Ym")
+  check_bool("F15b", "F",
+             "sens_group_of extracts sub_category from labelled parameter names",
+             g1 == "DINT_cow" && g2 == "DINT_heif" && g3 == "(ungrouped)",
+             notes = sprintf("'%s' -> %s; '%s' -> %s; '%s' -> %s",
+                             "Ym (DINT_cow)", g1,
+                             "MCF_solid_storage (DINT_heif)", g2,
+                             "Ym", g3))
+
+  # F16 — AD-only decomposition invariant (Andreas 28/5/26 #9).
+  # With all coefficients frozen AND per-MMS sample matrices nulled, the
+  # only source of iteration-to-iteration variance is N. For a single-
+  # system inventory, emission_source = N × const, so
+  # CV(emission_source) == CV(N) for EVERY source — that's the invariant
+  # Andreas's complaint hinges on. Test it by replicating the observer's
+  # fix_params AD-only path on the golden system.
+  specs_ad <- make_golden_specs(constant_dist = FALSE)
+  n_id <- which(specs_ad$parameter == "N")
+  specs_ad$lower[n_id] <- 80000
+  specs_ad$upper[n_id] <- 120000
+  specs_ad$mean[n_id]  <- 100000
+  specs_ad$distribution[n_id] <- "normal"
+  other_rows <- setdiff(seq_len(nrow(specs_ad)), n_id)
+  specs_ad$lower[other_rows] <- specs_ad$mean[other_rows]
+  specs_ad$upper[other_rows] <- specs_ad$mean[other_rows]
+  specs_ad$distribution[other_rows] <- "constant"
+
+  sd_ad <- build_golden_system(specs_ad)
+  # Mirror the observer's AD-only null-out of per-MMS sample matrices.
+  sd_ad[[1]]$mcf_samples <- NULL
+  sd_ad[[1]]$ef3_samples <- NULL
+  sd_ad[[1]]$frac_gas_samples   <- NULL
+  sd_ad[[1]]$frac_leach_samples <- NULL
+  sd_ad[[1]]$mms_fraction_samples <- NULL
+
+  sim_ad <- run_inventory_simulation(sd_ad, n_iter = 5000, gwp = "AR5",
+                                      seed = 21, pct_pregnant = 0.5)
+  inv_ad <- sim_ad$inventory
+  cv <- function(x) if (mean(x) > 0) stats::sd(x) / mean(x) * 100 else NA_real_
+  cv_N <- cv(sim_ad$by_system[[1]]$samples$N)
+  cv_sources <- c(
+    cv(inv_ad$total_enteric_ch4),
+    cv(inv_ad$total_manure_ch4),
+    cv(inv_ad$total_direct_n2o_prp),
+    cv(inv_ad$total_indirect_n2o_prp))
+  cv_sources <- cv_sources[is.finite(cv_sources) & cv_sources > 0]
+  cv_max_dev <- if (length(cv_sources) > 0)
+                  max(abs(cv_sources - cv_N)) / cv_N else NA_real_
+  check_bool("F16", "F",
+             "AD-only CV equals CV(N) for every emission source (single-system)",
+             is.finite(cv_max_dev) && cv_max_dev < 0.001,
+             notes = sprintf("CV(N)=%.3f; CV per source=%s; max rel.dev.=%.6f",
+                             cv_N,
+                             paste(formatC(cv_sources, digits = 3, format = "f"),
+                                   collapse = ", "),
+                             cv_max_dev))
+
+  # F17 — Excel sensitivity sheets populate AND parameter names are clean
+  # (no backticks from lm formula escaping, no R name-munging dots).
+  # Andreas 28/5/26 #10 follow-up. Reuse the F15 setup (sd_sens with BW
+  # varying in both sub-categories) so the sensitivity actually has signal.
+  sim_f17 <- run_inventory_simulation(sd_sens, n_iter = 500, gwp = "AR5",
+                                       seed = 33, pct_pregnant = 0.5)
+  sens_f17 <- aggregate_sensitivity(sim_f17$by_system,
+                                     sim_f17$inventory$total_co2e,
+                                     method = "both")
+  unc_f17 <- calc_all_uncertainty(sim_f17$inventory)
+  ipcc_f17 <- format_ipcc_table(list(combined = unc_f17, ad_only = unc_f17,
+                                       ef_only = unc_f17))
+  xpath <- tempfile(fileext = ".xlsx")
+  export_results_xlsx(sim_f17$inventory, unc_f17, sens_f17, ipcc_f17, xpath,
+                       settings = list(n_iter = 500L, gwp_version = "AR5",
+                                        emission_sources = character(0)))
+
+  src_xls  <- as.data.frame(readxl::read_excel(xpath, sheet = "Sensitivity_SRC"))
+  prcc_xls <- as.data.frame(readxl::read_excel(xpath, sheet = "Sensitivity_PRCC"))
+  file.remove(xpath)
+
+  # SRC sheet should have ≥ 1 row, the "parameter" column, AND no backticks.
+  src_populated <- "parameter" %in% names(src_xls) && nrow(src_xls) > 0
+  src_no_ticks  <- src_populated && !any(grepl("`", src_xls$parameter, fixed = TRUE))
+  src_has_paren <- src_populated && any(grepl("\\(", src_xls$parameter))
+  check_bool("F17a", "F",
+             "Sensitivity_SRC Excel sheet: populated, no backticks, sub-category in (...)",
+             src_populated && src_no_ticks && src_has_paren,
+             notes = sprintf("nrow=%d; sample params: %s",
+                             nrow(src_xls),
+                             paste(head(src_xls$parameter, 3), collapse = "; ")))
+
+  # PRCC sheet: same checks, and no `..` double-dot name-munging artefact.
+  prcc_populated <- "parameter" %in% names(prcc_xls) && nrow(prcc_xls) > 0
+  prcc_no_dots <- if (prcc_populated)
+                    !any(grepl("\\.\\.", prcc_xls$parameter)) else NA
+  prcc_has_paren <- prcc_populated && any(grepl("\\(", prcc_xls$parameter))
+  check_bool("F17b", "F",
+             "Sensitivity_PRCC Excel sheet: populated, no `..` mangling, sub-category in (...)",
+             prcc_populated && isTRUE(prcc_no_dots) && prcc_has_paren,
+             notes = sprintf("nrow=%d; sample params: %s",
+                             nrow(prcc_xls),
+                             paste(head(prcc_xls$parameter, 3), collapse = "; ")))
 }
 
 # =============================================================================
@@ -873,7 +1478,7 @@ section_G <- function() {
   sd_var[[1]]$param_specs$upper[sd_var[[1]]$param_specs$parameter %in%
                                   c("WG","hours")] <- 0
   sim <- run_inventory_simulation(sd_var, n_iter = 500, gwp = "AR5",
-                                   seed = 123, pct_calving = 1)
+                                   seed = 123, pct_pregnant = 1)
   unc <- calc_all_uncertainty(sim$inventory)
   ipcc <- format_ipcc_table(list(combined = unc, ad_only = unc, ef_only = unc))
 
