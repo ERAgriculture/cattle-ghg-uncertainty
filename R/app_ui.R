@@ -59,32 +59,25 @@ app_ui <- function() {
           p("Developed by CGIAR Alliance of Bioversity International and CIAT | Funded by Global Methane Hub",
             style = "font-size: 0.9rem; opacity: 0.7;")
         ),
-        # B3: logo bar — place logo files in www/ and replace img(src=...) tags
+        # Logo bar: developer (Alliance Bioversity & CIAT) and funder (GMH).
+        # Each img has an onerror fallback that swaps in the institution name
+        # as text if the PNG is missing from www/.
         div(
-          style = "display:flex; align-items:center; justify-content:center; gap:32px;
+          style = "display:flex; align-items:center; justify-content:center; gap:48px;
                    background:#FFFFFF; border: 1px solid #E0DDD5; border-top: none;
-                   border-radius: 0 0 16px 16px; padding: 14px 24px; margin-bottom: 32px;",
-          # Alliance Bioversity-CIAT logo — replace src when file is in www/
+                   border-radius: 0 0 16px 16px; padding: 18px 24px; margin-bottom: 32px;",
           tags$img(src = "alliance_logo.png",
                    alt = "Alliance of Bioversity International and CIAT",
-                   style = "height:40px; max-width:160px; object-fit:contain;",
+                   style = "height:56px; max-width:200px; object-fit:contain;",
                    onerror = "this.style.display='none'; this.nextSibling.style.display='inline-block';"),
-          tags$span("Alliance Bioversity-CIAT",
-                    style = "display:none; font-size:0.85rem; color:#444; font-weight:600;"),
-          # CGIAR logo — replace src when file is in www/
-          tags$img(src = "cgiar_logo.png",
-                   alt = "CGIAR",
-                   style = "height:40px; max-width:120px; object-fit:contain;",
-                   onerror = "this.style.display='none'; this.nextSibling.style.display='inline-block';"),
-          tags$span("CGIAR",
-                    style = "display:none; font-size:0.85rem; color:#444; font-weight:600;"),
-          # Funder logo placeholder — to be confirmed at June 2026 inception meeting
+          tags$span("Alliance Bioversity & CIAT",
+                    style = "display:none; font-size:0.9rem; color:#444; font-weight:600;"),
           tags$img(src = "gmh_logo.png",
                    alt = "Global Methane Hub",
-                   style = "height:40px; max-width:160px; object-fit:contain;",
+                   style = "height:56px; max-width:200px; object-fit:contain;",
                    onerror = "this.style.display='none'; this.nextSibling.style.display='inline-block';"),
           tags$span("Global Methane Hub",
-                    style = "display:none; font-size:0.85rem; color:#444; font-weight:600;")
+                    style = "display:none; font-size:0.9rem; color:#444; font-weight:600;")
         ),
 
         # What this tool does

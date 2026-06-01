@@ -47,6 +47,17 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 \vspace{1cm}
 
 \begin{center}
+\IfFileExists{www/alliance_logo.png}{%
+  \includegraphics[height=1.6cm]{www/alliance_logo.png}\hspace{1.8cm}%
+  \IfFileExists{www/gmh_logo.png}{%
+    \includegraphics[height=1.6cm]{www/gmh_logo.png}%
+  }{}%
+  \par\vspace{12pt}%
+}{%
+  \IfFileExists{www/gmh_logo.png}{%
+    \includegraphics[height=1.6cm]{www/gmh_logo.png}\par\vspace{12pt}%
+  }{}%
+}%
 \textcolor{cgiargreen}{\rule{14cm}{1.5pt}}\\[6pt]
 \textcolor{cgiargreen}{\large\textbf{Version 1.0}}\\[4pt]
 \textcolor{darkgrey}{Developed under the Global Methane Hub initiative}\\[4pt]
