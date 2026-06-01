@@ -12,9 +12,9 @@ writeData(wb, "Instructions", data.frame(
     "1. Fill in one row per comment in the 'Feedback' sheet.",
     "2. Use the Type dropdown to classify your comment:",
     "   Bug          — the tool crashes, produces wrong numbers, or behaves unexpectedly",
-    "   Correction   — something is factually incorrect (method, equation, reference)",
+    "   Correction   — something is factually incorrect (method, equation, reference) or not IPCC-compliant",
     "   Enhancement  — a feature that would make the tool more useful",
-    "   General      — a general comment or question",
+    "   General      — a general comment or question, or feedback from user experience such as a challenge that you were later able to overcome",
     "3. Use Severity to indicate urgency (Critical = must fix before release).",
     "4. In 'Suggested fix', note the expected behaviour or your proposed solution.",
     "5. Save your completed file and email it to lolita.muller26@gmail.com.",
@@ -76,24 +76,29 @@ setColWidths(wb, "Feedback", cols = 1:9,
 freezePane(wb, "Feedback", firstRow = TRUE)
 
 # ---- Reference sheet (Type + Severity definitions) ----
+# Andreas review: column order is Type | Type_def | Severity | Sev_def
+# so the first two columns are the category (Type + its definition) and
+# the last two are the severity (Severity + its definition), instead of
+# interleaving them.
 addWorksheet(wb, "Type_definitions")
 writeData(wb, "Type_definitions", data.frame(
   Type      = c("Bug", "Correction", "Enhancement", "General"),
-  Severity  = c("Critical", "High", "Medium", "Low"),
   Type_def  = c(
     "The tool crashes, produces wrong output, or behaves unexpectedly",
     "Something is factually incorrect — wrong equation, wrong IPCC reference, wrong number",
     "A feature that would make the tool more useful or easier to use",
     "A general observation, question, or comment"
   ),
+  Severity  = c("Critical", "High", "Medium", "Low"),
   Sev_def   = c(
     "Must fix before any external release — calculation error or crash",
     "Should fix before external release — significant usability or accuracy issue",
     "Can fix in next iteration — minor issue that does not block use",
     "Nice to have — cosmetic or very minor improvement"
-  )
+  ),
+  check.names = FALSE
 ))
-setColWidths(wb, "Type_definitions", cols = 1:4, widths = c(16, 14, 55, 55))
+setColWidths(wb, "Type_definitions", cols = 1:4, widths = c(16, 55, 14, 55))
 addStyle(wb, "Type_definitions", createStyle(wrapText = TRUE), rows = 1:5, cols = 1:4, gridExpand = TRUE)
 addStyle(wb, "Type_definitions", createStyle(textDecoration = "bold", fgFill = "#D8F3DC"),
          rows = 1, cols = 1:4, gridExpand = TRUE)
