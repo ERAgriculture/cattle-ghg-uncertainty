@@ -1674,34 +1674,27 @@ section_G <- function() {
              ok_d,
              notes = if (ok_d) sprintf("%d bytes", file.info(dpath)$size) else "")
 
-  # G4 — IPCC reporting context §14: CRT category map present (Andreas review
-  # round 2). Unzip the docx, read document.xml, grep for the CRT categories.
-  doc_xml <- ""
-  if (ok_d) {
-    tmpd <- tempfile()
-    dir.create(tmpd, showWarnings = FALSE)
-    tryCatch({
-      utils::unzip(dpath, files = "word/document.xml", exdir = tmpd)
-      doc_xml <- paste(readLines(file.path(tmpd, "word", "document.xml"),
-                                   warn = FALSE, encoding = "UTF-8"),
-                        collapse = "\n")
-    }, error = function(e) {})
-  }
-  has_crt_a <- grepl("3\\.A Enteric fermentation", doc_xml)
-  has_crt_b <- grepl("3\\.B Manure management", doc_xml)
-  has_crt_d <- grepl("3\\.D Agricultural soils", doc_xml)
+  # G4 — methodology.Rmd Reporting section present (Andreas review round 2):
+  # CRT category map covering 3.A, 3.B, 3.D.
+  meth_txt <- if (file.exists("methodology.Rmd"))
+    paste(readLines("methodology.Rmd", warn = FALSE, encoding = "UTF-8"),
+          collapse = "\n") else ""
+  has_crt_a <- grepl("3\\.A Enteric fermentation", meth_txt)
+  has_crt_b <- grepl("3\\.B Manure management", meth_txt)
+  has_crt_d <- grepl("3\\.D Agricultural soils", meth_txt)
   check_bool("G4", "G",
-             "Word run-summary §14 contains CRT category map (3.A / 3.B / 3.D)",
+             "methodology.Rmd Reporting section contains CRT category map (3.A / 3.B / 3.D)",
              has_crt_a && has_crt_b && has_crt_d,
              notes = sprintf("3.A=%s 3.B=%s 3.D=%s",
                              has_crt_a, has_crt_b, has_crt_d))
 
-  # G5 — IPCC reporting context §14: three-level disaggregation language.
-  has_l1 <- grepl("Level 1", doc_xml)
-  has_l2 <- grepl("Level 2", doc_xml)
-  has_l3 <- grepl("Level 3", doc_xml)
+  # G5 — methodology.Rmd Reporting section contains the three-level
+  # disaggregation guide (Level 1 / Level 2 / Level 3).
+  has_l1 <- grepl("Level 1", meth_txt)
+  has_l2 <- grepl("Level 2", meth_txt)
+  has_l3 <- grepl("Level 3", meth_txt)
   check_bool("G5", "G",
-             "Word run-summary §14 contains Level 1/2/3 disaggregation guide",
+             "methodology.Rmd Reporting section contains Level 1/2/3 disaggregation guide",
              has_l1 && has_l2 && has_l3,
              notes = sprintf("L1=%s L2=%s L3=%s", has_l1, has_l2, has_l3))
 }

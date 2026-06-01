@@ -627,6 +627,48 @@ The benchmark comparison (Pass / Warn / Fail thresholds) is anchored on the \tex
 
 \newpage
 
+# Reporting
+
+The results calculated by the tool are designed to align with IPCC uncertainty reporting guidelines (IPCC 2006 Vol 1 Ch 3). The outputs reported by the tool can be used in a hybrid Approach 1 / Approach 2 uncertainty analysis for the whole inventory (IPCC 2006 §3.2.3.3) by entering into Table 3.3 the results reported by the tool for cattle emission sources alongside Approach 1 results for other emission categories. The outputs produced by the tool can also be used as inputs to a full Approach 2 analysis of uncertainty for the whole inventory.
+
+## IPCC Table 3.3 Inputs
+
+In the case of a hybrid Approach 1 / Approach 2, IPCC 2006 Table 3.3 (see also the IPCC 2019 MS Excel tool for Approach 1, and the IPCC 2019 Vol 1 Ch 3 addendum) requires the following inputs to characterise uncertainty of each emission source, each expressed as $\pm x\%$ of the inventory emission estimate:
+
+- Activity-data (population) uncertainty (Column E);
+- Emission-factor uncertainty (Column F);
+- Combined uncertainty (Column G).
+
+The tool reports all three figures for each cattle emission source via the IPCC Report tab and the Excel / Word downloads. The activity-data vs emission-factor split follows the convention adopted in this tool: AD = animal population (N) only; coefficient (EF) = the IPCC equation parameters that combine into the per-head emission factor (Cfi, Ca, Ym, Bo, MCF, EF3, EF4, EF5, Frac\_GasMS, Frac\_LeachMS, Frac\_PRP, EF3\_PRP, Frac\_GasPRP, Frac\_LeachPRP).
+
+## UNFCCC Common Reporting Tables Category Map
+
+The tool can calculate AD, EF and combined uncertainties for one or more cattle categories. While country-specific classifications are allowed for, the UNFCCC Common Reporting Tables (CRTs) indicate reporting of emissions from cattle at the following levels of disaggregation:
+
+- \textbf{3.A Enteric fermentation (CH$_4$)}
+  - 3.A.1.a Dairy cattle
+  - 3.A.1.b Non-dairy cattle
+- \textbf{3.B Manure management} (CH$_4$; direct and indirect N$_2$O combined)
+  - 3.B.1 Cattle (3.B.1.a Dairy, 3.B.1.b Non-dairy)
+- \textbf{3.D Agricultural soils} (direct and indirect N$_2$O)
+  - 3.D.1.c Urine and dung deposited by grazing animals (direct N$_2$O)
+  - 3.D.2.a Atmospheric deposition (multiple sources, including dung and urine deposited on pasture)
+  - 3.D.2.b Nitrogen leaching and run-off (multiple sources, including dung and urine deposited on pasture)
+
+Country-specific options in the CRTs may include reporting of emissions at the level of production systems, regions or cattle sub-categories.
+
+## Disaggregation Levels
+
+To facilitate uncertainty analysis at these different levels of disaggregation, the default outputs in the tool are produced at three disaggregation levels concurrently:
+
+- \textbf{Level 1} — disaggregated by cattle type (dairy, non-dairy), emission source (3.A, 3.B, 3.D) and gas (CH$_4$, N$_2$O). Available in the IPCC Report tab and the headline summary of the Word / Excel run-summary.
+- \textbf{Level 2} — Level 1 plus a user-defined second level (production system, region) using the template's \texttt{cattle\_type} and \texttt{region} fields. Available in the per-cattle-type results section of the Word run-summary.
+- \textbf{Level 3} — Level 2 plus cattle sub-categories (dairy\_cow, heifer, bull, etc.). Available in the per-(cattle type $\times$ emission source) breakdown of the Word run-summary and the per-sub-category CSV download from the IPCC Report tab.
+
+A user-selectable toggle to choose the reporting disaggregation level for the whole tool is not implemented in this release; the three levels are produced concurrently in their respective output channels. A single-toggle option may be added in a future version after feedback from UNFCCC partners on the right default level.
+
+\newpage
+
 # References
 
 \hangindent=1.5em

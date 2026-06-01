@@ -392,55 +392,14 @@ build_run_summary_docx <- function(path,
 
   # ---- IPCC reporting context --------------------------------------------
   doc <- .add_h2(doc, "14. IPCC reporting context")
-  # Andreas review round 2 (2026-06): expanded per his "Suggested outline for
-  # final section on reporting" — adds Approach 1/2 hybrid framing, CRT
-  # category map (3.A / 3.B / 3.D), and the three-level disaggregation guide
-  # tying each level to specific sections of THIS report.
+  # Andreas 2026-05 C12: previous wording named a specific column ("column J")
+  # in the national inventory uncertainty table that we had not verified
+  # against the live IPCC 2006 Vol 1 Ch 3 / Annex 7 template. Reworded to
+  # describe the metric instead of pinning a column letter.
   doc <- .add_p(doc,
-    "The results in this report are designed to align with IPCC uncertainty reporting guidelines (IPCC 2006 Vol 1 Ch 3). The outputs can be used in a hybrid Approach 1 / Approach 2 inventory analysis (cattle category as Approach 2, other categories as Approach 1, per IPCC 2006 Section 3.2.3.3) or as inputs to a full Approach 2 analysis of uncertainty for the whole inventory.")
-
-  doc <- .add_h3(doc, "IPCC Table 3.3 inputs")
+    "This run follows IPCC 2006 Vol 1 Ch 3 Approach 2 (Monte Carlo) for combined uncertainty estimation. The headline 95% MoE values in section 4 are the per-source combined-uncertainty figures used to populate the IPCC Annex 7 / Table 3.3 national inventory uncertainty table (% uncertainty column — the half-width of the 95% confidence interval / mean, per IPCC's own definition). Cross-check the exact column position against your national submission template. The activity-data vs emission-factor split follows the convention adopted in this tool — AD = animal population (N) only; coefficient (EF) = the IPCC equation parameters that combine into the per-head emission factor. See the methodology document (Resources tab) for the full IPCC / UNFCCC reporting-alignment guidance, including the CRT category map and the three-level disaggregation scheme this tool produces.")
   doc <- .add_p(doc,
-    "IPCC 2006 Table 3.3 (see also IPCC 2019 Vol 1 Ch 3 addendum and the IPCC Excel Approach 1 tool) requires the following three uncertainty inputs for each emission source, each expressed as +/- x% of the source emission estimate:")
-  ipcc_inputs <- data.frame(
-    Column = c("Column E", "Column F", "Column G"),
-    Input  = c("Activity data (population) uncertainty",
-               "Emission factor uncertainty",
-               "Combined uncertainty"),
-    `From this report` = c("Section 3 / Section 6 — AD-only run MoE%",
-                            "Section 3 / Section 6 — EF-only run MoE%",
-                            "Section 3 / Section 4 — combined-run MoE%"),
-    check.names = FALSE,
-    stringsAsFactors = FALSE)
-  ft_ipcc <- flextable::flextable(ipcc_inputs)
-  ft_ipcc <- .styled_flextable(ft_ipcc)
-  doc <- flextable::body_add_flextable(doc, ft_ipcc, align = "left")
-
-  doc <- .add_h3(doc, "CRT category map")
-  doc <- .add_p(doc,
-    "Cattle emissions are reported in the UNFCCC Common Reporting Tables under the following categories:")
-  doc <- .add_p(doc,
-    "  - 3.A Enteric fermentation (CH4): 3.A.1.a Dairy cattle, 3.A.1.b Non-dairy cattle")
-  doc <- .add_p(doc,
-    "  - 3.B Manure management (CH4 + direct & indirect N2O combined): 3.B.1 Cattle (3.B.1.a Dairy, 3.B.1.b Non-dairy)")
-  doc <- .add_p(doc,
-    "  - 3.D Agricultural soils: 3.D.1.c Urine and dung deposited by grazing animals (direct N2O); 3.D.2.a Atmospheric deposition; 3.D.2.b N leaching and run-off (indirect N2O, both with cattle PRP contributions among multiple sources)")
-  doc <- .add_p(doc,
-    "Country-specific options in the CRTs may include reporting of emissions at the level of production systems, regions or cattle sub-categories.")
-
-  doc <- .add_h3(doc, "Disaggregation levels in this report")
-  doc <- .add_p(doc,
-    "  - Level 1 — cattle type x emission source x gas. See Section 3 (IPCC Table 3.3) and Section 4 (Headline results by source) of this report.")
-  doc <- .add_p(doc,
-    "  - Level 2 — Level 1 plus a user-defined second level (production system or region, configured via the cattle_type / region template fields). See Section 5 (Results by cattle type / production system / sub-category).")
-  doc <- .add_p(doc,
-    "  - Level 3 — Level 2 plus cattle sub-categories (dairy_cow, heifer, bull, etc.). See Section 5b (Per-(cattle type x emission source) breakdown) and the per-sub-category CSV download available from the IPCC Report tab.")
-  doc <- .add_p(doc,
-    "A single user-selectable toggle to choose the reporting disaggregation level across the whole tool is not implemented in this release; the three levels are produced concurrently in their respective sections of this report. Pending UNFCCC reviewer feedback on the right default, a single-toggle option may be added in a future release.")
-
-  doc <- .add_h3(doc, "AD vs EF convention used by this tool")
-  doc <- .add_p(doc,
-    "The activity-data vs emission-factor split follows the convention adopted in this tool: AD = animal population (N) only; coefficient (EF) = the IPCC equation parameters that combine into the per-head emission factor (Cfi, Ca, Ym, Bo, MCF, EF3, EF4, EF5, Frac_GasMS, Frac_LeachMS, Frac_PRP, EF3_PRP, Frac_GasPRP, Frac_LeachPRP). Where parameters were auto-filled (Section 2), the IPCC default carries the uncertainty bounds suggested by Penman et al. (2000) and Monni et al. (2007). For parameters with country-specific values, the uncertainty bounds entered on the Uncertainty tab of the app drive the Monte Carlo distribution.")
+    "Where parameters were auto-filled (section 2), the IPCC default carries the uncertainty bounds suggested by Penman et al. (2000) and Monni et al. (2007). For parameters with country-specific values, the uncertainty bounds entered on the Uncertainty tab of the app drive the Monte Carlo distribution.")
 
   # ---- Footer -------------------------------------------------------------
   doc <- .add_p(doc, "")
@@ -638,36 +597,8 @@ build_trend_summary_docx <- function(path,
 
   # ---- IPCC reporting context --------------------------------------------
   doc <- .add_h2(doc, "8. IPCC reporting context")
-  # Andreas review round 2 (2026-06): expanded per his "Suggested outline for
-  # final section on reporting" — adds Approach 1/2 hybrid framing, CRT
-  # category map, and the three-level disaggregation guide. Trend-specific
-  # paragraphs from the prior version are kept at the end.
   doc <- .add_p(doc,
-    "The results in this report are designed to align with IPCC uncertainty reporting guidelines (IPCC 2006 Vol 1 Ch 3). The outputs can be used in a hybrid Approach 1 / Approach 2 inventory analysis (cattle category as Approach 2, other categories as Approach 1, per IPCC 2006 Section 3.2.3.3) or as inputs to a full Approach 2 analysis of uncertainty for the whole inventory.")
-
-  doc <- .add_h3(doc, "IPCC Table 3.3 inputs")
-  doc <- .add_p(doc,
-    "IPCC 2006 Table 3.3 requires three uncertainty inputs per emission source, each expressed as +/- x% of the source emission estimate: Activity-data uncertainty (Column E), Emission-factor uncertainty (Column F), and Combined uncertainty (Column G). For multi-year inventories these are reported alongside the trend uncertainty cells of the IPCC Table 3.3 trend annex.")
-
-  doc <- .add_h3(doc, "CRT category map")
-  doc <- .add_p(doc,
-    "Cattle emissions are reported in the UNFCCC Common Reporting Tables under: 3.A Enteric fermentation (3.A.1.a Dairy / 3.A.1.b Non-dairy cattle); 3.B Manure management (3.B.1 Cattle, a Dairy / b Non-dairy, CH4 + direct & indirect N2O combined); 3.D Agricultural soils (3.D.1.c grazing-animal urine and dung direct N2O; 3.D.2.a atmospheric deposition and 3.D.2.b N leaching/run-off — both indirect N2O with cattle PRP contributions among multiple sources).")
-  doc <- .add_p(doc,
-    "Country-specific options in the CRTs may include reporting of emissions at the level of production systems, regions or cattle sub-categories.")
-
-  doc <- .add_h3(doc, "Disaggregation levels in this report")
-  doc <- .add_p(doc,
-    "  - Level 1 — cattle type x emission source x gas. See the per-year trend table in Section 2 and the trend chart in Section 3.")
-  doc <- .add_p(doc,
-    "  - Level 2 — Level 1 plus a user-defined second level (production system or region). Available in the per-sub-category trend CSV download from the Trend tab.")
-  doc <- .add_p(doc,
-    "  - Level 3 — Level 2 plus cattle sub-categories. Available in the same CSV download.")
-  doc <- .add_p(doc,
-    "A single user-selectable toggle to choose the reporting disaggregation level across the whole tool is not implemented in this release; the three levels are produced concurrently in their respective sections of this report.")
-
-  doc <- .add_h3(doc, "Trend-specific reporting")
-  doc <- .add_p(doc,
-    "Per IPCC Vol 1 Ch 3 §3.7, trend uncertainty should be reported alongside the level of emissions in any national inventory submission that covers more than a single year. The Δ vs base year column in section 2 maps to the trend uncertainty cells of the IPCC Table 3.3 trend annex; the slope in section 4 supports the §3.7.2 'trend assessment' text typical of biennial transparency reports under the Paris Agreement Enhanced Transparency Framework.")
+    "Per IPCC Vol 1 Ch 3 §3.7, trend uncertainty should be reported alongside the level of emissions in any national inventory submission that covers more than a single year. The Δ vs base year column in section 2 maps to the trend uncertainty cells of the IPCC Table 3.3 trend annex; the slope in section 4 supports the §3.7.2 'trend assessment' text typical of biennial transparency reports under the Paris Agreement Enhanced Transparency Framework. See the methodology document (Resources tab) for the full IPCC / UNFCCC reporting-alignment guidance.")
   doc <- .add_p(doc,
     "If the trend is reported with a year-correlation assumption other than 'fully correlated coefficients', that choice should be documented in the methods section of the national inventory report — the year-correlation setting recorded in section 1 of this document is the one to cite.")
 
